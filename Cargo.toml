@@ -1,0 +1,36 @@
+[package]
+name = "slipcase-desktop"
+description = "Open a slipcase container, read its metadata, and hand the payload to the application the system has registered for it"
+homepage = "https://github.com/excelano/slipcase"
+readme = "README.md"
+keywords = ["slipcase", "container", "metadata", "gui", "egui"]
+categories = ["gui", "filesystem"]
+version = "0.1.0"
+edition = "2021"
+authors = ["David M. Anderson"]
+license = "MIT"
+repository = "https://github.com/excelano/slipcase-desktop"
+# eframe's number, not this code's: nothing written here needs past edition
+# 2021's 1.56, and every other crate in the tree sits below eframe. It rises
+# whenever egui raises its own, so measure rather than trust this line.
+# DESIGN.md §2.
+rust-version = "1.95"
+
+[[bin]]
+name = "slipcase-desktop"
+path = "src/main.rs"
+
+[dependencies]
+# The `fs` feature is the library's file-placement half. `Destination`, which
+# DESIGN.md §5 writes edited metadata back through, is behind it and is
+# compiled out without it.
+slpc = { version = "0.3.2", features = ["fs"] }
+# Defaults carry accesskit, which DESIGN.md §3 keeps on.
+eframe = "0.36"
+# Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
+# links C through gtk-sys and stays off, which is what taking the defaults
+# does — naming features here would be the way to turn it on by accident.
+rfd = "0.17"
+# Hands a path to the platform's own mechanism rather than carrying a table of
+# programs to run. DESIGN.md §3.
+opener = "0.8"
