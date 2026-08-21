@@ -243,19 +243,24 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
         // in-progress text has to outlive the frame it was typed in.
         Value::Datetime(d) => {
             let current = d.value().to_string();
-            let typed = buffered_text(ui, id, &current, editable);
-            // Trimmed, because a space either side of a date is a typing
-            // artefact rather than something somebody meant.
-            let shown = typed.as_deref().unwrap_or(&current).trim();
-            match shown.parse::<Datetime>() {
-                Ok(parsed) if typed.is_some() => Some(Value::from(parsed)),
-                Ok(_) => None,
+            let field = buffered_text(ui, id, &current, editable);
+            // What the field is showing, rather than what was typed into it
+            // this frame. A keystroke happens on one frame and the text stays
+            // on screen for every frame after, so reading the keystroke made
+            // the refusal below appear for a sixtieth of a second and vanish
+            // while the text it was about was still sitting there.
+            //
+            // Trimmed, because a space either side is a typing artefact rather
+            // than something somebody meant.
+            match parse_datetime(field.text.trim()) {
+                Some(parsed) if field.changed => Some(Value::from(parsed)),
+                Some(_) => None,
                 // Said in the colour this theme uses for things that are wrong.
                 // A weak grey note beside a field is one nobody sees, and what
                 // it is not saying is that the value is being refused: TOML
                 // wants two digits in an hour, so `9:00:00` is not a time and
                 // `09:00:00` is, which is not a difference anybody guesses at.
-                Err(_) => {
+                None => {
                     ui.label(
                         egui::RichText::new("not a date or time; not saved")
                             .color(ui.visuals().error_fg_color),
@@ -278,15 +283,48 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
     }
 }
 
+/// Read a date or time, putting back the leading zero TOML wants on an hour.
+///
+/// `19:00` is a time and `9:00` is not, which is the format's grammar rather
+/// than anything a person should carry in their head while typing into a field.
+/// A single digit before the first colon has one reading and no other, so it
+/// gets its zero and is read again. Nothing else is repaired: `18.00.00` and
+/// `1800` stay refused, because guessing at those would be guessing.
+fn parse_datetime(text: &str) -> Option<Datetime> {
+    if let Ok(parsed) = text.parse::<Datetime>() {
+        return Some(parsed);
+    }
+
+    // The hour is what runs up to the first colon, after a date and its `T`
+    // where there is one.
+    let (before, rest) = text.split_once(':')?;
+    let hour_at = before.rfind(|c: char| !c.is_ascii_digit()).map_or(0, |i| i + 1);
+    let (head, hour) = before.split_at(hour_at);
+    if hour.len() != 1 {
+        return None;
+    }
+
+    format!("{head}0{hour}:{rest}").parse::<Datetime>().ok()
+}
+
 /// A text field whose in-progress contents survive between frames.
 ///
 /// Re-seeded from the document whenever the field does not have focus, so a
 /// buffer left over from another container cannot show a value that is not
 /// there. While it does have focus, what was typed is what stays.
-fn buffered_text(ui: &mut Ui, id: egui::Id, current: &str, editable: bool) -> Option<String> {
+/// What a text field is showing, and whether this frame changed it.
+struct Field {
+    /// What is on screen now, typed or seeded from the document.
+    text: String,
+    /// Whether a keystroke landed this frame.
+    changed: bool,
+}
+
+fn buffered_text(ui: &mut Ui, id: egui::Id, current: &str, editable: bool) -> Field {
     let focused = ui.memory(|m| m.has_focus(id));
     let mut text = if focused {
-        ui.data_mut(|d| d.get_temp::<String>(id)).unwrap_or_else(|| current.to_owned())
+        ui.data_mut(|d| d.get_temp::<String>(id))
+            .unwrap_or_else(|| current.to_owned())
     } else {
         current.to_owned()
     };
@@ -294,12 +332,12 @@ fn buffered_text(ui: &mut Ui, id: egui::Id, current: &str, editable: bool) -> Op
     let field = egui::TextEdit::singleline(&mut text)
         .id(id)
         .desired_width(VALUE_WIDTH);
-    if ui.add_enabled(editable, field).changed() {
+    let changed = ui.add_enabled(editable, field).changed();
+    if changed {
         ui.data_mut(|d| d.insert_temp(id, text.clone()));
-        Some(text)
-    } else {
-        None
     }
+
+    Field { text, changed }
 }
 
 /// An array, as the leaf DESIGN.md §4 calls for.
@@ -561,6 +599,28 @@ id = 2
     fn every_toml_type_renders() {
         let mut doc = parsed();
         eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
+    }
+
+    /// TOML wants two digits in an hour. A field a person types into should
+    /// not, so the one repair with a single reading is made and no other.
+    #[test]
+    fn an_hour_without_its_leading_zero_is_still_a_time() {
+        let read = |s: &str| super::parse_datetime(s).map(|d| d.to_string());
+
+        assert_eq!(read("9:00").as_deref(), Some("09:00"));
+        assert_eq!(read("9:00:00").as_deref(), Some("09:00:00"));
+        assert_eq!(read("2026-08-21T9:00:00").as_deref(), Some("2026-08-21T09:00:00"));
+
+        // Already a time, and untouched.
+        assert_eq!(read("19:00").as_deref(), Some("19:00"));
+        assert_eq!(read("2026-08-21").as_deref(), Some("2026-08-21"));
+
+        // Guessing at these would be guessing.
+        assert_eq!(read("18.00.00"), None);
+        assert_eq!(read("1800"), None);
+        assert_eq!(read("9"), None);
+        assert_eq!(read("abc:def"), None);
+        assert_eq!(read(""), None);
     }
 
     /// The mark on the button that removes a key is one the fonts can draw.
