@@ -22,10 +22,6 @@ use crate::{add_key, remove_key, rename_key, set_value, NewKey};
 /// order.
 const KEY_WIDTH: f32 = 190.0;
 
-/// The width an integer is right-aligned within. DESIGN.md §4 asks for the
-/// alignment; a number needs a column of its own to be aligned inside.
-const NUMBER_WIDTH: f32 = 120.0;
-
 /// The width a value is edited in.
 const VALUE_WIDTH: f32 = 320.0;
 
@@ -211,23 +207,14 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
                 .then(|| Value::from(text))
         }
         Value::Integer(i) => {
-            // Right-aligned, which needs a column of a fixed size to be aligned
-            // within. `set_min_width` sets a floor and not a ceiling, so a
-            // right-to-left layout inside one aligns against everything left in
-            // the row: the number lands against the window's edge and whatever
-            // follows it in the row lands past it, off the end.
+            // Where every other value starts. DESIGN.md §4 asks for an integer
+            // to be right-aligned; a column of one number, right-aligned while
+            // the float beside it in the same widget is not, reads as a mistake
+            // rather than as alignment.
             let mut n = *i.value();
-            let mut changed = false;
-            ui.allocate_ui_with_layout(
-                egui::vec2(NUMBER_WIDTH, ui.spacing().interact_size.y),
-                egui::Layout::right_to_left(egui::Align::Center),
-                |ui| {
-                    changed = ui
-                        .add_enabled(editable, egui::DragValue::new(&mut n))
-                        .changed();
-                },
-            );
-            changed.then(|| Value::from(n))
+            ui.add_enabled(editable, egui::DragValue::new(&mut n))
+                .changed()
+                .then(|| Value::from(n))
         }
         Value::Float(f) => {
             let mut x = *f.value();
@@ -557,13 +544,12 @@ id = 2
         eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
     }
 
-    /// An integer is right-aligned inside a column of its own rather than
-    /// against the far edge of the window.
+    /// A row stays inside the width it was given.
     ///
-    /// The first version aligned against everything left in the row, which put
-    /// the number at the window's edge and the button that removes it past
-    /// that, off the end. Measured rather than looked at, because nothing here
-    /// can look.
+    /// It did not once: an integer aligned against everything left in the row
+    /// put the number at the window's edge and the button that removes it past
+    /// that, off the end, and the tree overflowed the width it was handed.
+    /// Measured rather than looked at, because nothing here can look.
     #[test]
     fn an_integer_stays_beside_its_key() {
         let doc: DocumentMut = "pages = 44\n".parse().expect("valid TOML");
