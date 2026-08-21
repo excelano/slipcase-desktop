@@ -312,8 +312,8 @@ impl App {
 
         std::thread::spawn(move || {
             let mut dialog = rfd::FileDialog::new()
-                .set_title("Open a slipcase container")
-                .add_filter("slipcase containers", &["slpc"])
+                .set_title("Open a slipcase")
+                .add_filter("slipcases", &["slpc"])
                 .add_filter("All files", &["*"]);
             if let Some(folder) = start_in {
                 dialog = dialog.set_directory(folder);
@@ -458,7 +458,7 @@ impl App {
                 ui.horizontal(|ui| {
                     let picking = self.picking.is_some();
                     if ui
-                        .add_enabled(!picking, egui::Button::new("Open a container…"))
+                        .add_enabled(!picking, egui::Button::new("Open a slipcase…"))
                         .clicked()
                     {
                         pick_clicked = true;
@@ -486,12 +486,12 @@ impl App {
                 ui.vertical_centered(|ui| {
                     ui.add_space(72.0);
                     ui.heading("Slipcase");
-                    ui.label("Open a .slpc container to see what is in it.");
+                    ui.label("Open a slipcase to see what is in it.");
                     ui.add_space(12.0);
                     if ui
                         .add_enabled(
                             self.picking.is_none(),
-                            egui::Button::new("Open a container…"),
+                            egui::Button::new("Open a slipcase…"),
                         )
                         .clicked()
                     {
