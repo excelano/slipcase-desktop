@@ -26,7 +26,7 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::{add_key, rename_key, NewKey, Opened, Saved};
+use slipcase_desktop::{add_key, extract_at, rename_key, NewKey, Opened, Saved, Watch};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -117,6 +117,7 @@ struct Report {
     unextractable: Vec<String>,
     rewritten: usize,
     renamed: usize,
+    replaced: usize,
     disagreements: BTreeMap<String, Vec<String>>,
 }
 
@@ -147,6 +148,10 @@ impl Report {
             println!(
                 "{} renamed a key and got the others back in the order they were written.",
                 self.renamed
+            );
+            println!(
+                "{} had their payload replaced, under its own name and under a new one.",
+                self.replaced
             );
             return Ok(());
         }
@@ -262,6 +267,9 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
         if !rewrites(c, scratch, report) {
             ok = false;
         }
+        if !replaces(c, scratch, report) {
+            ok = false;
+        }
     }
 
     if ok {
@@ -269,6 +277,230 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
     }
     Ok(())
 }
+
+/// Whether the payload can be replaced, DESIGN.md §5's second explicit action.
+///
+/// Twice, because the two cases are different writes. Under the payload's own
+/// name the metadata has nothing to say, so it has to come back byte for byte:
+/// the corpus holds a document with a byte order mark and one with CRLF line
+/// endings, and both would be rewritten by a build that handed the document
+/// over when nobody had edited it. Under a new name `payload.file` has to move
+/// with the payload, which is the one key a replacement may change.
+///
+/// This runs on every conformant case, the encrypted payload included. Nothing
+/// reads that member to replace it, so a container the Open button cannot serve
+/// is still one whose payload can be swapped out.
+///
+/// On a copy. The corpus is the arbiter and nothing here may change it.
+fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
+    let stem = c.id.replace('/', "-");
+    let copy = scratch.join(format!("replace-{stem}.slpc"));
+    if let Err(e) = std::fs::copy(&c.file, &copy) {
+        report.disagree(
+            "the replacement: the case could not be copied to write to".to_owned(),
+            c,
+            &e.to_string(),
+        );
+        return false;
+    }
+
+    let opened = Opened::open(&copy);
+    let Some(payload) = &opened.payload else {
+        report.disagree(
+            "the replacement: a conformant container arrived without a card".to_owned(),
+            c,
+            &opened.verdict_line(),
+        );
+        return false;
+    };
+    let own_name = payload.name.clone();
+
+    // Payload names repeat across the corpus, so each case gets a directory to
+    // hold a file under the name its own container uses.
+    let holding = scratch.join(format!("replacement-{stem}"));
+    if let Err(e) = std::fs::create_dir_all(&holding) {
+        report.disagree(
+            "the replacement: no directory to hold the replacement file".to_owned(),
+            c,
+            &e.to_string(),
+        );
+        return false;
+    }
+
+    let same = holding.join(&own_name);
+    let renamed = holding.join(REPLACEMENT);
+    for (path, bytes) in [(&same, SAME_NAME), (&renamed, NEW_NAME)] {
+        if let Err(e) = std::fs::write(path, bytes) {
+            report.disagree(
+                "the replacement: the replacement file could not be written".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    }
+
+    let before = match slpc::Container::open(&copy) {
+        Ok(container) => container.metadata_bytes().to_vec(),
+        Err(e) => {
+            report.disagree(
+                "the replacement: the copy could not be read".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    };
+
+    if !swapped(c, &copy, &same, &own_name, SAME_NAME, report) {
+        return false;
+    }
+
+    // The one thing this write may not have touched.
+    match slpc::Container::open(&copy) {
+        Ok(container) if container.metadata_bytes() == before => {}
+        Ok(_) => {
+            report.disagree(
+                "the replacement: replacing the payload rewrote metadata nobody edited".to_owned(),
+                c,
+                "the metadata member came back with different bytes",
+            );
+            return false;
+        }
+        Err(e) => {
+            report.disagree(
+                "the replacement: the replaced container could not be read".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    }
+
+    if !swapped(c, &copy, &renamed, REPLACEMENT, NEW_NAME, report) {
+        return false;
+    }
+
+    // The old name is gone from the document as well as from the archive.
+    let after = Opened::open(&copy);
+    let document = after.metadata.as_ref().map(ToString::to_string).unwrap_or_default();
+    if !document.contains(REPLACEMENT) {
+        report.disagree(
+            "the replacement: payload.file did not move with the payload".to_owned(),
+            c,
+            &document,
+        );
+        return false;
+    }
+
+    report.replaced += 1;
+    true
+}
+
+/// Put a file in as the payload and read the container back.
+fn swapped(
+    c: &Case,
+    copy: &Path,
+    file: &Path,
+    name: &str,
+    bytes: &[u8],
+    report: &mut Report,
+) -> bool {
+    let opened = Opened::open(copy);
+    match opened.save(Some(file)) {
+        Ok(Saved::Written) => {}
+        Ok(Saved::Unchanged) => {
+            report.disagree(
+                "the replacement: a payload to write is something to write".to_owned(),
+                c,
+                "save said nothing had changed",
+            );
+            return false;
+        }
+        Ok(Saved::Refused(v)) => {
+            report.disagree(
+                "the replacement: what was written did not read back conformant".to_owned(),
+                c,
+                &v.to_string(),
+            );
+            return false;
+        }
+        Err(e) => {
+            report.disagree("the replacement: the write failed".to_owned(), c, &e.to_string());
+            return false;
+        }
+    }
+
+    let after = Opened::open(copy);
+    if after.verdict_word() != "accept" {
+        report.disagree(
+            "the replacement: the container is no longer conformant".to_owned(),
+            c,
+            &after.verdict_line(),
+        );
+        return false;
+    }
+
+    let Some(card) = &after.payload else {
+        report.disagree(
+            "the replacement: the replaced container has no card".to_owned(),
+            c,
+            &after.verdict_line(),
+        );
+        return false;
+    };
+    if card.name != name || card.size != bytes.len() as u64 {
+        report.disagree(
+            "the replacement: the card describes something other than what went in".to_owned(),
+            c,
+            &format!("{} at {} bytes, expecting {name} at {}", card.name, card.size, bytes.len()),
+        );
+        return false;
+    }
+
+    // And the bytes themselves, which is the only proof that the member holds
+    // the file and not a reference to it.
+    let out = copy.with_extension("payload");
+    match extract_at(copy, &out, &Watch::new()) {
+        Ok(_) => {}
+        Err(e) => {
+            report.disagree(
+                "the replacement: the new payload would not come back out".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    }
+    match std::fs::read(&out) {
+        Ok(got) if got == bytes => true,
+        Ok(got) => {
+            report.disagree(
+                "the replacement: the payload that came back is not the one that went in".to_owned(),
+                c,
+                &format!("{} bytes back, {} in", got.len(), bytes.len()),
+            );
+            false
+        }
+        Err(e) => {
+            report.disagree(
+                "the replacement: the extracted payload could not be read".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            false
+        }
+    }
+}
+
+/// What goes in under the payload's own name, and under a new one. Different
+/// lengths, so a check that read the wrong one would not pass by accident.
+const SAME_NAME: &[u8] = b"a payload put in under the name the container already used";
+const NEW_NAME: &[u8] = b"a payload put in under a name of its own";
+
+/// The new name, distinctive enough not to collide with a member the corpus
+/// put in a container on purpose.
+const REPLACEMENT: &str = "x-slipcase-desktop-replacement.bin";
 
 /// Whether the container survives being written back: untouched when nothing
 /// was edited, and still conformant when something was.
@@ -317,7 +549,7 @@ fn rename_round_trips(
         return false;
     }
 
-    match opened.save() {
+    match opened.save(None) {
         Ok(Saved::Written) => {}
         Ok(other) => {
             let said = match other {
@@ -375,7 +607,7 @@ fn unedited_writes_nothing(c: &Case, copy: &Path, untouched: &Opened, report: &m
         return false;
     };
 
-    match untouched.save() {
+    match untouched.save(None) {
         Ok(Saved::Unchanged) => {}
         Ok(_) => {
             report.disagree(
@@ -435,7 +667,7 @@ fn edited_round_trips(
         return false;
     }
 
-    match edited.save() {
+    match edited.save(None) {
         Ok(Saved::Written) => {}
         Ok(Saved::Unchanged) => {
             report.disagree(

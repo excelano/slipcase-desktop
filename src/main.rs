@@ -11,7 +11,9 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
-use slipcase_desktop::{extract, tree, Extracted, Opened, Payload, Saved, Watch};
+use slipcase_desktop::{
+    extract, extract_at, tree, why_not_a_payload, Extracted, Opened, Payload, Saved, Watch,
+};
 
 /// The window's identity to the desktop environment.
 ///
@@ -138,6 +140,7 @@ fn main() -> eframe::Result {
                 opened,
                 scratch: None,
                 extraction: Extraction::Idle,
+                replacing: None,
                 save_said: None,
                 picking: None,
             }))
@@ -152,26 +155,79 @@ struct App {
     /// first Open and removed with its contents when this drops. DESIGN.md §5
     /// keeps the application from ever writing beside the container it opened.
     scratch: Option<tempfile::TempDir>,
-    /// What the last Open did.
+    /// What the last extraction did.
     extraction: Extraction,
+    /// A file chosen to become the payload, waiting for a Save.
+    ///
+    /// DESIGN.md §5 makes replacing the payload an explicit action, and this is
+    /// where explicit stops: choosing the file is not writing it. It waits here
+    /// with the metadata edits so that one press of Save writes one container,
+    /// rather than two writes with a window between them where a failure leaves
+    /// half of what was asked for.
+    replacing: Option<PathBuf>,
     /// What the last Save did.
     save_said: Option<Said>,
-    /// A file dialog open on another thread.
-    picking: Option<mpsc::Receiver<Option<PathBuf>>>,
+    /// A file dialog open on another thread, and what its answer is for.
+    picking: Option<Picking>,
 }
 
-/// What became of an Open.
+/// A dialog open on another thread.
+struct Picking {
+    /// Which question it is asking, since one channel serves all three.
+    what: For,
+    /// The one message the thread sends when the dialog closes.
+    answer: mpsc::Receiver<Option<PathBuf>>,
+}
+
+/// What a dialog is being opened for.
+///
+/// One at a time, deliberately: three dialogs at once is three answers arriving
+/// in an order nobody chose.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum For {
+    /// A container to open.
+    Container,
+    /// Where to put the payload.
+    ExtractTo,
+    /// A file to become the payload.
+    Replacement,
+}
+
+/// Where an extraction is going.
+enum Target {
+    /// The scratch directory, under the payload's own name. The platform is
+    /// handed the file when it lands, which is what the Open button is.
+    Handover(PathBuf),
+    /// A path somebody named. Nothing is launched: they said where to put it,
+    /// not what to do with it.
+    Chosen(PathBuf),
+}
+
+/// What became of an extraction.
 enum Extraction {
     /// Nothing has been asked for.
     Idle,
     /// A copy is under way on another thread.
     Running(Job),
-    /// The payload is on disk and the platform was handed it.
-    Handed(PathBuf),
+    /// The payload is on disk, here.
+    Done(PathBuf),
     /// The copy was stopped, and nothing of it was left behind.
     Cancelled,
     /// It could not be extracted, or could not be handed over.
     Failed(String),
+}
+
+/// What pressing something on the card asks for.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Ask {
+    /// Extract to the scratch directory and hand it to the platform.
+    Open,
+    /// Extract to somewhere a person names.
+    Extract,
+    /// Replace it with a file a person names.
+    Replace,
+    /// Forget a replacement already chosen.
+    Undo,
 }
 
 /// What the last Save did, in a sentence.
@@ -206,28 +262,34 @@ impl App {
         }
         self.opened = Some(opened);
         self.extraction = Extraction::Idle;
+        // A file chosen to replace the payload of the container being closed
+        // is not a file to replace the payload of the next one.
+        self.replacing = None;
         self.save_said = None;
     }
 
-    /// What the bar has to say about the document.
+    /// What the bar has to say about the container.
     ///
-    /// Both, and not one or the other. A save that failed changed nothing, so
-    /// the document is still edited, and showing only the edited mark hides the
-    /// reason behind the very state the failure caused.
+    /// The first is whether there is anything to write, which is what turns
+    /// Save on: an edited document, a payload waiting to replace the one in
+    /// there, or both.
+    ///
+    /// Both halves, and not one or the other. A save that failed changed
+    /// nothing, so there is still something to write, and showing only the
+    /// edited mark hides the reason behind the very state the failure caused.
     fn notes(&self) -> (bool, Option<&Said>) {
-        (
-            self.opened.as_ref().is_some_and(Opened::metadata_edited),
-            self.save_said.as_ref(),
-        )
+        let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited)
+            || self.replacing.is_some();
+        (edited, self.save_said.as_ref())
     }
 
-    /// Write the edited metadata back, and show what happened.
+    /// Write the edits back, and show what happened.
     fn save(&mut self) {
         let Some(opened) = &self.opened else {
             return;
         };
         let path = opened.path.clone();
-        let outcome = opened.save();
+        let outcome = opened.save(self.replacing.as_deref());
 
         let said = match &outcome {
             Ok(Saved::Written) => Said {
@@ -250,10 +312,27 @@ impl App {
 
         if matches!(outcome, Ok(Saved::Written)) {
             // Read back what is now on disk, so the tree, the card, and the
-            // edited mark all describe the container rather than the edit.
+            // edited mark all describe the container rather than the edit. This
+            // is also what clears the replacement: it is in there now.
             self.show(Opened::open(&path));
         }
         self.save_said = Some(said);
+    }
+
+    /// Take a file chosen to become the payload, or say why it cannot be one.
+    ///
+    /// Refused here rather than at Save where it can be, so a name SPEC §2.3
+    /// forbids is reported while the person still has the dialog in mind. The
+    /// refusals this cannot see are the ones needing the container's member
+    /// list, and those stay for Save to report.
+    fn take_replacement(&mut self, file: PathBuf) {
+        if let Some(why) = why_not_a_payload(&file) {
+            self.replacing = None;
+            self.save_said = Some(Said { text: why, wrong: true });
+            return;
+        }
+        self.replacing = Some(file);
+        self.save_said = None;
     }
 
     /// Take the thread's answer, once it has one.
@@ -275,16 +354,14 @@ impl App {
     /// Start extracting the payload, on a thread of its own.
     ///
     /// The window keeps drawing while it copies, which is what lets it show how
-    /// far along it is and offer to stop. Both the copy and the handover to the
-    /// platform happen over there: `opener` starts a process, and starting it
-    /// is not instant either.
-    fn open_payload(&mut self) -> Extraction {
-        let dir = match self.scratch_dir() {
-            Ok(dir) => dir,
-            Err(why) => return Extraction::Failed(why),
-        };
+    /// far along it is and offer to stop. One thread serves both of DESIGN.md
+    /// §5's destinations, because a payload of two gigabytes is a payload of two
+    /// gigabytes whether it is going to a scratch directory or to a folder
+    /// somebody chose. The handover happens over there too: `opener` starts a
+    /// process, and starting it is not instant either.
+    fn start_extraction(&mut self, target: Target) {
         let Some(opened) = &self.opened else {
-            return Extraction::Idle;
+            return;
         };
 
         let container = opened.path.clone();
@@ -294,15 +371,24 @@ impl App {
 
         let theirs = watch.clone();
         std::thread::spawn(move || {
-            let finished = match extract(&container, &dir, &theirs) {
-                Ok(Extracted::Done(path)) => match opener::open(&path) {
-                    Ok(()) => Extraction::Handed(path),
-                    // Extraction worked and the handover did not, which is a
-                    // different sentence: the payload is on disk either way.
-                    Err(e) => Extraction::Failed(format!(
-                        "{} was extracted, and the system would not open it: {e}",
-                        path.display()
-                    )),
+            let copied = match &target {
+                Target::Handover(dir) => extract(&container, dir, &theirs),
+                Target::Chosen(path) => extract_at(&container, path, &theirs),
+            };
+            let finished = match copied {
+                Ok(Extracted::Done(path)) => match target {
+                    // Only the Open button launches anything. A person who said
+                    // where to put the payload said where to put it.
+                    Target::Chosen(_) => Extraction::Done(path),
+                    Target::Handover(_) => match opener::open(&path) {
+                        Ok(()) => Extraction::Done(path),
+                        // Extraction worked and the handover did not, which is a
+                        // different sentence: the payload is on disk either way.
+                        Err(e) => Extraction::Failed(format!(
+                            "{} was extracted, and the system would not open it: {e}",
+                            path.display()
+                        )),
+                    },
                 },
                 Ok(Extracted::Cancelled) => Extraction::Cancelled,
                 // The library's own wording. An encrypted payload and one
@@ -315,76 +401,124 @@ impl App {
             let _ = sender.send(finished);
         });
 
-        Extraction::Running(Job {
+        self.extraction = Extraction::Running(Job {
             watch,
             total,
             outcome,
-        })
+        });
     }
 
-    /// Ask for a container, on a thread of its own.
+    /// Start extracting to the scratch directory, to hand to the platform.
+    fn start_handover(&mut self) {
+        match self.scratch_dir() {
+            Ok(dir) => self.start_extraction(Target::Handover(dir)),
+            Err(why) => self.extraction = Extraction::Failed(why),
+        }
+    }
+
+    /// Ask for a path, on a thread of its own.
     ///
     /// Not on this one. The portal backend puts the dialog in another process
     /// entirely, so blocking here does not make the dialog modal, it makes the
     /// window stop answering the compositor, and GNOME offers to force quit an
     /// application that is doing exactly what it was asked to. `rfd` supports
     /// being called from any thread in a windowed application, which this is.
-    fn start_picking(&mut self, ctx: &egui::Context) {
+    fn start_picking(&mut self, ctx: &egui::Context, what: For) {
         if self.picking.is_some() {
             return;
         }
-        let (sender, outcome) = mpsc::channel();
+        let (sender, answer) = mpsc::channel();
         let ctx = ctx.clone();
 
-        // Where the last one came from, so a second container is found beside
-        // the first rather than from wherever the dialog would otherwise start.
+        // Where the last container came from, so everything is found beside it
+        // rather than from wherever the dialog would otherwise start.
         let start_in = last_folder::read();
+        // The payload's own name, offered where the question is what to call
+        // the file coming out. Somebody renaming it is choosing to.
+        let suggested = match what {
+            For::ExtractTo => self
+                .opened
+                .as_ref()
+                .and_then(|o| o.payload.as_ref())
+                .map(|p| p.name.clone()),
+            For::Container | For::Replacement => None,
+        };
 
         std::thread::spawn(move || {
-            let mut dialog = rfd::FileDialog::new()
-                .set_title("Open a slipcase")
-                .add_filter("slipcases", &["slpc"])
-                .add_filter("All files", &["*"]);
+            let mut dialog = rfd::FileDialog::new();
+            dialog = match what {
+                For::Container => dialog
+                    .set_title("Open a slipcase")
+                    .add_filter("slipcases", &["slpc"])
+                    .add_filter("All files", &["*"]),
+                // No filter on either of these: a payload is any file at all,
+                // which is what SPEC §2.3 leaves open.
+                For::ExtractTo => dialog.set_title("Extract the payload to"),
+                For::Replacement => dialog.set_title("Replace the payload with"),
+            };
             if let Some(folder) = start_in {
                 dialog = dialog.set_directory(folder);
             }
-            let chosen = dialog.pick_file();
+            if let Some(name) = suggested {
+                dialog = dialog.set_file_name(name);
+            }
+            // A save dialog for the one question that names a file that does
+            // not exist yet, so the platform asks before overwriting.
+            let chosen = match what {
+                For::ExtractTo => dialog.save_file(),
+                For::Container | For::Replacement => dialog.pick_file(),
+            };
             let _ = sender.send(chosen);
             // Nothing has been touching the window while the dialog was up, so
             // it is asleep and has to be woken to notice the answer.
             ctx.request_repaint();
         });
 
-        self.picking = Some(outcome);
+        self.picking = Some(Picking { what, answer });
     }
 
     /// Take the dialog's answer, once it has one.
     fn poll_picking(&mut self) {
-        let Some(outcome) = &self.picking else {
+        let Some(picking) = &self.picking else {
             return;
         };
-        match outcome.try_recv() {
-            Err(mpsc::TryRecvError::Empty) => {}
+        let what = picking.what;
+        let chosen = match picking.answer.try_recv() {
+            Err(mpsc::TryRecvError::Empty) => return,
+            Err(mpsc::TryRecvError::Disconnected) => None,
             // A path, or a dialog somebody closed without choosing one.
-            Ok(chosen) => {
-                self.picking = None;
-                if let Some(path) = chosen {
-                    last_folder::write(&path);
-                    self.show(Opened::open(path));
-                }
+            Ok(chosen) => chosen,
+        };
+        self.picking = None;
+
+        let Some(path) = chosen else {
+            return;
+        };
+        match what {
+            For::Container => {
+                last_folder::write(&path);
+                self.show(Opened::open(path));
             }
-            Err(mpsc::TryRecvError::Disconnected) => self.picking = None,
+            For::ExtractTo => self.start_extraction(Target::Chosen(path)),
+            For::Replacement => self.take_replacement(path),
         }
     }
 }
 
 /// The payload card: what it is, and what can be done with it.
 ///
-/// DESIGN.md §3. Not a method, because the panel drawing it holds the document
-/// mutably for the tree and a `&self` here would borrow the whole application
-/// alongside it. Returns whether Open was pressed, for the same reason.
-fn card(ui: &mut egui::Ui, payload: &Payload, extraction: &Extraction) -> bool {
-    let mut open_clicked = false;
+/// DESIGN.md §3, and the two explicit actions §5 names. Not a method, because
+/// the panel drawing it holds the document mutably for the tree and a `&self`
+/// here would borrow the whole application alongside it. Returns what was
+/// pressed, for the same reason.
+fn card(
+    ui: &mut egui::Ui,
+    payload: &Payload,
+    extraction: &Extraction,
+    replacing: Option<&std::path::Path>,
+    busy: bool,
+) -> Option<Ask> {
+    let mut asked = None;
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(egui::RichText::new(&payload.name).strong());
@@ -396,6 +530,8 @@ fn card(ui: &mut egui::Ui, payload: &Payload, extraction: &Extraction) -> bool {
             }
 
             match extraction {
+                // A copy under way takes the row: there is one payload and one
+                // thread, so nothing else on this card can be asked for yet.
                 Extraction::Running(job) => {
                     let done = job.watch.done();
                     #[allow(clippy::cast_precision_loss)]
@@ -410,15 +546,43 @@ fn card(ui: &mut egui::Ui, payload: &Payload, extraction: &Extraction) -> bool {
                     }
                 }
                 _ => {
-                    if ui.button("Open").clicked() {
-                        open_clicked = true;
-                    }
+                    ui.horizontal(|ui| {
+                        for (label, ask) in [
+                            ("Open", Ask::Open),
+                            ("Extract…", Ask::Extract),
+                            ("Replace…", Ask::Replace),
+                        ] {
+                            // Off while a dialog is up, because there is one
+                            // dialog at a time and a second press would be
+                            // silently dropped.
+                            if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
+                                asked = Some(ask);
+                            }
+                        }
+                    });
                 }
+            }
+
+            if let Some(file) = replacing {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "Will be replaced by {} when this is saved.",
+                            file.display()
+                        ))
+                        .italics(),
+                    );
+                    // Somewhere to go after choosing the wrong file. Without
+                    // this the only way out is closing the container.
+                    if ui.button("Undo").clicked() {
+                        asked = Some(Ask::Undo);
+                    }
+                });
             }
 
             match extraction {
                 Extraction::Idle | Extraction::Running(_) => {}
-                Extraction::Handed(path) => {
+                Extraction::Done(path) => {
                     ui.label(format!("Extracted to {}", path.display()));
                 }
                 Extraction::Cancelled => {
@@ -430,7 +594,7 @@ fn card(ui: &mut egui::Ui, payload: &Payload, extraction: &Extraction) -> bool {
             }
         });
 
-    open_clicked
+    asked
 }
 
 impl App {
@@ -477,7 +641,7 @@ impl App {
 
         // Clicks are read inside the panels and acted on after them, because a
         // panel holds a borrow of the state a click changes.
-        let mut open_clicked = false;
+        let mut asked = None;
         let mut pick_clicked = false;
         let mut save_clicked = false;
 
@@ -543,9 +707,13 @@ impl App {
 
                 if let Some(payload) = &opened.payload {
                     ui.add_space(8.0);
-                    if card(ui, payload, &self.extraction) {
-                        open_clicked = true;
-                    }
+                    asked = card(
+                        ui,
+                        payload,
+                        &self.extraction,
+                        self.replacing.as_deref(),
+                        self.picking.is_some(),
+                    );
                 }
 
                 // The metadata is the window: it gets the space rather than a
@@ -560,15 +728,22 @@ impl App {
         });
 
         if pick_clicked {
-            self.start_picking(ui.ctx());
+            self.start_picking(ui.ctx(), For::Container);
         }
 
         if save_clicked {
             self.save();
         }
 
-        if open_clicked {
-            self.extraction = self.open_payload();
+        match asked {
+            None => {}
+            Some(Ask::Open) => self.start_handover(),
+            Some(Ask::Extract) => self.start_picking(ui.ctx(), For::ExtractTo),
+            Some(Ask::Replace) => self.start_picking(ui.ctx(), For::Replacement),
+            Some(Ask::Undo) => {
+                self.replacing = None;
+                self.save_said = None;
+            }
         }
     }
 }
@@ -584,6 +759,7 @@ mod tests {
             opened,
             scratch: None,
             extraction: Extraction::Idle,
+            replacing: None,
             save_said: None,
             picking: None,
         }
@@ -637,11 +813,65 @@ mod tests {
     fn opening_a_container_forgets_the_last_one() {
         let mut app = app(None);
         app.extraction = Extraction::Failed("about the container just closed".to_owned());
+        app.replacing = Some("/somewhere/for-the-last-one.pdf".into());
 
         app.show(Opened::open("/nonexistent/container.slpc"));
 
         assert!(matches!(app.extraction, Extraction::Idle));
+        assert_eq!(app.replacing, None, "chosen for the container just closed");
         assert!(app.opened.is_some());
+    }
+
+    /// A payload waiting to replace the one in the container is something to
+    /// write, so Save has to be on even though nobody typed anything.
+    #[test]
+    fn a_waiting_replacement_turns_save_on() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+
+        let (nothing_to_write, _) = app.notes();
+        assert!(!nothing_to_write, "nothing has been asked for yet");
+
+        app.replacing = Some(dir.path().join("report-v2.pdf"));
+        let (to_write, _) = app.notes();
+        assert!(to_write, "a replacement is an edit to the container");
+
+        // And the card says what will happen, rather than saying nothing until
+        // the write has already happened.
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// A file the specification will not let be a payload is refused where it
+    /// was chosen, and nothing is left waiting.
+    #[test]
+    fn a_replacement_that_cannot_be_one_is_refused_at_the_choice() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+
+        app.take_replacement(dir.path().join("slipcase.metadata.toml"));
+
+        assert_eq!(app.replacing, None, "nothing is waiting to be written");
+        let (to_write, said) = app.notes();
+        assert!(!to_write, "and Save stays off");
+
+        let said = said.expect("it says why");
+        assert!(said.wrong, "{}", said.text);
+        assert!(said.text.contains("slipcase.metadata.toml"), "{}", said.text);
+    }
+
+    /// One that can be, is.
+    #[test]
+    fn a_replacement_that_can_be_one_waits_for_a_save() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+
+        let chosen = dir.path().join("report-v2.pdf");
+        app.take_replacement(chosen.clone());
+
+        assert_eq!(app.replacing.as_deref(), Some(chosen.as_path()));
+        let (to_write, said) = app.notes();
+        assert!(to_write);
+        assert!(said.is_none(), "choosing a file is not a message");
     }
 }
 
@@ -679,6 +909,7 @@ mod save_failure_tests {
             opened: Some(Opened::open(&path)),
             scratch: None,
             extraction: Extraction::Idle,
+            replacing: None,
             save_said: None,
             picking: None,
         };

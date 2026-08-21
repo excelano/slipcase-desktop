@@ -92,14 +92,43 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
     // `slpc::check_payload_name`, which rejects every separator and every
     // traversal, so joining it onto a directory cannot leave that directory.
     let out = into.join(container.payload_name());
+    copy_out(&mut container, &out, watch)
+}
 
+/// Copy a container's payload to a path somebody chose, watchably.
+///
+/// The other half of DESIGN.md §5's extract: [`extract`] puts the payload where
+/// the container names it, for handing to the platform, and this puts it where
+/// a person named it, which is the explicit action. The name is theirs, so it
+/// goes through no check of the library's: `check_payload_name` says what a
+/// member may be called inside a container, and this file is leaving one.
+///
+/// # Errors
+///
+/// Returns whatever the library says about reading the container, and any error
+/// from writing the file.
+pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
+    let mut container = slpc::Container::open(container)?;
+    copy_out(&mut container, out, watch)
+}
+
+/// The part both extractions share.
+fn copy_out(
+    container: &mut slpc::Container<std::fs::File>,
+    out: &Path,
+    watch: &Watch,
+) -> slpc::Result<Extracted> {
     // Asked for before the file is created, so a container that refuses leaves
     // nothing behind at all.
     let mut payload = container.payload()?;
 
-    let outcome = copy(&mut payload, &out, watch);
+    let outcome = copy(&mut payload, out, watch);
     if !matches!(outcome, Ok(Extracted::Done(_))) {
-        let _ = std::fs::remove_file(&out);
+        // Including where the path was one somebody chose over a file they
+        // already had. `File::create` truncated it before the first byte was
+        // read, so those contents are gone either way, and a part-written file
+        // under the name they chose is the worse thing to leave.
+        let _ = std::fs::remove_file(out);
     }
     outcome
 }
@@ -379,6 +408,31 @@ pub fn set_value(slot: &mut Value, new: Value) {
     *slot.decor_mut() = decor;
 }
 
+/// Why a chosen file cannot become a payload, where it cannot.
+///
+/// The same checks `Repack::payload_file` makes, asked at the moment somebody
+/// chooses the file rather than at the moment they press Save. A name SPEC §2.3
+/// forbids is a fact about the choice, and a person should hear it while they
+/// still have the dialog in mind.
+///
+/// Says nothing about the one refusal this cannot see: a container already
+/// holding another member under that name. That needs the container's member
+/// list, which is not public, so it stays a failure Save reports.
+#[must_use]
+pub fn why_not_a_payload(path: &Path) -> Option<String> {
+    let name = path.file_name()?.to_str();
+    let Some(name) = name else {
+        return Some(format!(
+            "{} has a name that is not UTF-8, and payload.file is a TOML string",
+            path.display()
+        ));
+    };
+    match slpc::check_payload_name(name) {
+        Ok(()) => None,
+        Err(why) => Some(format!("{name} cannot be a payload's name: {why}")),
+    }
+}
+
 impl Payload {
     /// Describe the payload of a container already found conformant.
     fn of(path: &Path) -> Option<Self> {
@@ -509,7 +563,13 @@ impl Opened {
         }
     }
 
-    /// Write the edited metadata back into the container.
+    /// Write the edits back into the container.
+    ///
+    /// `replacing` is a file to store as the payload, from DESIGN.md §5's
+    /// second explicit action. Both edits go out in one write: they are two
+    /// members of one archive, and writing them separately would rewrite the
+    /// container twice and give a failure between the two a container carrying
+    /// half of what was asked for.
     ///
     /// The sequence is the one DESIGN.md §5 asks for, and the order is what
     /// keeps a failure from costing the only copy of a container. `Repack`
@@ -522,24 +582,35 @@ impl Opened {
     ///
     /// # Errors
     ///
-    /// Returns whatever the library says about reading the container or writing
-    /// the replacement. A replacement that reads back as anything but
-    /// conformant is [`Saved::Refused`] rather than an error: nothing failed,
-    /// and nothing was replaced.
-    pub fn save(&self) -> slpc::Result<Saved> {
+    /// Returns whatever the library says about reading the container, reading
+    /// the replacement payload, or writing the result. A replacement that reads
+    /// back as anything but conformant is [`Saved::Refused`] rather than an
+    /// error: nothing failed, and nothing was replaced.
+    pub fn save(&self, replacing: Option<&Path>) -> slpc::Result<Saved> {
         let Some(document) = &self.metadata else {
             return Ok(Saved::Unchanged);
         };
-        if !self.metadata_edited() {
+        let edited = self.metadata_edited();
+        if !edited && replacing.is_none() {
             return Ok(Saved::Unchanged);
         }
 
         let mut destination = slpc::Destination::in_place(&self.path)?;
         {
             let source = std::fs::File::open(&self.path)?;
-            slpc::Repack::new(source)
-                .metadata(document)
-                .write(destination.writer())?;
+            let mut repack = slpc::Repack::new(source);
+            // Only where it was edited. Handing the document over re-serializes
+            // it, and §5 does not re-serialize what nobody touched: two of the
+            // corpus's conformant containers come back changed by the round
+            // trip alone. A payload replaced under a new name still moves
+            // `payload.file`, which the library does from the stored bytes.
+            if edited {
+                repack = repack.metadata(document);
+            }
+            if let Some(file) = replacing {
+                repack = repack.payload_file(file)?;
+            }
+            repack.write(destination.writer())?;
         }
 
         // Read back before anything is replaced, which is the difference
@@ -851,7 +922,7 @@ aaa = \"written second\"
 
         let opened = Opened::open(&path);
         assert!(!opened.metadata_edited());
-        assert!(matches!(opened.save().expect("saves"), Saved::Unchanged));
+        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
 
         assert_eq!(std::fs::read(&path).expect("reads"), before);
     }
@@ -883,7 +954,7 @@ aaa = \"written second\"
         let opened = Opened::open(&marked);
         assert_eq!(opened.verdict_word(), "accept");
         assert!(!opened.metadata_edited(), "a mark is not an edit");
-        assert!(matches!(opened.save().expect("saves"), Saved::Unchanged));
+        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
 
         assert_eq!(std::fs::read(&marked).expect("reads"), before);
     }
@@ -904,7 +975,7 @@ aaa = \"written second\"
         );
 
         assert!(opened.metadata_edited());
-        assert!(matches!(opened.save().expect("saves"), Saved::Written));
+        assert!(matches!(opened.save(None).expect("saves"), Saved::Written));
 
         let again = Opened::open(&path);
         assert_eq!(again.verdict_word(), "accept");
@@ -1112,5 +1183,231 @@ mod inline_tests {
         let written = d.to_string();
         assert!(written.contains("since = 0"), "{written}");
         written.parse::<DocumentMut>().expect("still parses");
+    }
+}
+
+#[cfg(test)]
+mod replacement_tests {
+    use super::{extract, extract_at, why_not_a_payload, Extracted, Opened, Saved, Watch};
+    use slpc::toml_edit::DocumentMut;
+    use std::path::{Path, PathBuf};
+
+    /// A container built by the test, so nothing here needs the corpus.
+    fn packed(dir: &Path, metadata: &str, name: &str, payload: &[u8]) -> PathBuf {
+        let path = dir.join("built-by-the-test.slpc");
+        let document: DocumentMut = metadata.parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader(name, payload, document, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes the container");
+        path
+    }
+
+    /// DESIGN.md §5's extract, as the explicit action: the file lands under the
+    /// name somebody chose and not under the one the container carries.
+    #[test]
+    fn an_extraction_goes_where_it_was_told() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let payload = vec![3u8; 200_000];
+        let container = packed(dir.path(), "title = \"chosen\"\n", "report.pdf", &payload);
+
+        let out = dir.path().join("somewhere/else.bin");
+        std::fs::create_dir(dir.path().join("somewhere")).expect("a directory");
+
+        let watch = Watch::new();
+        let landed = extract_at(&container, &out, &watch).expect("extracts");
+
+        match landed {
+            Extracted::Done(at) => assert_eq!(at, out),
+            Extracted::Cancelled => panic!("nothing asked it to stop"),
+        }
+        assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
+        assert_eq!(watch.done(), u64::try_from(payload.len()).unwrap());
+    }
+
+    /// A cancel takes the part-written file with it, wherever it was going. The
+    /// path here is one somebody chose, which is the case the scratch directory
+    /// never reaches.
+    #[test]
+    fn a_cancelled_extraction_leaves_nothing_where_it_was_told() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = packed(dir.path(), "title = \"stopped\"\n", "report.pdf", &vec![9u8; 200_000]);
+
+        let out = dir.path().join("half-a-payload.bin");
+        let watch = Watch::new();
+        watch.cancel();
+
+        assert!(matches!(
+            extract_at(&container, &out, &watch).expect("stops"),
+            Extracted::Cancelled
+        ));
+        assert!(!out.exists(), "a part-written file is one somebody finds later");
+    }
+
+    /// Replacing the payload under a new name moves `payload.file` with it, and
+    /// changes nothing else about the document.
+    #[test]
+    fn a_replaced_payload_takes_payload_file_with_it() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = packed(
+            dir.path(),
+            "title = \"before\" # beside the string\n",
+            "report.pdf",
+            b"the old payload",
+        );
+
+        let chosen = dir.path().join("report-v2.pdf");
+        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+
+        let opened = Opened::open(&container);
+        assert!(!opened.metadata_edited(), "nothing was typed into it");
+        assert!(matches!(
+            opened.save(Some(&chosen)).expect("saves"),
+            Saved::Written
+        ));
+
+        let again = Opened::open(&container);
+        assert_eq!(again.verdict_word(), "accept");
+
+        let card = again.payload.as_ref().expect("a conformant container has a card");
+        assert_eq!(card.name, "report-v2.pdf");
+        assert_eq!(card.size, 15);
+
+        let document = again.metadata.as_ref().expect("a document").to_string();
+        assert!(document.contains("report-v2.pdf"), "{document}");
+        assert!(!document.contains("report.pdf"), "{document}");
+        // The one key the replacement may move, and no other part of the file.
+        assert!(document.contains("# beside the string"), "{document}");
+
+        let out = dir.path().join("out");
+        std::fs::create_dir(&out).expect("a directory");
+        extract(&container, &out, &Watch::new()).expect("extracts");
+        assert_eq!(
+            std::fs::read(out.join("report-v2.pdf")).expect("reads"),
+            b"the new payload"
+        );
+    }
+
+    /// A replacement alone does not re-serialize the metadata. DESIGN.md §5.
+    ///
+    /// The fixture's metadata has CRLF line endings, which a parse and a
+    /// re-serialization does not reproduce: this is one of the two shapes in
+    /// the conformance corpus that comes back changed by the round trip alone.
+    /// Handing the document to `Repack` when nobody edited it would rewrite
+    /// every line ending in a container whose payload was the only thing asked
+    /// about.
+    #[test]
+    fn replacing_only_the_payload_leaves_the_metadata_byte_for_byte() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = packed(dir.path(), "title = \"placeholder\"\n", "report.pdf", b"old");
+
+        let crlf: &[u8] =
+            b"slipcase_version = \"1.0\"\r\ntitle = \"before\"\r\n\r\n[payload]\r\nfile = \"report.pdf\"\r\n";
+        let mut out = std::io::Cursor::new(Vec::new());
+        slpc::Repack::new(std::fs::File::open(&container).expect("opens"))
+            .metadata_bytes(crlf)
+            .write(&mut out)
+            .expect("writes");
+        std::fs::write(&container, out.into_inner()).expect("writes the container");
+        assert_eq!(
+            slpc::Container::open(&container).expect("opens").metadata_bytes(),
+            crlf,
+            "the fixture starts with the bytes this is about"
+        );
+
+        // The same name, so `payload.file` has nothing to move to either.
+        let chosen = dir.path().join("report.pdf");
+        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+
+        let opened = Opened::open(&container);
+        assert!(!opened.metadata_edited());
+        assert!(matches!(
+            opened.save(Some(&chosen)).expect("saves"),
+            Saved::Written
+        ));
+
+        assert_eq!(
+            slpc::Container::open(&container).expect("opens").metadata_bytes(),
+            crlf,
+            "nobody edited the metadata, so nothing rewrote it"
+        );
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory");
+        extract(&container, &into, &Watch::new()).expect("extracts");
+        assert_eq!(
+            std::fs::read(into.join("report.pdf")).expect("reads"),
+            b"the new payload",
+            "and the payload is the one that was chosen"
+        );
+    }
+
+    /// Both edits go out in one write.
+    #[test]
+    fn a_metadata_edit_and_a_replacement_are_one_save() {
+        use slpc::toml_edit::Value;
+
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = packed(
+            dir.path(),
+            "title = \"before\" # kept\n",
+            "report.pdf",
+            b"the old payload",
+        );
+
+        let chosen = dir.path().join("report-v2.pdf");
+        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+
+        let mut opened = Opened::open(&container);
+        super::set_value(
+            opened.metadata.as_mut().expect("a document")["title"]
+                .as_value_mut()
+                .expect("a value"),
+            Value::from("after"),
+        );
+        assert!(opened.metadata_edited());
+        assert!(matches!(
+            opened.save(Some(&chosen)).expect("saves"),
+            Saved::Written
+        ));
+
+        let again = Opened::open(&container);
+        let document = again.metadata.as_ref().expect("a document").to_string();
+        assert!(document.contains("\"after\""), "{document}");
+        assert!(document.contains("# kept"), "{document}");
+        assert!(document.contains("report-v2.pdf"), "{document}");
+        assert_eq!(
+            again.payload.as_ref().expect("a card").name,
+            "report-v2.pdf"
+        );
+    }
+
+    /// Nothing to write is still nothing to write.
+    #[test]
+    fn no_edit_and_no_replacement_writes_nothing() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = packed(dir.path(), "title = \"untouched\"\n", "report.pdf", b"payload");
+        let before = std::fs::read(&container).expect("reads");
+
+        let opened = Opened::open(&container);
+        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
+
+        assert_eq!(std::fs::read(&container).expect("reads"), before);
+    }
+
+    /// A name SPEC §2.3 forbids is refused where the file was chosen, not where
+    /// Save was pressed.
+    #[test]
+    fn a_file_that_cannot_be_a_payload_says_so() {
+        assert_eq!(why_not_a_payload(Path::new("/anywhere/report.pdf")), None);
+
+        let reserved = why_not_a_payload(Path::new("/anywhere/slipcase.metadata.toml"))
+            .expect("the metadata member's own name is reserved");
+        assert!(reserved.contains("slipcase.metadata.toml"), "{reserved}");
+
+        // Legal in a Linux filename, forbidden by SPEC §2.3, so it is a file
+        // somebody can genuinely choose and genuinely cannot store.
+        let colon = why_not_a_payload(Path::new("/anywhere/notes:2026.txt"))
+            .expect("a colon is not a member name");
+        assert!(colon.contains("notes:2026.txt"), "{colon}");
     }
 }
