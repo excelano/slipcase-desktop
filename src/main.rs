@@ -8,7 +8,7 @@
 
 use eframe::egui;
 
-use slipcase_desktop::Opened;
+use slipcase_desktop::{tree, Opened};
 
 /// The window's identity to the desktop environment.
 ///
@@ -60,6 +60,15 @@ impl eframe::App for App {
                 ui.label(opened.path.display().to_string());
                 ui.separator();
                 ui.label(opened.verdict_line());
+
+                // The metadata is the window: it gets the space rather than a
+                // panel down one side. DESIGN.md §3.
+                if let Some(doc) = &opened.metadata {
+                    ui.add_space(8.0);
+                    egui::ScrollArea::both()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| tree::render(ui, doc));
+                }
             }
         });
     }

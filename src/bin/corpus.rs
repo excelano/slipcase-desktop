@@ -27,12 +27,44 @@ use slpc::toml_edit::DocumentMut;
 
 use slipcase_desktop::Opened;
 
+/// One disagreement, for the report: which case, what this build said about it,
+/// and whatever the manifest had to say.
+fn detail(c: &Case, said: &str) -> String {
+    let mut out = format!("  {}\n      {said}", c.id);
+    if !c.note.is_empty() {
+        out.push_str("\n      ");
+        out.push_str(&c.note);
+    }
+    out
+}
+
 /// One case, as the manifest describes it.
 struct Case {
     id: String,
     expect: String,
     note: String,
     file: PathBuf,
+}
+
+/// The four answers a case may expect. An `expect` outside these is a manifest
+/// this build cannot check rather than a case that failed.
+const KNOWN: [&str; 4] = ["accept", "reject", "undetermined", "out-of-scope"];
+
+/// Whether DESIGN.md §6 owes this container a tree past its verdict.
+///
+/// A conformant container's metadata member parsed, and so did that of one
+/// declaring a version this build does not implement, so both show a tree.
+/// `undetermined` is the answer given when the metadata member could not be
+/// read, so there is nothing to show and showing something would contradict the
+/// verdict. `reject` covers rows on both sides of the table: a container with no
+/// metadata member has no tree, and one whose `payload.file` names nothing has
+/// one. Nothing is owed there, and `None` says so.
+fn owed_tree(expect: &str) -> Option<bool> {
+    match expect {
+        "accept" | "out-of-scope" => Some(true),
+        "undetermined" => Some(false),
+        _ => None,
+    }
 }
 
 /// An `s` where one is owed. `1 cases` is the tell of a program that was never
@@ -79,27 +111,55 @@ fn run(conformance: &Path) -> Result<(), String> {
     let mut agreed = 0usize;
     let mut disagreements: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
+    let mut trees = 0usize;
+
     for c in &cases {
+        if !KNOWN.contains(&c.expect.as_str()) {
+            return Err(format!(
+                "{}: the manifest expects {:?}, which is not one of the four answers this build knows",
+                c.id, c.expect
+            ));
+        }
+
         let opened = Opened::open(&c.file);
+        let mut ok = true;
+
         let got = opened.verdict_word();
-        if got == c.expect {
-            agreed += 1;
-        } else {
-            let mut detail = format!("  {}\n      {}", c.id, opened.verdict_line());
-            if !c.note.is_empty() {
-                detail.push_str("\n      ");
-                detail.push_str(&c.note);
-            }
+        if got != c.expect {
+            ok = false;
             disagreements
-                .entry(format!("expected {}, got {got}", c.expect))
+                .entry(format!("the verdict: expected {}, got {got}", c.expect))
                 .or_default()
-                .push(detail);
+                .push(detail(c, &opened.verdict_line()));
+        }
+
+        let shown = opened.metadata.is_some();
+        if shown {
+            trees += 1;
+        }
+        if let Some(owed) = owed_tree(&c.expect) {
+            if shown != owed {
+                ok = false;
+                let said = if shown {
+                    "a tree, where §6 shows the verdict and nothing further"
+                } else {
+                    "no tree, where §6 shows the verdict and the tree"
+                };
+                disagreements
+                    .entry(format!("the tree: a {} container showed {said}", c.expect))
+                    .or_default()
+                    .push(detail(c, &opened.verdict_line()));
+            }
+        }
+
+        if ok {
+            agreed += 1;
         }
     }
 
     let total = cases.len();
     if disagreements.is_empty() {
-        println!("{total} cases, all agree.");
+        println!("{total} cases, all agree. {trees} showed a metadata tree.");
         return Ok(());
     }
 

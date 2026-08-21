@@ -6,8 +6,11 @@
 #![forbid(unsafe_code)]
 #![warn(missing_docs, clippy::pedantic)]
 
+pub mod tree;
+
 use std::path::PathBuf;
 
+use slpc::toml_edit::DocumentMut;
 use slpc::Verdict;
 
 /// A path, and what the library made of it.
@@ -16,6 +19,16 @@ pub struct Opened {
     pub path: PathBuf,
     /// What came back.
     pub outcome: Outcome,
+    /// The metadata document, when the metadata member could be read and
+    /// parsed as TOML.
+    ///
+    /// `slpc::metadata_of` parses that member alone and asks nothing else of
+    /// it, so a document survives a container that fails SPEC §2.1 somewhere
+    /// else entirely: a required key absent, `payload.file` naming no member or
+    /// several, a version this build does not implement. Those are the rows of
+    /// DESIGN.md §6 that show a verdict and a tree. The rows that show a
+    /// verdict and nothing further are the ones where this is `None`.
+    pub metadata: Option<DocumentMut>,
 }
 
 /// What opening a path produced.
@@ -40,6 +53,13 @@ impl Opened {
     #[must_use]
     pub fn open(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
+        // Two reads rather than one. `Container::read` fails the payload check
+        // before it yields a document, so the tree for a container that failed
+        // that check has to be asked for separately.
+        let metadata = std::fs::File::open(&path)
+            .ok()
+            .and_then(|f| slpc::metadata_of(f).ok());
+
         let outcome = match std::fs::File::open(&path) {
             Err(e) => Outcome::Unreadable(e.to_string()),
             Ok(f) => match slpc::validate(f) {
@@ -49,7 +69,11 @@ impl Opened {
                 Err(e) => Outcome::Unreadable(e.to_string()),
             },
         };
-        Self { path, outcome }
+        Self {
+            path,
+            outcome,
+            metadata,
+        }
     }
 
     /// The container's name on disk, for the window's heading.
