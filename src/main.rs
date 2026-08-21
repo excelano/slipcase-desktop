@@ -70,6 +70,15 @@ enum Extraction {
 }
 
 impl App {
+    /// Show a container, and forget what the last one's Open did.
+    ///
+    /// Without the second half, a message about the container just closed
+    /// would sit under the card of the one just opened.
+    fn show(&mut self, opened: Opened) {
+        self.opened = Some(opened);
+        self.extraction = Extraction::Idle;
+    }
+
     /// Extract the payload and give it to whatever opens it.
     ///
     /// Synchronous, so a large payload holds the window still while it copies.
@@ -102,6 +111,19 @@ impl App {
         }
     }
 
+    /// Ask for a container.
+    ///
+    /// Blocks while the dialog is up, which is what a modal dialog does. The
+    /// portal backend is asked through `rfd`'s own blocking call rather than an
+    /// executor this application would otherwise not have.
+    fn pick() -> Option<PathBuf> {
+        rfd::FileDialog::new()
+            .set_title("Open a slipcase container")
+            .add_filter("slipcase containers", &["slpc"])
+            .add_filter("All files", &["*"])
+            .pick_file()
+    }
+
     /// The scratch directory, made on first use.
     fn scratch_dir(&mut self) -> Result<PathBuf, String> {
         if self.scratch.is_none() {
@@ -124,16 +146,59 @@ impl App {
 impl eframe::App for App {
     // egui 0.36 hands the app a `Ui` rather than a `Context`, and that `Ui`
     // carries no margin or background of its own, so the panel is what gives
-    // the window its own. `ui.ctx()` is where the context went.
+    // the window its own. `ui.ctx()` is where the context went. The `Frame` is
+    // unused, and keeping the drawing out of this method is what lets a test
+    // drive it: a `Frame` belongs to the runner and cannot be made in one.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        // Read inside the panel and acted on after it, because the panel holds
-        // a borrow of the state the Open changes.
+        self.render(ui);
+    }
+}
+
+impl App {
+    fn render(&mut self, ui: &mut egui::Ui) {
+        // Clicks are read inside the panels and acted on after them, because a
+        // panel holds a borrow of the state a click changes.
         let mut open_clicked = false;
+        let mut pick_clicked = false;
+
+        // Only the first of several. A single window shows one container, and
+        // choosing among a handful dropped together would be a guess.
+        let dropped = ui
+            .ctx()
+            .input(|i| i.raw.dropped_files.first().map(|f| f.path().to_owned()));
+        let hovering = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
+
+        if self.opened.is_some() {
+            // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
+            egui::Panel::top("bar").show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    if ui.button("Open a container…").clicked() {
+                        pick_clicked = true;
+                    }
+                });
+            });
+        }
 
         egui::CentralPanel::default().show(ui, |ui| match &self.opened {
             None => {
-                ui.heading("Slipcase");
-                ui.label("No container open.");
+                ui.vertical_centered(|ui| {
+                    ui.add_space(72.0);
+                    ui.heading("Slipcase");
+                    ui.label("Open a .slpc container to see what is in it.");
+                    ui.add_space(12.0);
+                    if ui.button("Open a container…").clicked() {
+                        pick_clicked = true;
+                    }
+                    ui.add_space(6.0);
+                    // A drop target that gives no sign it takes drops is one
+                    // nobody tries.
+                    let hint = if hovering {
+                        "drop it to open"
+                    } else {
+                        "or drop one on this window"
+                    };
+                    ui.label(egui::RichText::new(hint).weak());
+                });
             }
             Some(opened) => {
                 ui.heading(opened.name());
@@ -180,8 +245,88 @@ impl eframe::App for App {
             }
         });
 
+        // A drop beats the dialog: it names a container outright, and the
+        // dialog would still be open in the same frame only by coincidence.
+        if let Some(path) = dropped {
+            self.show(Opened::open(path));
+        } else if pick_clicked {
+            if let Some(path) = Self::pick() {
+                self.show(Opened::open(path));
+            }
+        }
+
         if open_clicked {
             self.extraction = self.open_payload();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{App, Extraction};
+    use slipcase_desktop::Opened;
+    use slpc::toml_edit::DocumentMut;
+
+    fn app(opened: Option<Opened>) -> App {
+        App {
+            opened,
+            scratch: None,
+            extraction: Extraction::Idle,
+        }
+    }
+
+    /// A container this test builds itself, so nothing here needs the
+    /// conformance corpus checked out.
+    fn a_container(dir: &std::path::Path) -> std::path::PathBuf {
+        let path = dir.join("built-by-the-test.slpc");
+        let metadata: DocumentMut = "title = \"built by the test\"\n# a comment\n"
+            .parse()
+            .expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes the container");
+        path
+    }
+
+    /// The state a person sees before they have opened anything. Slice 5 is
+    /// where it stopped being a placeholder.
+    #[test]
+    fn the_empty_state_renders() {
+        let mut app = app(None);
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// The verdict, the card with its Open button, and the tree, all at once.
+    #[test]
+    fn an_open_container_renders() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+        assert_eq!(
+            app.opened.as_ref().map(Opened::verdict_word),
+            Some("accept")
+        );
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// A path that is not a container renders too. DESIGN.md §6 wants a state
+    /// rather than a dialog box for every one of these.
+    #[test]
+    fn a_path_that_is_not_there_renders() {
+        let mut app = app(Some(Opened::open("/nonexistent/container.slpc")));
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// Opening a container forgets what the last one's Open did. Without this,
+    /// a message about the container just closed sits under the card of the one
+    /// just opened.
+    #[test]
+    fn opening_a_container_forgets_the_last_one() {
+        let mut app = app(None);
+        app.extraction = Extraction::Failed("about the container just closed".to_owned());
+
+        app.show(Opened::open("/nonexistent/container.slpc"));
+
+        assert!(matches!(app.extraction, Extraction::Idle));
+        assert!(app.opened.is_some());
     }
 }
