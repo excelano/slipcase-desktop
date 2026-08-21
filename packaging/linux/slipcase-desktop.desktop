@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Slipcase
+GenericName=Slipcase Viewer
+Comment=Open a slipcase container and see what is in it
+Exec=slipcase-desktop %f
+Icon=slipcase-desktop
+Terminal=false
+MimeType=application/x.slipcase+zip;
+Categories=Utility;Archiving;
+Keywords=slipcase;slpc;container;metadata;archive;
+StartupNotify=true
+StartupWMClass=slipcase-desktop

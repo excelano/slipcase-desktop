@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The slipcase media type, for shared-mime-info.
+
+  SPEC 4 names `application/x.slipcase+zip` and the extension `.slpc`, and it
+  reserves no magic bytes: a container is identified by opening it and finding
+  a conformant metadata member, which is not a question this database can ask.
+  The glob is therefore the only identification available here.
+
+  `sub-class-of application/zip` is true and useful. A container is a ZIP, so an
+  archive tool can open one, and a desktop that knows nothing of slipcases still
+  has something to offer. It does not cost the glob: where a name matches
+  `*.slpc` and the content sniffs as `application/zip`, shared-mime-info takes
+  the glob, because the magic-matched type is the parent rather than the child.
+-->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x.slipcase+zip">
+    <comment>Slipcase container</comment>
+    <sub-class-of type="application/zip"/>
+    <glob pattern="*.slpc"/>
+    <icon name="application-x.slipcase+zip"/>
+    <generic-icon name="package-x-generic"/>
+  </mime-type>
+</mime-info>

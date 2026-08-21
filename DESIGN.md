@@ -127,7 +127,7 @@ SPEC §2 and §3 define these conditions. The list is not exhaustive, and none o
 1. **Open and look.** Open a container from an argument and from a file dialog; render the metadata tree; render the payload card with a working Open button; render every state in `§6`. **Shipped.**
 2. **Editing the metadata**, and writing it back with `Repack` into a `Destination::in_place`. **Shipped.**
 3. **Extracting and replacing the payload**, as the two explicit actions `§5` describes. **Shipped.**
-4. **File association**, per platform, per `§8`.
+4. **File association**, per platform, per `§8`. **Shipped on Linux.** macOS and Windows are briefed in `HANDOFF-macos.md` and `HANDOFF-windows.md` and have never been built.
 
 Stage 1 is a whole program rather than a preview of one: it opens a container and shows what is in it.
 
@@ -140,6 +140,12 @@ Stage 1 is a whole program rather than a preview of one: it opens a container an
 **Naming.** The crate and the binary are `slipcase-desktop`; the application is Slipcase to a person.
 
 **Linux.** A `shared-mime-info` XML declaring `application/x.slipcase+zip` with a glob on `*.slpc`, a desktop entry naming that type, and an icon. The glob is the only identification available: SPEC §4 reserves no magic bytes. Distribution is the Excelano apt repository with the runtime libraries declared as package dependencies.
+
+**Amended: the media type is a subclass of `application/zip`.** A container is a ZIP, so an archive tool can open one and a desktop that knows nothing of slipcases still has something to offer. It costs the glob nothing: where a name matches `*.slpc` and the content sniffs as `application/zip`, shared-mime-info takes the glob, because the magic-matched type is the parent rather than the child. Before the type is installed a `.slpc` reports as `application/zip`, which is true and useless.
+
+**Amended: the runtime libraries cannot be derived from the executable.** It links libc, libm, and libgcc, and nothing else. Everything that draws a window — the Wayland client library, the keyboard map library, the EGL and Vulkan loaders, the X11 libraries — is opened by name at run time, which is the other face of §2's claim that `wayland-sys` and `linux-raw-sys` resolve their symbols then. `dpkg-shlibdeps` sees none of it, so a package built from the linker's answer alone installs cleanly on a machine with no display stack and fails to start. The dependency list is written by hand and was measured by running the application and reading `/proc/PID/maps`.
+
+**Amended: the package carries no maintainer scripts.** `shared-mime-info`, `desktop-file-utils`, and `hicolor-icon-theme` own dpkg triggers on the three directories the package writes into, so the caches are rebuilt without a `postinst` asking. They are dependencies for that as much as for anything they provide at run time.
 
 **macOS.** An application bundle with `CFBundleDocumentTypes` and an exported type declaration conforming to `public.zip-archive`, which a container is.
 

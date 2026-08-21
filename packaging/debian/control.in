@@ -1,0 +1,24 @@
+Package: slipcase-desktop
+Version: @VERSION@
+Architecture: @ARCH@
+Maintainer: David M. Anderson <david.anderson@excelano.com>
+Installed-Size: @SIZE@
+Section: utils
+Priority: optional
+Homepage: https://github.com/excelano/slipcase-desktop
+Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, shared-mime-info, desktop-file-utils, hicolor-icon-theme
+Description: Viewer and metadata editor for slipcase containers
+ Opens a .slpc container, shows its metadata as an editable tree, and hands
+ the payload to whatever application the desktop has registered for it.
+ .
+ The container format is read and written entirely through the slpc library,
+ which is the reference implementation of the slipcase specification. This
+ application parses no containers of its own.
+ .
+ Only two of the libraries above are found by dpkg-shlibdeps. The executable
+ links libc and libgcc and nothing else; the display stack, the graphics
+ driver loader, and the keyboard map library are all opened by name at run
+ time, so a package built from the linker's answer alone would install on a
+ machine where it cannot start. The three tool packages at the end own the
+ dpkg triggers that rebuild the mime, desktop, and icon caches, which is why
+ this package carries no maintainer scripts.
