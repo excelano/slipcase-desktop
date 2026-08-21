@@ -26,7 +26,7 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::Opened;
+use slipcase_desktop::{Opened, Saved};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -115,6 +115,7 @@ struct Report {
     /// Conformant containers the Open button cannot serve. Not failures: SPEC
     /// §2.5 puts encryption and compression method outside conformance.
     unextractable: Vec<String>,
+    rewritten: usize,
     disagreements: BTreeMap<String, Vec<String>>,
 }
 
@@ -138,6 +139,10 @@ impl Report {
             for one in &self.unextractable {
                 println!("  the Open button cannot serve {one}");
             }
+            println!(
+                "{} rewritten through Repack and read back conformant, and untouched when nothing was edited.",
+                self.rewritten
+            );
             return Ok(());
         }
 
@@ -243,15 +248,132 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
         );
     }
 
-    // Only a conformant container has a payload to extract.
-    if c.expect == "accept" && !extracts(c, &opened, scratch, report) {
-        ok = false;
+    // Only a conformant container has a payload to extract, or metadata worth
+    // writing back.
+    if c.expect == "accept" {
+        if !extracts(c, &opened, scratch, report) {
+            ok = false;
+        }
+        if !rewrites(c, scratch, report) {
+            ok = false;
+        }
     }
 
     if ok {
         report.agreed += 1;
     }
     Ok(())
+}
+
+/// Whether the container survives being written back: untouched when nothing
+/// was edited, and still conformant when something was.
+///
+/// On a copy. The corpus is the arbiter and nothing here may change it.
+fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
+    let copy = scratch.join(format!("rewrite-{}.slpc", c.id.replace('/', "-")));
+    if let Err(e) = std::fs::copy(&c.file, &copy) {
+        report.disagree(
+            "the rewrite: the case could not be copied to write to".to_owned(),
+            c,
+            &e.to_string(),
+        );
+        return false;
+    }
+    let Ok(before) = std::fs::read(&copy) else {
+        return false;
+    };
+
+    // Nothing edited, so nothing written. DESIGN.md §5.
+    let untouched = Opened::open(&copy);
+    match untouched.save() {
+        Ok(Saved::Unchanged) => {}
+        Ok(_) => {
+            report.disagree(
+                "the rewrite: an unedited container was written anyway".to_owned(),
+                c,
+                "DESIGN §5 says a container nothing has changed in is not written",
+            );
+            return false;
+        }
+        Err(e) => {
+            report.disagree(
+                "the rewrite: an unedited container would not save".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    }
+    if std::fs::read(&copy).ok().as_ref() != Some(&before) {
+        report.disagree(
+            "the rewrite: an unedited save changed the file".to_owned(),
+            c,
+            "the bytes on disk moved with nothing edited",
+        );
+        return false;
+    }
+
+    // One unknown key added, which SPEC §2.5 leaves unconstrained.
+    let mut edited = Opened::open(&copy);
+    let Some(document) = edited.metadata.as_mut() else {
+        report.disagree(
+            "the rewrite: a conformant container had no document to edit".to_owned(),
+            c,
+            "every accept case parses its metadata member",
+        );
+        return false;
+    };
+    document["x_slipcase_desktop_corpus"] = slpc::toml_edit::value("written by the corpus runner");
+
+    match edited.save() {
+        Ok(Saved::Written) => {}
+        Ok(Saved::Unchanged) => {
+            report.disagree(
+                "the rewrite: an edited container was not written".to_owned(),
+                c,
+                "a key was added and the save reported nothing to do",
+            );
+            return false;
+        }
+        Ok(Saved::Refused(v)) => {
+            report.disagree(
+                "the rewrite: what was written back did not validate".to_owned(),
+                c,
+                &v.to_string(),
+            );
+            return false;
+        }
+        Err(e) => {
+            report.disagree("the rewrite: the save failed".to_owned(), c, &e.to_string());
+            return false;
+        }
+    }
+
+    // Read it back as a container rather than as the file just written.
+    let again = Opened::open(&copy);
+    if again.verdict_word() != "accept" {
+        report.disagree(
+            "the rewrite: the rewritten container is no longer conformant".to_owned(),
+            c,
+            &again.verdict_line(),
+        );
+        return false;
+    }
+    if !again
+        .metadata
+        .as_ref()
+        .is_some_and(|d| d.contains_key("x_slipcase_desktop_corpus"))
+    {
+        report.disagree(
+            "the rewrite: the edit did not survive the round trip".to_owned(),
+            c,
+            "the key added before saving is not in the container that came back",
+        );
+        return false;
+    }
+
+    report.rewritten += 1;
+    true
 }
 
 /// Whether the payload came out whole, and whether a refusal was one SPEC §2.5

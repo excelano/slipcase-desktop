@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use slpc::toml_edit::DocumentMut;
+use slpc::toml_edit::{DocumentMut, Value};
 use slpc::Verdict;
 
 /// How much of a copy has happened, and whether it should stop.
@@ -141,6 +141,15 @@ pub struct Opened {
     /// DESIGN.md §6 that show a verdict and a tree. The rows that show a
     /// verdict and nothing further are the ones where this is `None`.
     pub metadata: Option<DocumentMut>,
+    /// The document as it was parsed, for telling whether it has been edited.
+    ///
+    /// Compared against rather than the bytes in the container, because two of
+    /// the corpus's 36 conformant containers do not re-serialize to the bytes
+    /// they came from: a leading byte order mark is dropped and CRLF line
+    /// endings come back as LF. Comparing against the stored bytes would call
+    /// those two edited the moment they were opened, and §5 says a container
+    /// nothing has changed in is not written.
+    as_parsed: Option<String>,
     /// The payload, when there is one this build can describe.
     ///
     /// Only a conformant container has one. DESIGN.md §6 gives the card to that
@@ -158,6 +167,29 @@ pub struct Payload {
     pub size: u64,
     /// What the platform says would open it, where the platform will say.
     pub opens_with: Option<String>,
+}
+
+/// What became of a save.
+pub enum Saved {
+    /// Written, read back, and conformant. The container on disk is the new one.
+    Written,
+    /// Nothing in the document had changed, so nothing was written at all.
+    /// DESIGN.md §5.
+    Unchanged,
+    /// What was written did not read back as a conformant container, so nothing
+    /// was replaced and what is on disk is untouched.
+    Refused(Verdict),
+}
+
+/// Change a value, keeping the decor it was written with.
+///
+/// Dropping a new `Item` over an old one discards its decor, which is the
+/// whitespace and the comments attached to it, so the value is assigned into
+/// and its decor put back afterwards. DESIGN.md §5.
+pub fn set_value(slot: &mut Value, new: Value) {
+    let decor = slot.decor().clone();
+    *slot = new;
+    *slot.decor_mut() = decor;
 }
 
 impl Payload {
@@ -242,6 +274,8 @@ impl Opened {
                 Err(e) => Outcome::Unreadable(e.to_string()),
             },
         };
+        let as_parsed = metadata.as_ref().map(DocumentMut::to_string);
+
         // Only a conformant container is given a card, so this opens the file
         // a third time and only for the row of §6 that has one.
         let payload = match &outcome {
@@ -253,6 +287,7 @@ impl Opened {
             path,
             outcome,
             metadata,
+            as_parsed,
             payload,
         }
     }
@@ -276,6 +311,60 @@ impl Opened {
             Outcome::Unreadable(why) => format!("cannot be read: {why}"),
             Outcome::Judged(v) => v.to_string(),
         }
+    }
+
+    /// Whether the metadata document has changed since it was parsed.
+    #[must_use]
+    pub fn metadata_edited(&self) -> bool {
+        match (&self.metadata, &self.as_parsed) {
+            (Some(doc), Some(as_parsed)) => doc.to_string() != *as_parsed,
+            _ => false,
+        }
+    }
+
+    /// Write the edited metadata back into the container.
+    ///
+    /// The sequence is the one DESIGN.md §5 asks for, and the order is what
+    /// keeps a failure from costing the only copy of a container. `Repack`
+    /// carries every member through, so members this build does not recognise
+    /// survive as SPEC §3 requires. `Destination::in_place` writes to a
+    /// temporary file beside the target, so nothing has been replaced yet.
+    /// `Destination::written` hands that file back and it is validated there.
+    /// Only then does `commit` rename it into place, and a `Destination`
+    /// dropped without committing takes its temporary file with it.
+    ///
+    /// # Errors
+    ///
+    /// Returns whatever the library says about reading the container or writing
+    /// the replacement. A replacement that reads back as anything but
+    /// conformant is [`Saved::Refused`] rather than an error: nothing failed,
+    /// and nothing was replaced.
+    pub fn save(&self) -> slpc::Result<Saved> {
+        let Some(document) = &self.metadata else {
+            return Ok(Saved::Unchanged);
+        };
+        if !self.metadata_edited() {
+            return Ok(Saved::Unchanged);
+        }
+
+        let mut destination = slpc::Destination::in_place(&self.path)?;
+        {
+            let source = std::fs::File::open(&self.path)?;
+            slpc::Repack::new(source)
+                .metadata(document)
+                .write(destination.writer())?;
+        }
+
+        // Read back before anything is replaced, which is the difference
+        // between replacing the only copy of a container on faith and doing it
+        // on evidence.
+        let verdict = slpc::validate(destination.written()?)?;
+        if !verdict.is_conformant() {
+            return Ok(Saved::Refused(verdict));
+        }
+
+        destination.commit()?;
+        Ok(Saved::Written)
     }
 
     /// Extract the payload into a directory, and say where it landed.
@@ -541,5 +630,112 @@ mod extraction_tests {
         assert_eq!(opened.verdict_word(), "reject");
         assert!(opened.extract_to(&into).is_err());
         assert_eq!(std::fs::read_dir(&into).expect("reads").count(), 0);
+    }
+}
+
+#[cfg(test)]
+mod save_tests {
+    use super::{set_value, Opened, Saved};
+    use slpc::toml_edit::{DocumentMut, Value};
+
+    const METADATA: &str = "\
+# a leading comment
+title = \"before\"   # beside the title
+zzz = \"written first\"
+aaa = \"written second\"
+";
+
+    fn build(dir: &std::path::Path, metadata: &str) -> std::path::PathBuf {
+        let path = dir.join("built-by-the-test.slpc");
+        let document: DocumentMut = metadata.parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes");
+        path
+    }
+
+    /// DESIGN.md §5: a container nothing has changed in is not written. Checked
+    /// on the bytes, because "not written" is a claim about the file.
+    #[test]
+    fn a_container_nothing_changed_in_is_not_written() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = build(dir.path(), METADATA);
+        let before = std::fs::read(&path).expect("reads");
+
+        let opened = Opened::open(&path);
+        assert!(!opened.metadata_edited());
+        assert!(matches!(opened.save().expect("saves"), Saved::Unchanged));
+
+        assert_eq!(std::fs::read(&path).expect("reads"), before);
+    }
+
+    /// A byte order mark does not survive a parse and a re-serialization, so a
+    /// container carrying one must not be called edited the moment it is
+    /// opened. This is the case the comparison against the parsed document
+    /// rather than the stored bytes exists for.
+    #[test]
+    fn a_container_with_a_byte_order_mark_is_not_written_either() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = build(dir.path(), METADATA);
+
+        // Put a mark on it, which no document can carry through a parse.
+        let with_mark = {
+            let plain = slpc::Container::open(&path).expect("opens");
+            let mut bytes = "\u{feff}".as_bytes().to_vec();
+            bytes.extend_from_slice(plain.metadata_bytes());
+            bytes
+        };
+        let marked = dir.path().join("marked.slpc");
+        {
+            let source = std::fs::File::open(&path).expect("opens");
+            let out = std::fs::File::create(&marked).expect("creates");
+            slpc::rewrite_metadata_bytes(source, &with_mark, out).expect("rewrites");
+        }
+        let before = std::fs::read(&marked).expect("reads");
+
+        let opened = Opened::open(&marked);
+        assert_eq!(opened.verdict_word(), "accept");
+        assert!(!opened.metadata_edited(), "a mark is not an edit");
+        assert!(matches!(opened.save().expect("saves"), Saved::Unchanged));
+
+        assert_eq!(std::fs::read(&marked).expect("reads"), before);
+    }
+
+    /// One value changes and nothing else does: the comments stay where they
+    /// were, and the keys stay in the order they were written rather than
+    /// sorted.
+    #[test]
+    fn an_edit_changes_the_value_and_leaves_the_rest() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = build(dir.path(), METADATA);
+
+        let mut opened = Opened::open(&path);
+        let document = opened.metadata.as_mut().expect("a document");
+        set_value(
+            document["title"].as_value_mut().expect("a value"),
+            Value::from("after"),
+        );
+
+        assert!(opened.metadata_edited());
+        assert!(matches!(opened.save().expect("saves"), Saved::Written));
+
+        let again = Opened::open(&path);
+        assert_eq!(again.verdict_word(), "accept");
+        let written = again.metadata.as_ref().expect("a document").to_string();
+
+        assert!(written.contains("title = \"after\""), "{written}");
+        assert!(written.contains("# a leading comment"), "{written}");
+        assert!(written.contains("# beside the title"), "{written}");
+        assert!(
+            written.find("zzz").unwrap() < written.find("aaa").unwrap(),
+            "written order, not sorted: {written}"
+        );
+
+        // The payload came through untouched, which is `Repack`'s doing rather
+        // than this code's, and is the reason for using it. SPEC §3.
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory");
+        let out = again.extract_to(&into).expect("extracts");
+        assert_eq!(std::fs::read(out).expect("reads"), b"payload");
     }
 }
