@@ -1,0 +1,22 @@
+# Line endings, decided here rather than by whichever machine cloned.
+#
+# Git for Windows installs with `core.autocrlf=true`, which converts every text
+# file to CRLF on checkout. For Rust sources that is invisible. For the shell
+# scripts under `packaging/` it is not: a `#!/bin/sh` script with CRLF endings
+# fails on Linux with a message naming an interpreter that does not exist,
+# because the carriage return is part of the path it tried to run.
+#
+# `text=auto eol=lf` normalizes to LF in the repository and checks out LF
+# everywhere, so a file written on Windows is a file that still runs on Debian.
+* text=auto eol=lf
+
+# The `.deb` control file becomes a member of a Debian archive, where the
+# format is line-oriented and CRLF is not part of it.
+*.in text eol=lf
+
+# Not text, whatever the contents look like to a heuristic.
+*.png binary
+*.ico binary
+*.icns binary
+*.deb binary
+*.slpc binary
