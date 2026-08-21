@@ -16,9 +16,51 @@ cargo build --release
 
 A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
 
+## Install
+
+On Linux, the desktop integration and the media type:
+
+```
+./packaging/linux/install.sh
+```
+
+That registers `application/x.slipcase+zip` against `*.slpc`, so a file manager
+knows what a container is and what opens one. `packaging/debian/build-deb.sh`
+builds the package the Excelano apt repository ships. `packaging/README.md` has
+the detail.
+
 ## Status
 
-Under construction. `DESIGN.md` is what this is and the order it is being built in.
+Stages 1 through 3 of `DESIGN.md` §7 ship: opening a container and rendering
+every state the design names, editing the metadata and writing it back, and
+extracting and replacing the payload. Stage 4, file association, ships on Linux.
+
+macOS and Windows have never been built or run. `HANDOFF.md` says what each owes
+and briefs the work.
+
+`DESIGN.md` is what this is and the order it is being built in. It is amended in
+place where building it proved it wrong, and every amendment says what was
+measured.
+
+## Testing
+
+```
+cargo test
+cargo clippy --all-targets
+```
+
+The slipcase conformance corpus is run as a command rather than as a test,
+because it needs a checkout of `excelano/slipcase` with its cases generated:
+
+```
+cargo run --bin corpus -- /path/to/slipcase/conformance
+```
+
+It puts all 77 fixtures through this application's own reading of them: the
+verdict, whether a metadata tree and a payload card are shown, extraction at the
+declared length, the pre-flight answer against what extraction then does, a full
+rewrite round trip with key order preserved, a rename, and a payload
+replacement under two names.
 
 ## License
 
