@@ -589,7 +589,11 @@ fn card(
                     ui.label("Stopped. Nothing was left behind.");
                 }
                 Extraction::Failed(why) => {
-                    ui.label(egui::RichText::new(why).italics());
+                    // The same red the bar gives a save that did not happen.
+                    // An extraction that failed and one that landed are not
+                    // two shades of the same thing, and italics alone left
+                    // them looking like it.
+                    ui.label(egui::RichText::new(why).color(ui.visuals().error_fg_color));
                 }
             }
         });
