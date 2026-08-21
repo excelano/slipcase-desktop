@@ -37,30 +37,12 @@ commit, push. Take one and leave the other alone — they touch different
 `#[cfg]` arms of the same file and different directories under `packaging/`, so
 they do not conflict, but only if each stays inside its own.
 
-## Conventions this repository holds to
+## Conventions
 
-**Comments say why, not what.** A comment that restates the line below it is
-noise; one that records what was measured, what was rejected, or what breaks
-without the line is why the file is readable a year later.
-
-**Every test's doc comment says what defect it would catch.** A test named for
-its assertion and explained by its own body has not earned its place.
-
-**Verify by measuring.** This repository has a history of claims that turned out
-false under measurement, and every one of them is recorded rather than quietly
-fixed. If you assert something about a platform, run the thing that proves it
-and put the output in the commit message.
-
-**Commit messages carry the reasoning.** Imperative subject, prose body, the
-measurement, and the alternatives rejected. `git log` is the durable record of
-this project and is meant to be read.
-
-**`#![forbid(unsafe_code)]` stays.** See each brief for what that leaves open.
-
-**Nothing compiles C.** `cc`, `cmake`, `pkg-config`, and `bindgen` must stay out
-of the build-dependency tree. Check with `cargo tree -i cc` before adding any
-dependency; a crate that links a system framework is fine, one that builds C is
-not.
+In `CLAUDE.md`, which a Claude Code session started in this directory loads by
+itself. Read it before writing anything. The short version is that this
+repository measures rather than assumes, records what it got wrong instead of
+smoothing it away, and treats `git log` as a document.
 
 ## Before you start
 
