@@ -394,10 +394,6 @@ impl App {
                     {
                         pick_clicked = true;
                     }
-                    ui.add_space(6.0);
-                    ui.label(
-                        egui::RichText::new("or name one on the command line").weak(),
-                    );
                 });
             }
             Some(opened) => {
