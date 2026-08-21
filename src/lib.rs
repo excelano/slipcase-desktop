@@ -196,6 +196,27 @@ pub struct Payload {
     pub size: u64,
     /// What the platform says would open it, where the platform will say.
     pub opens_with: Option<String>,
+    /// Why this build cannot decode the payload, where it cannot.
+    ///
+    /// SPEC §2.5 puts encryption and compression method outside conformance, so
+    /// this is a fact about the build and not a verdict on the container:
+    /// DESIGN.md §6's last row is conformant and out of reach at once. Asked
+    /// before anything is offered rather than read off a failure afterwards,
+    /// which is the difference between a button that is not offered and a
+    /// button that does not work.
+    pub unreadable: Option<String>,
+}
+
+impl Payload {
+    /// Whether this build can decode the payload.
+    ///
+    /// Not a promise that extraction will succeed: the library says only that a
+    /// decoder exists, and truncated bytes, a failed checksum, and an i/o error
+    /// are all still ahead. It is enough to decide what to offer.
+    #[must_use]
+    pub fn can_be_decoded(&self) -> bool {
+        self.unreadable.is_none()
+    }
 }
 
 /// What became of a save.
@@ -443,10 +464,14 @@ impl Payload {
         // still described.
         let size = container.payload_size().ok()?;
         let opens_with = opens_with::opens_with(&name);
+        // Borrows shared and decompresses nothing, so this costs the card the
+        // central directory entry it already has.
+        let unreadable = container.check_payload_readable().err().map(|u| u.to_string());
         Some(Self {
             name,
             size,
             opens_with,
+            unreadable,
         })
     }
 
@@ -714,6 +739,7 @@ mod payload_tests {
             name: "report.pdf".to_owned(),
             size,
             opens_with: None,
+            unreadable: None,
         }
     }
 
@@ -1409,5 +1435,30 @@ mod replacement_tests {
         let colon = why_not_a_payload(Path::new("/anywhere/notes:2026.txt"))
             .expect("a colon is not a member name");
         assert!(colon.contains("notes:2026.txt"), "{colon}");
+    }
+}
+
+#[cfg(test)]
+mod readable_tests {
+    use super::Opened;
+    use slpc::toml_edit::DocumentMut;
+
+    /// An ordinary container says its payload can be read, and says it without
+    /// reading the payload: the answer comes from the central directory entry
+    /// the card already collected.
+    #[test]
+    fn a_plain_payload_reports_readable() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = dir.path().join("built-by-the-test.slpc");
+        let metadata: DocumentMut = "title = \"readable\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes");
+
+        let card = Opened::open(&path)
+            .payload
+            .expect("a conformant container has a card");
+        assert!(card.can_be_decoded());
+        assert_eq!(card.unreadable, None);
     }
 }

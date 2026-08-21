@@ -230,6 +230,27 @@ enum Ask {
     Undo,
 }
 
+impl Ask {
+    /// Whether doing this has to decode the payload.
+    ///
+    /// Replacing does not. Nothing reads a member to write over it, so the one
+    /// container the corpus holds that cannot be opened is still one whose
+    /// payload can be swapped out. DESIGN.md §6.
+    fn decodes(self) -> bool {
+        matches!(self, Self::Open | Self::Extract)
+    }
+
+    /// Whether the card can offer it.
+    ///
+    /// Split out from the drawing so a test can ask. A button that is not
+    /// offered says more than one that is offered and then fails: the refusal
+    /// is a fact about this build, known before anything is pressed, and
+    /// finding it out by pressing costs a dialog and a wait first.
+    fn offered(self, payload: &Payload, busy: bool) -> bool {
+        !busy && (!self.decodes() || payload.can_be_decoded())
+    }
+}
+
 /// What the last Save did, in a sentence.
 struct Said {
     text: String,
@@ -528,6 +549,15 @@ fn card(
             if let Some(application) = &payload.opens_with {
                 ui.label(format!("Opens with {application}"));
             }
+            // After what the payload is, because both are true at once: the
+            // platform would open a file of that name, and this build cannot
+            // get the bytes out to give it one.
+            if let Some(why) = &payload.unreadable {
+                ui.label(
+                    egui::RichText::new(format!("Cannot be opened here: {why}"))
+                        .color(ui.visuals().error_fg_color),
+                );
+            }
 
             match extraction {
                 // A copy under way takes the row: there is one payload and one
@@ -554,8 +584,18 @@ fn card(
                         ] {
                             // Off while a dialog is up, because there is one
                             // dialog at a time and a second press would be
-                            // silently dropped.
-                            if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
+                            // silently dropped, and off where this build
+                            // cannot decode what the button would decode.
+                            let button =
+                                ui.add_enabled(ask.offered(payload, busy), egui::Button::new(label));
+                            // The line above says why, and a button explaining
+                            // itself where the pointer already is saves
+                            // looking for it.
+                            let button = match &payload.unreadable {
+                                Some(why) if ask.decodes() => button.on_disabled_hover_text(why),
+                                _ => button,
+                            };
+                            if button.clicked() {
                                 asked = Some(ask);
                             }
                         }
@@ -754,9 +794,55 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, Extraction};
-    use slipcase_desktop::Opened;
+    use super::{App, Ask, Extraction};
+    use slipcase_desktop::{Opened, Payload};
     use slpc::toml_edit::DocumentMut;
+
+    fn payload(unreadable: Option<&str>) -> Payload {
+        Payload {
+            name: "report.pdf".to_owned(),
+            size: 7,
+            opens_with: None,
+            unreadable: unreadable.map(ToOwned::to_owned),
+        }
+    }
+
+    /// A payload this build can decode offers all three actions.
+    #[test]
+    fn everything_is_offered_for_a_payload_that_can_be_read() {
+        let payload = payload(None);
+        for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
+            assert!(ask.offered(&payload, false));
+        }
+    }
+
+    /// One it cannot offers only the action that does not need a decoder.
+    ///
+    /// DESIGN.md §6: a conformant container whose payload is out of reach is
+    /// still one whose payload can be replaced, because nothing has to read a
+    /// member to write over it.
+    #[test]
+    fn only_replacing_is_offered_for_a_payload_that_cannot_be_read() {
+        let payload = payload(Some("the member is encrypted (SPEC 2.5)"));
+
+        assert!(!Ask::Open.offered(&payload, false), "nothing to hand over");
+        assert!(!Ask::Extract.offered(&payload, false), "nothing to write out");
+        assert!(
+            Ask::Replace.offered(&payload, false),
+            "writing over a member does not read it"
+        );
+    }
+
+    /// A dialog already up takes precedence over all of it.
+    #[test]
+    fn nothing_is_offered_while_a_dialog_is_up() {
+        for unreadable in [None, Some("the member is encrypted (SPEC 2.5)")] {
+            let payload = payload(unreadable);
+            for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
+                assert!(!ask.offered(&payload, true));
+            }
+        }
+    }
 
     fn app(opened: Option<Opened>) -> App {
         App {
@@ -861,6 +947,26 @@ mod tests {
         let said = said.expect("it says why");
         assert!(said.wrong, "{}", said.text);
         assert!(said.text.contains("slipcase.metadata.toml"), "{}", said.text);
+    }
+
+    /// The refusal has a line of its own on the card, drawn before anything is
+    /// pressed rather than after something failed.
+    #[test]
+    fn a_payload_that_cannot_be_read_renders_its_refusal() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+
+        let card = app
+            .opened
+            .as_mut()
+            .expect("a container")
+            .payload
+            .as_mut()
+            .expect("a conformant container has a card");
+        assert!(card.can_be_decoded(), "the test built a plain container");
+        card.unreadable = Some("the member is encrypted (SPEC 2.5)".to_owned());
+
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
     /// One that can be, is.

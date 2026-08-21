@@ -118,6 +118,9 @@ struct Report {
     rewritten: usize,
     renamed: usize,
     replaced: usize,
+    /// Payloads the card refused before anything was pressed, in the same words
+    /// extraction then used.
+    foretold: usize,
     disagreements: BTreeMap<String, Vec<String>>,
 }
 
@@ -141,6 +144,11 @@ impl Report {
             for one in &self.unextractable {
                 println!("  the Open button cannot serve {one}");
             }
+            println!(
+                "{} of those the card refused before anything was pressed, in the same words, and \
+                 every payload it offered extracted.",
+                self.foretold
+            );
             println!(
                 "{} rewritten through Repack and read back conformant, and untouched when nothing was edited.",
                 self.rewritten
@@ -750,8 +758,26 @@ fn top_level_keys(opened: &Opened) -> Vec<String> {
 /// Whether the payload came out whole, and whether a refusal was one SPEC §2.5
 /// allows.
 fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool {
+    // What the card said before anything was pressed, to be held against what
+    // pressing it does. The pre-flight is only worth having if the two agree:
+    // a card that greys the Open button on a payload that would have extracted
+    // has taken away something that worked, and one that offers it on a
+    // payload that cannot be decoded has put the refusal back where it was.
+    let foretold = opened
+        .payload
+        .as_ref()
+        .and_then(|p| p.unreadable.clone());
+
     match opened.extract_to(scratch) {
         Ok(path) => {
+            if let Some(why) = &foretold {
+                report.disagree(
+                    "the pre-flight: the card refused a payload that then extracted".to_owned(),
+                    c,
+                    why,
+                );
+                return false;
+            }
             let declared = opened.payload.as_ref().map_or(0, |p| p.size);
             let arrived = std::fs::metadata(&path).map(|m| m.len()).unwrap_or_default();
             if arrived == declared {
@@ -769,8 +795,31 @@ fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> b
         // A sound container whose payload this build cannot decode. Not a
         // disagreement, and the population the Open button cannot serve.
         Err(Error::Unsupported(u)) => {
-            report.unextractable.push(format!("{}: {u}", c.id));
-            true
+            let said = u.to_string();
+            match &foretold {
+                Some(why) if *why == said => {
+                    report.foretold += 1;
+                    report.unextractable.push(format!("{}: {u}", c.id));
+                    true
+                }
+                Some(why) => {
+                    report.disagree(
+                        "the pre-flight: the card refused for a different reason".to_owned(),
+                        c,
+                        &format!("the card said {why}, extraction said {said}"),
+                    );
+                    false
+                }
+                None => {
+                    report.disagree(
+                        "the pre-flight: the card offered a payload that cannot be decoded"
+                            .to_owned(),
+                        c,
+                        &said,
+                    );
+                    false
+                }
+            }
         }
         Err(e) => {
             report.disagree(

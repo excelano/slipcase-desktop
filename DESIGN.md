@@ -42,6 +42,8 @@ A single window.
 
 **The payload is a card**: its filename, its size, what the operating system says would open it, and the three things that can be done with it. **Open** extracts it and launches whatever the platform registered. **Extract** puts it where the user says and launches nothing. **Replace** puts another file in its place. It is not previewed.
 
+**The card asks before it offers.** Where this build cannot decode the payload, it says so in the card and does not offer the two actions that would have to. Replace stays, because writing over a member does not read it. The alternative is to offer everything and let a person find out by pressing, which costs them a dialog and a wait before the same sentence appears.
+
 **There is no preview surface.** It keeps this a small, pure-Rust, single-binary application. Text and image preview may be added later if they are wanted; PDF, office, and CAD are out permanently.
 
 **What the card says about type is what the platform says.** The application ships no table mapping filenames to types. On Linux the question goes to `xdg-mime`, on macOS to Launch Services, on Windows to `AssocQueryString`, each behind one function returning an optional string. Where the platform will not answer, the card says nothing rather than guessing, and the Open button still works.
@@ -114,7 +116,7 @@ SPEC §2 and §3 define these conditions. The list is not exhaustive, and none o
 
 **A very large payload** makes extraction work with a duration, so the Open button reports progress and can be cancelled.
 
-**Amended: a conformant container's payload may still be out of reach.** SPEC §2.5 puts encryption and compression method outside conformance, so a container carrying an encrypted payload is sound and its bytes cannot be had. The card describes it in full, because the name and the size come from the central directory and need no decoder, and the refusal appears where the extracted file would have. One of the corpus's 37 conformant containers is this. Its payload can still be replaced: nothing has to read a member to write over it.
+**Amended: a conformant container's payload may still be out of reach.** SPEC §2.5 puts encryption and compression method outside conformance, so a container carrying an encrypted payload is sound and its bytes cannot be had. The card describes it in full, because the name and the size come from the central directory and need no decoder, and it states the refusal before anything is pressed: `Container::check_payload_readable` answers from that same entry, so asking costs nothing. Open and Extract are not offered; Replace is, because nothing has to read a member to write over it. One of the corpus's 37 conformant containers is this, and the corpus holds the two answers against each other — every payload the card refused failed to extract in the same words, and every payload it offered extracted.
 
 **Amended: a path that cannot be read at all is not in the table above.** Every row there is something a container can be, and this is something a path can be. `slpc::validate` returns every verdict as `Ok` and reserves `Err` for not reaching the bytes: a path that is not there, a directory, a file the process may not read. The window states it in a line of its own and shows nothing further. Nothing in the conformance corpus reaches it, because every case there is a container.
 
