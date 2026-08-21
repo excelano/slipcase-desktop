@@ -279,12 +279,21 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         );
         return false;
     }
-    let Ok(before) = std::fs::read(&copy) else {
+
+    let untouched = Opened::open(&copy);
+    let order_before = top_level_keys(&untouched);
+
+    unedited_writes_nothing(c, &copy, &untouched, report)
+        && edited_round_trips(c, &copy, &order_before, report)
+}
+
+/// DESIGN.md §5: a container nothing has changed in is not written. Checked on
+/// the bytes, because "not written" is a claim about the file.
+fn unedited_writes_nothing(c: &Case, copy: &Path, untouched: &Opened, report: &mut Report) -> bool {
+    let Ok(before) = std::fs::read(copy) else {
         return false;
     };
 
-    // Nothing edited, so nothing written. DESIGN.md §5.
-    let untouched = Opened::open(&copy);
     match untouched.save() {
         Ok(Saved::Unchanged) => {}
         Ok(_) => {
@@ -304,17 +313,28 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
             return false;
         }
     }
-    if std::fs::read(&copy).ok().as_ref() != Some(&before) {
+
+    if std::fs::read(copy).ok().as_ref() == Some(&before) {
+        true
+    } else {
         report.disagree(
             "the rewrite: an unedited save changed the file".to_owned(),
             c,
             "the bytes on disk moved with nothing edited",
         );
-        return false;
+        false
     }
+}
 
-    // One unknown key added, which SPEC §2.5 leaves unconstrained.
-    let mut edited = Opened::open(&copy);
+/// One unknown key added, saved, and read back: still conformant, the edit
+/// still there, and the keys still in the order they were written.
+fn edited_round_trips(
+    c: &Case,
+    copy: &Path,
+    order_before: &[String],
+    report: &mut Report,
+) -> bool {
+    let mut edited = Opened::open(copy);
     let Some(document) = edited.metadata.as_mut() else {
         report.disagree(
             "the rewrite: a conformant container had no document to edit".to_owned(),
@@ -323,7 +343,9 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         );
         return false;
     };
-    document["x_slipcase_desktop_corpus"] = slpc::toml_edit::value("written by the corpus runner");
+    // SPEC §2.5 leaves unknown keys unconstrained, so adding one keeps every
+    // case conformant.
+    document[ADDED] = slpc::toml_edit::value("written by the corpus runner");
 
     match edited.save() {
         Ok(Saved::Written) => {}
@@ -350,7 +372,7 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     }
 
     // Read it back as a container rather than as the file just written.
-    let again = Opened::open(&copy);
+    let again = Opened::open(copy);
     if again.verdict_word() != "accept" {
         report.disagree(
             "the rewrite: the rewritten container is no longer conformant".to_owned(),
@@ -362,7 +384,7 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     if !again
         .metadata
         .as_ref()
-        .is_some_and(|d| d.contains_key("x_slipcase_desktop_corpus"))
+        .is_some_and(|d| d.contains_key(ADDED))
     {
         report.disagree(
             "the rewrite: the edit did not survive the round trip".to_owned(),
@@ -372,8 +394,34 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         return false;
     }
 
+    // DESIGN.md §4: document order is preserved and never sorted. A rewrite is
+    // where that would quietly stop being true.
+    let order_after: Vec<String> = top_level_keys(&again)
+        .into_iter()
+        .filter(|k| k != ADDED)
+        .collect();
+    if order_after != order_before {
+        report.disagree(
+            "the rewrite: the keys came back in a different order".to_owned(),
+            c,
+            &format!("{order_before:?} became {order_after:?}"),
+        );
+        return false;
+    }
+
     report.rewritten += 1;
     true
+}
+
+/// The key this adds to prove a rewrite happened. SPEC §2.5 leaves unknown keys
+/// unconstrained, so adding one keeps every case conformant.
+const ADDED: &str = "x_slipcase_desktop_corpus";
+
+/// The top-level keys of a container's metadata, in document order.
+fn top_level_keys(opened: &Opened) -> Vec<String> {
+    opened.metadata.as_ref().map_or_else(Vec::new, |d| {
+        d.as_table().iter().map(|(k, _)| k.to_owned()).collect()
+    })
 }
 
 /// Whether the payload came out whole, and whether a refusal was one SPEC §2.5

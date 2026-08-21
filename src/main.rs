@@ -11,7 +11,7 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
-use slipcase_desktop::{extract, tree, Extracted, Opened, Payload, Watch};
+use slipcase_desktop::{extract, tree, Extracted, Opened, Payload, Saved, Watch};
 
 /// The window's identity to the desktop environment.
 ///
@@ -43,6 +43,7 @@ fn main() -> eframe::Result {
                 opened,
                 scratch: None,
                 extraction: Extraction::Idle,
+                save_said: None,
             }))
         }),
     )
@@ -58,6 +59,8 @@ struct App {
     scratch: Option<tempfile::TempDir>,
     /// What the last Open did.
     extraction: Extraction,
+    /// What the last Save did, in a sentence.
+    save_said: Option<String>,
 }
 
 /// What became of an Open.
@@ -98,6 +101,32 @@ impl App {
         }
         self.opened = Some(opened);
         self.extraction = Extraction::Idle;
+        self.save_said = None;
+    }
+
+    /// Write the edited metadata back, and show what happened.
+    fn save(&mut self) {
+        let Some(opened) = &self.opened else {
+            return;
+        };
+        let path = opened.path.clone();
+        let outcome = opened.save();
+
+        let said = match &outcome {
+            Ok(Saved::Written) => "Saved.".to_owned(),
+            Ok(Saved::Unchanged) => "Nothing had changed, so nothing was written.".to_owned(),
+            Ok(Saved::Refused(v)) => {
+                format!("Not saved. What was written did not read back conformant: {v}")
+            }
+            Err(e) => format!("Not saved: {e}"),
+        };
+
+        if matches!(outcome, Ok(Saved::Written)) {
+            // Read back what is now on disk, so the tree, the card, and the
+            // edited mark all describe the container rather than the edit.
+            self.show(Opened::open(&path));
+        }
+        self.save_said = Some(said);
     }
 
     /// Take the thread's answer, once it has one.
@@ -166,14 +195,29 @@ impl App {
         })
     }
 
-    /// The payload card: what it is, and what can be done with it.
+    /// Ask for a container.
     ///
-    /// DESIGN.md §3. Returns whether Open was pressed, because the panel
-    /// drawing this holds a borrow of the state pressing it changes.
-    fn card(&self, ui: &mut egui::Ui, payload: &Payload) -> bool {
-        let mut open_clicked = false;
+    /// Blocks while the dialog is up, which is what a modal dialog does. The
+    /// portal backend is asked through `rfd`'s own blocking call rather than an
+    /// executor this application would otherwise not have.
+    fn pick() -> Option<PathBuf> {
+        rfd::FileDialog::new()
+            .set_title("Open a slipcase container")
+            .add_filter("slipcase containers", &["slpc"])
+            .add_filter("All files", &["*"])
+            .pick_file()
+    }
+}
 
-        egui::Frame::group(ui.style()).show(ui, |ui| {
+/// The payload card: what it is, and what can be done with it.
+///
+/// DESIGN.md §3. Not a method, because the panel drawing it holds the document
+/// mutably for the tree and a `&self` here would borrow the whole application
+/// alongside it. Returns whether Open was pressed, for the same reason.
+fn card(ui: &mut egui::Ui, payload: &Payload, extraction: &Extraction) -> bool {
+    let mut open_clicked = false;
+
+    egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(egui::RichText::new(&payload.name).strong());
             ui.label(payload.size_line());
             // Silent where the platform would not answer, rather than saying it
@@ -182,7 +226,7 @@ impl App {
                 ui.label(format!("Opens with {application}"));
             }
 
-            match &self.extraction {
+            match extraction {
                 Extraction::Running(job) => {
                     let done = job.watch.done();
                     #[allow(clippy::cast_precision_loss)]
@@ -203,7 +247,7 @@ impl App {
                 }
             }
 
-            match &self.extraction {
+            match extraction {
                 Extraction::Idle | Extraction::Running(_) => {}
                 Extraction::Handed(path) => {
                     ui.label(format!("Extracted to {}", path.display()));
@@ -217,22 +261,10 @@ impl App {
             }
         });
 
-        open_clicked
-    }
+    open_clicked
+}
 
-    /// Ask for a container.
-    ///
-    /// Blocks while the dialog is up, which is what a modal dialog does. The
-    /// portal backend is asked through `rfd`'s own blocking call rather than an
-    /// executor this application would otherwise not have.
-    fn pick() -> Option<PathBuf> {
-        rfd::FileDialog::new()
-            .set_title("Open a slipcase container")
-            .add_filter("slipcase containers", &["slpc"])
-            .add_filter("All files", &["*"])
-            .pick_file()
-    }
-
+impl App {
     /// The scratch directory, made on first use.
     fn scratch_dir(&mut self) -> Result<PathBuf, String> {
         if self.scratch.is_none() {
@@ -277,6 +309,7 @@ impl App {
         // panel holds a borrow of the state a click changes.
         let mut open_clicked = false;
         let mut pick_clicked = false;
+        let mut save_clicked = false;
 
         // Only the first of several. A single window shows one container, and
         // choosing among a handful dropped together would be a guess.
@@ -287,16 +320,31 @@ impl App {
 
         if self.opened.is_some() {
             // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
+            let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited);
             egui::Panel::top("bar").show(ui, |ui| {
                 ui.horizontal(|ui| {
                     if ui.button("Open a container…").clicked() {
                         pick_clicked = true;
                     }
+                    // Off until there is something to write, because DESIGN.md
+                    // §5 does not write a container nothing has changed in and
+                    // a button that does nothing should not invite a press.
+                    if ui
+                        .add_enabled(edited, egui::Button::new("Save"))
+                        .clicked()
+                    {
+                        save_clicked = true;
+                    }
+                    if edited {
+                        ui.label(egui::RichText::new("edited").italics().weak());
+                    } else if let Some(said) = &self.save_said {
+                        ui.label(egui::RichText::new(said).weak());
+                    }
                 });
             });
         }
 
-        egui::CentralPanel::default().show(ui, |ui| match &self.opened {
+        egui::CentralPanel::default().show(ui, |ui| match &mut self.opened {
             None => {
                 ui.vertical_centered(|ui| {
                     ui.add_space(72.0);
@@ -325,14 +373,14 @@ impl App {
 
                 if let Some(payload) = &opened.payload {
                     ui.add_space(8.0);
-                    if self.card(ui, payload) {
+                    if card(ui, payload, &self.extraction) {
                         open_clicked = true;
                     }
                 }
 
                 // The metadata is the window: it gets the space rather than a
                 // panel down one side. DESIGN.md §3.
-                if let Some(doc) = &opened.metadata {
+                if let Some(doc) = &mut opened.metadata {
                     ui.add_space(8.0);
                     egui::ScrollArea::both()
                         .auto_shrink([false, false])
@@ -349,6 +397,10 @@ impl App {
             if let Some(path) = Self::pick() {
                 self.show(Opened::open(path));
             }
+        }
+
+        if save_clicked {
+            self.save();
         }
 
         if open_clicked {
@@ -368,6 +420,7 @@ mod tests {
             opened,
             scratch: None,
             extraction: Extraction::Idle,
+            save_said: None,
         }
     }
 
