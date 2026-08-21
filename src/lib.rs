@@ -9,10 +9,121 @@
 pub mod opens_with;
 pub mod tree;
 
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::Arc;
 
 use slpc::toml_edit::DocumentMut;
 use slpc::Verdict;
+
+/// How much of a copy has happened, and whether it should stop.
+///
+/// Two handles onto the same counters, so the thread doing the copying and the
+/// one drawing the window can hold one each. DESIGN.md §6 asks that a very
+/// large payload be extractable with a duration: something to watch and
+/// something to press.
+#[derive(Clone, Default)]
+pub struct Watch {
+    done: Arc<AtomicU64>,
+    cancel: Arc<AtomicBool>,
+}
+
+impl Watch {
+    /// A watch on a copy that has not started.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Bytes written so far.
+    #[must_use]
+    pub fn done(&self) -> u64 {
+        self.done.load(Ordering::Relaxed)
+    }
+
+    /// Ask the copy to stop. It stops at the end of the chunk it is on.
+    pub fn cancel(&self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
+
+    /// Whether stopping has been asked for.
+    #[must_use]
+    pub fn is_cancelled(&self) -> bool {
+        self.cancel.load(Ordering::Relaxed)
+    }
+
+    fn advance(&self, n: usize) {
+        self.done.fetch_add(n as u64, Ordering::Relaxed);
+    }
+}
+
+/// What became of an extraction that did not fail.
+pub enum Extracted {
+    /// The payload is on disk, here.
+    Done(PathBuf),
+    /// Stopping was asked for, and the part of the file that had been written
+    /// is gone.
+    Cancelled,
+}
+
+/// The size of one chunk, and so how long a cancel waits to be noticed.
+const CHUNK: usize = 64 * 1024;
+
+/// Copy a container's payload into a directory, watchably.
+///
+/// Takes a path rather than an [`Opened`] because the thread doing this holds
+/// nothing else: `Container::payload` borrows its container, so no reader can
+/// be sent across a thread and the worker has to open the container itself.
+/// Reopening an [`Opened`] there would re-run the platform's type query, which
+/// starts processes.
+///
+/// Nothing part-written survives a failure or a cancel. A half-copied file left
+/// under the payload's own name is one somebody finds later and takes for the
+/// payload.
+///
+/// # Errors
+///
+/// Returns whatever the library says about reading the container, and any error
+/// from writing the file.
+pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Extracted> {
+    let mut container = slpc::Container::open(container)?;
+    // `Container::open` has already put this name through
+    // `slpc::check_payload_name`, which rejects every separator and every
+    // traversal, so joining it onto a directory cannot leave that directory.
+    let out = into.join(container.payload_name());
+
+    // Asked for before the file is created, so a container that refuses leaves
+    // nothing behind at all.
+    let mut payload = container.payload()?;
+
+    let outcome = copy(&mut payload, &out, watch);
+    if !matches!(outcome, Ok(Extracted::Done(_))) {
+        let _ = std::fs::remove_file(&out);
+    }
+    outcome
+}
+
+/// The copy itself, in chunks, stopping when asked.
+fn copy(payload: &mut impl Read, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
+    let mut file = std::fs::File::create(out)?;
+    let mut buffer = vec![0u8; CHUNK];
+
+    loop {
+        if watch.is_cancelled() {
+            return Ok(Extracted::Cancelled);
+        }
+        let n = payload.read(&mut buffer)?;
+        if n == 0 {
+            break;
+        }
+        file.write_all(&buffer[..n])?;
+        watch.advance(n);
+    }
+
+    file.flush()?;
+    Ok(Extracted::Done(out.to_owned()))
+}
 
 /// A path, and what the library made of it.
 pub struct Opened {
@@ -183,17 +294,12 @@ impl Opened {
     /// Returns whatever the library says about reading the container, and any
     /// error from writing the file.
     pub fn extract_to(&self, dir: &Path) -> slpc::Result<PathBuf> {
-        let mut container = slpc::Container::open(&self.path)?;
-        // `Container::open` has already put this name through
-        // `slpc::check_payload_name`, which rejects every separator and every
-        // traversal, so joining it onto a directory cannot leave that
-        // directory.
-        let out = dir.join(container.payload_name());
-
-        let mut payload = container.payload()?;
-        let mut file = std::fs::File::create(&out)?;
-        std::io::copy(&mut payload, &mut file)?;
-        Ok(out)
+        match extract(&self.path, dir, &Watch::new())? {
+            Extracted::Done(path) => Ok(path),
+            // Nothing asked this one to stop: the watch it was given is one
+            // nobody else holds.
+            Extracted::Cancelled => unreachable!("an unwatched copy cannot be cancelled"),
+        }
     }
 
     /// This application's answer, in the conformance corpus's vocabulary.
@@ -332,6 +438,91 @@ mod extraction_tests {
         // Into the directory it was given, under the name the container gave.
         assert_eq!(out, into.join("report.pdf"));
         assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
+    }
+
+    /// The watch counts every byte, and a payload that is not a whole number
+    /// of chunks still finishes at its declared size.
+    #[test]
+    fn progress_reaches_the_declared_size() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = dir.path().join("built-by-the-test.slpc");
+
+        // Not a multiple of the chunk, so the last read is a short one.
+        let payload = vec![7u8; 300_000];
+        let metadata: DocumentMut = "title = \"watched\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&container, &bytes).expect("writes");
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory");
+
+        let watch = super::Watch::new();
+        assert_eq!(watch.done(), 0);
+
+        let out = super::extract(&container, &into, &watch).expect("extracts");
+        assert!(matches!(out, super::Extracted::Done(_)));
+        assert_eq!(watch.done(), u64::try_from(payload.len()).unwrap());
+    }
+
+    /// A cancel leaves nothing behind. A half-copied file under the payload's
+    /// own name is one somebody finds later and takes for the payload.
+    #[test]
+    fn a_cancel_leaves_nothing_behind() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = dir.path().join("built-by-the-test.slpc");
+
+        let payload = vec![7u8; 300_000];
+        let metadata: DocumentMut = "title = \"stopped\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&container, &bytes).expect("writes");
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory");
+
+        let watch = super::Watch::new();
+        watch.cancel();
+
+        let out = super::extract(&container, &into, &watch).expect("does not fail");
+        assert!(matches!(out, super::Extracted::Cancelled));
+        assert_eq!(std::fs::read_dir(&into).expect("reads").count(), 0);
+    }
+
+    /// The copy stops at the end of the chunk it is on rather than part way
+    /// through one. A reader that asks to stop while it is being read makes
+    /// that exact, where a thread racing the copy would not.
+    #[test]
+    fn a_copy_stops_at_the_end_of_its_chunk() {
+        struct CancelsWhileRead<'a> {
+            watch: &'a super::Watch,
+            left: usize,
+        }
+        impl std::io::Read for CancelsWhileRead<'_> {
+            fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+                if self.left == 0 {
+                    return Ok(0);
+                }
+                let n = buf.len().min(self.left);
+                self.left -= n;
+                self.watch.cancel();
+                Ok(n)
+            }
+        }
+
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let out = dir.path().join("report.pdf");
+        let watch = super::Watch::new();
+        let mut reader = CancelsWhileRead {
+            watch: &watch,
+            left: 10 * super::CHUNK,
+        };
+
+        let outcome = super::copy(&mut reader, &out, &watch).expect("does not fail");
+
+        assert!(matches!(outcome, super::Extracted::Cancelled));
+        // One chunk written, and the nine that would have followed are not.
+        assert_eq!(watch.done(), u64::try_from(super::CHUNK).unwrap());
     }
 
     /// Nothing is written for a payload that cannot be read. The reader is

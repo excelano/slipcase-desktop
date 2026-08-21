@@ -7,10 +7,11 @@
 #![warn(clippy::pedantic)]
 
 use std::path::PathBuf;
+use std::sync::mpsc;
 
 use eframe::egui;
 
-use slipcase_desktop::{tree, Opened};
+use slipcase_desktop::{extract, tree, Extracted, Opened, Payload, Watch};
 
 /// The window's identity to the desktop environment.
 ///
@@ -63,10 +64,24 @@ struct App {
 enum Extraction {
     /// Nothing has been asked for.
     Idle,
+    /// A copy is under way on another thread.
+    Running(Job),
     /// The payload is on disk and the platform was handed it.
     Handed(PathBuf),
+    /// The copy was stopped, and nothing of it was left behind.
+    Cancelled,
     /// It could not be extracted, or could not be handed over.
     Failed(String),
+}
+
+/// A copy under way.
+struct Job {
+    /// Shared with the thread doing the copying.
+    watch: Watch,
+    /// What the central directory said the payload measures.
+    total: u64,
+    /// The one message the thread sends when it is done.
+    outcome: mpsc::Receiver<Extraction>,
 }
 
 impl App {
@@ -75,14 +90,38 @@ impl App {
     /// Without the second half, a message about the container just closed
     /// would sit under the card of the one just opened.
     fn show(&mut self, opened: Opened) {
+        // A copy still running belongs to the container being closed. Left
+        // alone it would finish and hand that payload to the platform, minutes
+        // after the person moved on to another container.
+        if let Extraction::Running(job) = &self.extraction {
+            job.watch.cancel();
+        }
         self.opened = Some(opened);
         self.extraction = Extraction::Idle;
     }
 
-    /// Extract the payload and give it to whatever opens it.
+    /// Take the thread's answer, once it has one.
+    fn poll(&mut self) {
+        let Extraction::Running(job) = &self.extraction else {
+            return;
+        };
+        match job.outcome.try_recv() {
+            Err(mpsc::TryRecvError::Empty) => {}
+            Ok(finished) => self.extraction = finished,
+            // The thread ended without sending, which it has no path to do.
+            Err(mpsc::TryRecvError::Disconnected) => {
+                self.extraction =
+                    Extraction::Failed("the extraction stopped without saying why".to_owned());
+            }
+        }
+    }
+
+    /// Start extracting the payload, on a thread of its own.
     ///
-    /// Synchronous, so a large payload holds the window still while it copies.
-    /// Slice 6 moves it off this thread and gives it progress and a cancel.
+    /// The window keeps drawing while it copies, which is what lets it show how
+    /// far along it is and offer to stop. Both the copy and the handover to the
+    /// platform happen over there: `opener` starts a process, and starting it
+    /// is not instant either.
     fn open_payload(&mut self) -> Extraction {
         let dir = match self.scratch_dir() {
             Ok(dir) => dir,
@@ -92,23 +131,93 @@ impl App {
             return Extraction::Idle;
         };
 
-        let path = match opened.extract_to(&dir) {
-            Ok(path) => path,
-            // The library's own wording. An encrypted payload and one
-            // compressed by a method this build lacks both arrive here, and
-            // both sit in a container that is conformant.
-            Err(e) => return Extraction::Failed(e.to_string()),
-        };
+        let container = opened.path.clone();
+        let total = opened.payload.as_ref().map_or(0, |p| p.size);
+        let watch = Watch::new();
+        let (sender, outcome) = mpsc::channel();
 
-        match opener::open(&path) {
-            Ok(()) => Extraction::Handed(path),
-            // Extraction worked and the handover did not, which is a different
-            // sentence: the payload is on disk either way.
-            Err(e) => Extraction::Failed(format!(
-                "{} was extracted, and the system would not open it: {e}",
-                path.display()
-            )),
-        }
+        let theirs = watch.clone();
+        std::thread::spawn(move || {
+            let finished = match extract(&container, &dir, &theirs) {
+                Ok(Extracted::Done(path)) => match opener::open(&path) {
+                    Ok(()) => Extraction::Handed(path),
+                    // Extraction worked and the handover did not, which is a
+                    // different sentence: the payload is on disk either way.
+                    Err(e) => Extraction::Failed(format!(
+                        "{} was extracted, and the system would not open it: {e}",
+                        path.display()
+                    )),
+                },
+                Ok(Extracted::Cancelled) => Extraction::Cancelled,
+                // The library's own wording. An encrypted payload and one
+                // compressed by a method this build lacks both arrive here, and
+                // both sit in a container that is conformant.
+                Err(e) => Extraction::Failed(e.to_string()),
+            };
+            // Nobody is listening if the container was closed meanwhile, and
+            // that is the cancel above having already done its work.
+            let _ = sender.send(finished);
+        });
+
+        Extraction::Running(Job {
+            watch,
+            total,
+            outcome,
+        })
+    }
+
+    /// The payload card: what it is, and what can be done with it.
+    ///
+    /// DESIGN.md §3. Returns whether Open was pressed, because the panel
+    /// drawing this holds a borrow of the state pressing it changes.
+    fn card(&self, ui: &mut egui::Ui, payload: &Payload) -> bool {
+        let mut open_clicked = false;
+
+        egui::Frame::group(ui.style()).show(ui, |ui| {
+            ui.label(egui::RichText::new(&payload.name).strong());
+            ui.label(payload.size_line());
+            // Silent where the platform would not answer, rather than saying it
+            // does not know.
+            if let Some(application) = &payload.opens_with {
+                ui.label(format!("Opens with {application}"));
+            }
+
+            match &self.extraction {
+                Extraction::Running(job) => {
+                    let done = job.watch.done();
+                    #[allow(clippy::cast_precision_loss)]
+                    let fraction = if job.total == 0 {
+                        1.0
+                    } else {
+                        done as f32 / job.total as f32
+                    };
+                    ui.add(egui::ProgressBar::new(fraction).show_percentage());
+                    if ui.button("Cancel").clicked() {
+                        job.watch.cancel();
+                    }
+                }
+                _ => {
+                    if ui.button("Open").clicked() {
+                        open_clicked = true;
+                    }
+                }
+            }
+
+            match &self.extraction {
+                Extraction::Idle | Extraction::Running(_) => {}
+                Extraction::Handed(path) => {
+                    ui.label(format!("Extracted to {}", path.display()));
+                }
+                Extraction::Cancelled => {
+                    ui.label("Stopped. Nothing was left behind.");
+                }
+                Extraction::Failed(why) => {
+                    ui.label(egui::RichText::new(why).italics());
+                }
+            }
+        });
+
+        open_clicked
     }
 
     /// Ask for a container.
@@ -156,6 +265,14 @@ impl eframe::App for App {
 
 impl App {
     fn render(&mut self, ui: &mut egui::Ui) {
+        self.poll();
+        // A copy under way is the one thing here that changes without anybody
+        // touching the window, so it is the one thing that has to ask to be
+        // drawn again.
+        if matches!(self.extraction, Extraction::Running(_)) {
+            ui.ctx().request_repaint();
+        }
+
         // Clicks are read inside the panels and acted on after them, because a
         // panel holds a borrow of the state a click changes.
         let mut open_clicked = false;
@@ -206,32 +323,11 @@ impl App {
                 ui.separator();
                 ui.label(opened.verdict_line());
 
-                // The payload is a card: its name, its size, and what the
-                // platform says would open it. DESIGN.md §3. The Open button
-                // arrives in slice 4.
                 if let Some(payload) = &opened.payload {
                     ui.add_space(8.0);
-                    egui::Frame::group(ui.style()).show(ui, |ui| {
-                        ui.label(egui::RichText::new(&payload.name).strong());
-                        ui.label(payload.size_line());
-                        // Silent where the platform would not answer, rather
-                        // than saying it does not know.
-                        if let Some(application) = &payload.opens_with {
-                            ui.label(format!("Opens with {application}"));
-                        }
-                        if ui.button("Open").clicked() {
-                            open_clicked = true;
-                        }
-                        match &self.extraction {
-                            Extraction::Idle => {}
-                            Extraction::Handed(path) => {
-                                ui.label(format!("Extracted to {}", path.display()));
-                            }
-                            Extraction::Failed(why) => {
-                                ui.label(egui::RichText::new(why).italics());
-                            }
-                        }
-                    });
+                    if self.card(ui, payload) {
+                        open_clicked = true;
+                    }
                 }
 
                 // The metadata is the window: it gets the space rather than a
