@@ -20,6 +20,101 @@ use slipcase_desktop::{extract, tree, Extracted, Opened, Payload, Saved, Watch};
 /// DESIGN.md §8 installs that entry; this is the half that lives in the binary.
 const APP_ID: &str = "slipcase-desktop";
 
+/// Where the last container was chosen from, remembered between runs.
+///
+/// A convenience rather than a setting, so it goes in the state directory the
+/// XDG base directory specification names for exactly that rather than beside
+/// somebody's configuration. Every failure to read or write it is ignored: a
+/// dialog that opens somewhere else is not worth a message, and a person who
+/// cannot write to their own state directory has a larger problem than this.
+mod last_folder {
+    use std::path::{Path, PathBuf};
+
+    /// The state directory, per the XDG base directory specification.
+    fn base() -> Option<PathBuf> {
+        if let Some(state) = std::env::var_os("XDG_STATE_HOME") {
+            return Some(PathBuf::from(state));
+        }
+        std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".local/state"))
+    }
+
+    fn file_in(base: &Path) -> PathBuf {
+        base.join("slipcase-desktop").join("last-folder")
+    }
+
+    /// The folder to start the dialog in, where there is one worth starting in.
+    pub fn read() -> Option<PathBuf> {
+        read_from(&base()?)
+    }
+
+    /// Remember where this container came from.
+    pub fn write(container: &Path) {
+        if let Some(base) = base() {
+            write_to(&base, container);
+        }
+    }
+
+    /// Split out from [`read`] so a test can say where to look without touching
+    /// the environment every other test is sharing.
+    fn read_from(base: &Path) -> Option<PathBuf> {
+        let text = std::fs::read_to_string(file_in(base)).ok()?;
+        let folder = PathBuf::from(text.trim_end());
+        // Somewhere that has since been moved or removed is not somewhere to
+        // open a dialog.
+        folder.is_dir().then_some(folder)
+    }
+
+    fn write_to(base: &Path, container: &Path) {
+        let Some(folder) = container.parent().and_then(Path::to_str) else {
+            // A folder whose name is not UTF-8 is not remembered rather than
+            // remembered wrongly.
+            return;
+        };
+        let file = file_in(base);
+        let Some(dir) = file.parent() else {
+            return;
+        };
+        if std::fs::create_dir_all(dir).is_ok() {
+            let _ = std::fs::write(file, folder);
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::{read_from, write_to};
+
+        #[test]
+        fn a_folder_survives_being_written_and_read() {
+            let state = tempfile::tempdir().expect("a temporary directory");
+            let containers = tempfile::tempdir().expect("a temporary directory");
+            let container = containers.path().join("one.slpc");
+
+            assert_eq!(read_from(state.path()), None, "nothing remembered yet");
+
+            write_to(state.path(), &container);
+            assert_eq!(
+                read_from(state.path()).as_deref(),
+                Some(containers.path()),
+                "the folder it came from"
+            );
+        }
+
+        /// A folder that has gone is not a folder to open a dialog in.
+        #[test]
+        fn a_folder_that_is_no_longer_there_is_not_offered() {
+            let state = tempfile::tempdir().expect("a temporary directory");
+            let gone = tempfile::tempdir().expect("a temporary directory");
+            let container = gone.path().join("one.slpc");
+
+            write_to(state.path(), &container);
+            assert!(read_from(state.path()).is_some());
+
+            drop(gone);
+            assert_eq!(read_from(state.path()), None);
+        }
+    }
+}
+
 fn main() -> eframe::Result {
     // One positional path, which is what a file manager hands an application it
     // was asked to open a document with. A dialog and a drop arrive in slice 5,
@@ -211,12 +306,19 @@ impl App {
         let (sender, outcome) = mpsc::channel();
         let ctx = ctx.clone();
 
+        // Where the last one came from, so a second container is found beside
+        // the first rather than from wherever the dialog would otherwise start.
+        let start_in = last_folder::read();
+
         std::thread::spawn(move || {
-            let chosen = rfd::FileDialog::new()
+            let mut dialog = rfd::FileDialog::new()
                 .set_title("Open a slipcase container")
                 .add_filter("slipcase containers", &["slpc"])
-                .add_filter("All files", &["*"])
-                .pick_file();
+                .add_filter("All files", &["*"]);
+            if let Some(folder) = start_in {
+                dialog = dialog.set_directory(folder);
+            }
+            let chosen = dialog.pick_file();
             let _ = sender.send(chosen);
             // Nothing has been touching the window while the dialog was up, so
             // it is asleep and has to be woken to notice the answer.
@@ -237,6 +339,7 @@ impl App {
             Ok(chosen) => {
                 self.picking = None;
                 if let Some(path) = chosen {
+                    last_folder::write(&path);
                     self.show(Opened::open(path));
                 }
             }
