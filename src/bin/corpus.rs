@@ -67,6 +67,16 @@ fn owed_tree(expect: &str) -> Option<bool> {
     }
 }
 
+/// Whether DESIGN.md §6 owes this container a payload card.
+///
+/// One row of the table has one. A conformant container is the only kind with a
+/// payload this build has located: a container declaring another version has a
+/// payload the library deliberately did not look for, and every other row
+/// failed before there was a payload to name.
+fn owed_card(expect: &str) -> bool {
+    expect == "accept"
+}
+
 /// An `s` where one is owed. `1 cases` is the tell of a program that was never
 /// run on its failing path.
 fn s(n: usize) -> &'static str {
@@ -112,6 +122,7 @@ fn run(conformance: &Path) -> Result<(), String> {
     let mut disagreements: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
     let mut trees = 0usize;
+    let mut cards = 0usize;
 
     for c in &cases {
         if !KNOWN.contains(&c.expect.as_str()) {
@@ -152,6 +163,23 @@ fn run(conformance: &Path) -> Result<(), String> {
             }
         }
 
+        let card = opened.payload.is_some();
+        if card {
+            cards += 1;
+        }
+        if card != owed_card(&c.expect) {
+            ok = false;
+            let said = if card {
+                "a card, where §6 gives one to a conformant container alone"
+            } else {
+                "no card, where §6 shows everything"
+            };
+            disagreements
+                .entry(format!("the card: a {} container showed {said}", c.expect))
+                .or_default()
+                .push(detail(c, &opened.verdict_line()));
+        }
+
         if ok {
             agreed += 1;
         }
@@ -159,7 +187,7 @@ fn run(conformance: &Path) -> Result<(), String> {
 
     let total = cases.len();
     if disagreements.is_empty() {
-        println!("{total} cases, all agree. {trees} showed a metadata tree.");
+        println!("{total} cases, all agree. {trees} showed a metadata tree, {cards} a payload card.");
         return Ok(());
     }
 

@@ -61,6 +61,22 @@ impl eframe::App for App {
                 ui.separator();
                 ui.label(opened.verdict_line());
 
+                // The payload is a card: its name, its size, and what the
+                // platform says would open it. DESIGN.md §3. The Open button
+                // arrives in slice 4.
+                if let Some(payload) = &opened.payload {
+                    ui.add_space(8.0);
+                    egui::Frame::group(ui.style()).show(ui, |ui| {
+                        ui.label(egui::RichText::new(&payload.name).strong());
+                        ui.label(payload.size_line());
+                        // Silent where the platform would not answer, rather
+                        // than saying it does not know.
+                        if let Some(application) = &payload.opens_with {
+                            ui.label(format!("Opens with {application}"));
+                        }
+                    });
+                }
+
                 // The metadata is the window: it gets the space rather than a
                 // panel down one side. DESIGN.md §3.
                 if let Some(doc) = &opened.metadata {
