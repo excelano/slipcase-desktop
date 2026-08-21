@@ -44,6 +44,7 @@ fn main() -> eframe::Result {
                 scratch: None,
                 extraction: Extraction::Idle,
                 save_said: None,
+                picking: None,
             }))
         }),
     )
@@ -61,6 +62,8 @@ struct App {
     extraction: Extraction,
     /// What the last Save did, in a sentence.
     save_said: Option<String>,
+    /// A file dialog open on another thread.
+    picking: Option<mpsc::Receiver<Option<PathBuf>>>,
 }
 
 /// What became of an Open.
@@ -195,17 +198,51 @@ impl App {
         })
     }
 
-    /// Ask for a container.
+    /// Ask for a container, on a thread of its own.
     ///
-    /// Blocks while the dialog is up, which is what a modal dialog does. The
-    /// portal backend is asked through `rfd`'s own blocking call rather than an
-    /// executor this application would otherwise not have.
-    fn pick() -> Option<PathBuf> {
-        rfd::FileDialog::new()
-            .set_title("Open a slipcase container")
-            .add_filter("slipcase containers", &["slpc"])
-            .add_filter("All files", &["*"])
-            .pick_file()
+    /// Not on this one. The portal backend puts the dialog in another process
+    /// entirely, so blocking here does not make the dialog modal, it makes the
+    /// window stop answering the compositor, and GNOME offers to force quit an
+    /// application that is doing exactly what it was asked to. `rfd` supports
+    /// being called from any thread in a windowed application, which this is.
+    fn start_picking(&mut self, ctx: &egui::Context) {
+        if self.picking.is_some() {
+            return;
+        }
+        let (sender, outcome) = mpsc::channel();
+        let ctx = ctx.clone();
+
+        std::thread::spawn(move || {
+            let chosen = rfd::FileDialog::new()
+                .set_title("Open a slipcase container")
+                .add_filter("slipcase containers", &["slpc"])
+                .add_filter("All files", &["*"])
+                .pick_file();
+            let _ = sender.send(chosen);
+            // Nothing has been touching the window while the dialog was up, so
+            // it is asleep and has to be woken to notice the answer.
+            ctx.request_repaint();
+        });
+
+        self.picking = Some(outcome);
+    }
+
+    /// Take the dialog's answer, once it has one.
+    fn poll_picking(&mut self) {
+        let Some(outcome) = &self.picking else {
+            return;
+        };
+        match outcome.try_recv() {
+            Err(mpsc::TryRecvError::Empty) => {}
+            // A path, or a dialog somebody closed without choosing one.
+            Ok(chosen) => {
+                self.picking = None;
+                if let Some(path) = chosen {
+                    self.show(Opened::open(path));
+                }
+            }
+            Err(mpsc::TryRecvError::Disconnected) => self.picking = None,
+        }
     }
 }
 
@@ -298,6 +335,7 @@ impl eframe::App for App {
 impl App {
     fn render(&mut self, ui: &mut egui::Ui) {
         self.poll();
+        self.poll_picking();
         // A copy under way is the one thing here that changes without anybody
         // touching the window, so it is the one thing that has to ask to be
         // drawn again.
@@ -323,7 +361,11 @@ impl App {
             let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited);
             egui::Panel::top("bar").show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    if ui.button("Open a container…").clicked() {
+                    let picking = self.picking.is_some();
+                    if ui
+                        .add_enabled(!picking, egui::Button::new("Open a container…"))
+                        .clicked()
+                    {
                         pick_clicked = true;
                     }
                     // Off until there is something to write, because DESIGN.md
@@ -351,7 +393,13 @@ impl App {
                     ui.heading("Slipcase");
                     ui.label("Open a .slpc container to see what is in it.");
                     ui.add_space(12.0);
-                    if ui.button("Open a container…").clicked() {
+                    if ui
+                        .add_enabled(
+                            self.picking.is_none(),
+                            egui::Button::new("Open a container…"),
+                        )
+                        .clicked()
+                    {
                         pick_clicked = true;
                     }
                     ui.add_space(6.0);
@@ -394,9 +442,7 @@ impl App {
         if let Some(path) = dropped {
             self.show(Opened::open(path));
         } else if pick_clicked {
-            if let Some(path) = Self::pick() {
-                self.show(Opened::open(path));
-            }
+            self.start_picking(ui.ctx());
         }
 
         if save_clicked {
@@ -421,6 +467,7 @@ mod tests {
             scratch: None,
             extraction: Extraction::Idle,
             save_said: None,
+            picking: None,
         }
     }
 
