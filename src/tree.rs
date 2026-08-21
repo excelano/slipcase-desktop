@@ -15,7 +15,7 @@
 use eframe::egui::{self, Ui};
 use slpc::toml_edit::{Array, Datetime, DocumentMut, InlineTable, Item, RawString, Table, Value};
 
-use crate::set_value;
+use crate::{add_key, remove_key, rename_key, set_value, NewKey};
 
 /// The width a key is given before its value starts, so values line up down a
 /// section without a grid, which cannot hold rows of mixed height in document
@@ -49,30 +49,56 @@ pub fn render(ui: &mut Ui, doc: &mut DocumentMut) {
 
 /// Every entry of a table, in the order the document wrote them.
 fn table(ui: &mut Ui, t: &mut Table, path: &mut Vec<String>) {
+    // Taken before the loop borrows the table, so a row can say whether the
+    // name being typed into it is one of its own siblings.
+    let siblings: Vec<String> = t.iter().map(|(k, _)| k.to_owned()).collect();
+    let mut change = None;
+
     for (key, item) in t.iter_mut() {
         let name = key.get().to_owned();
         let above = comment_lines(key.leaf_decor().prefix());
         path.push(name.clone());
-        entry(ui, &name, item, above, path);
+        entry(ui, &name, item, above, path, &siblings, &mut change);
         path.pop();
+    }
+
+    add_row(ui, path, &siblings, &mut change);
+
+    if let Some(change) = change {
+        apply(t, change);
     }
 }
 
 /// One entry: a section for anything holding entries, a row for anything else.
-fn entry(ui: &mut Ui, name: &str, item: &mut Item, above: Vec<String>, path: &mut Vec<String>) {
+fn entry(
+    ui: &mut Ui,
+    name: &str,
+    item: &mut Item,
+    above: Vec<String>,
+    path: &mut Vec<String>,
+    siblings: &[String],
+    change: &mut Option<Change>,
+) {
     match item {
         // A key that was removed. Nothing was written for it and nothing shows.
         Item::None => {}
-        Item::Value(v) => value(ui, name, v, above, path),
+        Item::Value(v) => value(ui, name, v, above, path, siblings, change),
         Item::Table(t) => {
             // A `[header]` carries its own comments rather than the key's.
             let comments = joined(&comment_lines(t.decor().prefix()));
-            section(ui, name, comments.as_deref(), |ui| table(ui, t, path));
+            section(ui, name, comments.as_deref(), |ui| {
+                // Inside the section rather than beside its header: a
+                // `CollapsingHeader` draws its body as well as its title, and a
+                // body laid out sideways is what putting one in a row gives.
+                controls(ui, name, path, siblings, change);
+                table(ui, t, path);
+            });
         }
         Item::ArrayOfTables(a) => {
             // Neither a section nor a leaf under §4's first sentence: a section
             // whose children are numbered sections, one per table.
             section(ui, name, joined(&above).as_deref(), |ui| {
+                controls(ui, name, path, siblings, change);
                 for (n, t) in a.iter_mut().enumerate() {
                     let comments = joined(&comment_lines(t.decor().prefix()));
                     let label = format!("[{n}]");
@@ -86,7 +112,15 @@ fn entry(ui: &mut Ui, name: &str, item: &mut Item, above: Vec<String>, path: &mu
 }
 
 /// One value: an inline table is a section, everything else is a row.
-fn value(ui: &mut Ui, name: &str, v: &mut Value, above: Vec<String>, path: &mut Vec<String>) {
+fn value(
+    ui: &mut Ui,
+    name: &str,
+    v: &mut Value,
+    above: Vec<String>,
+    path: &mut Vec<String>,
+    siblings: &[String],
+    change: &mut Option<Change>,
+) {
     // A comment after the value on its own line sits in the value's suffix.
     let mut comments = above;
     comments.extend(comment_lines(v.decor().suffix()));
@@ -94,29 +128,69 @@ fn value(ui: &mut Ui, name: &str, v: &mut Value, above: Vec<String>, path: &mut 
 
     match v {
         Value::InlineTable(t) => {
-            section(ui, name, comment.as_deref(), |ui| inline_table(ui, t, path));
+            section(ui, name, comment.as_deref(), |ui| {
+                controls(ui, name, path, siblings, change);
+                inline_table(ui, t, path);
+            });
         }
-        _ => row(ui, name, comment.as_deref(), |ui| scalar(ui, v, path)),
+        _ => row(ui, name, comment.as_deref(), path, siblings, change, |ui| {
+            scalar(ui, v, path);
+        }),
     }
 }
 
 /// An inline table's entries. TOML 1.1 lets one span lines, so its keys can
 /// carry comments of their own.
+///
+/// Its values are editable and its keys are not added to, renamed, or removed:
+/// an inline table is written on one line and rearranging it is a different
+/// operation from rearranging a table. Nothing is offered here rather than
+/// something that would work differently from everywhere else.
 fn inline_table(ui: &mut Ui, t: &mut InlineTable, path: &mut Vec<String>) {
+    let mut ignored = None;
     for (key, v) in t.iter_mut() {
         let name = key.get().to_owned();
         let above = comment_lines(key.leaf_decor().prefix());
         path.push(name.clone());
-        value(ui, &name, v, above, path);
+        value(ui, &name, v, above, path, &[], &mut ignored);
         path.pop();
     }
 }
 
-/// Whether this key is one SPEC §2.2 requires, and so one this shows without
-/// letting it be edited.
-fn is_required(path: &[String]) -> bool {
+/// Whether this key is one SPEC §2.2 requires, or one holding it.
+///
+/// A protected key is shown and not edited, renamed, or deleted. `payload` is
+/// protected as well as `payload.file`, because deleting or renaming the table
+/// takes the required key inside it with it, which the value being read-only
+/// would not have stopped.
+fn is_protected(path: &[String]) -> bool {
     let joined = path.join(".");
-    joined == slpc::VERSION_KEY || joined == slpc::PAYLOAD_FILE_KEY
+    [slpc::VERSION_KEY, slpc::PAYLOAD_FILE_KEY]
+        .iter()
+        .any(|required| *required == joined || required.starts_with(&format!("{joined}.")))
+}
+
+/// A change to a table's own entries, gathered while its rows are drawn and
+/// made once the loop over them has let go of it.
+enum Change {
+    Delete(String),
+    Rename(String, String),
+    Add(String, NewKey),
+}
+
+/// Make the change the rows asked for.
+fn apply(t: &mut Table, change: Change) {
+    match change {
+        Change::Delete(name) => {
+            remove_key(t, &name);
+        }
+        Change::Rename(from, to) => {
+            rename_key(t, &from, &to);
+        }
+        Change::Add(name, kind) => {
+            add_key(t, &name, kind);
+        }
+    }
 }
 
 /// The widget a value gets, chosen by its TOML type and nothing else.
@@ -125,7 +199,7 @@ fn is_required(path: &[String]) -> bool {
 /// than writing through the borrow it is holding. [`set_value`] puts back the
 /// decor the old value carried.
 fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
-    let editable = !is_required(path);
+    let editable = !is_protected(path);
     let id = ui.make_persistent_id(path.join("."));
 
     let replacement = match &*v {
@@ -233,16 +307,164 @@ fn section(ui: &mut Ui, name: &str, comment: Option<&str>, body: impl FnOnce(&mu
         .show(ui, body);
 }
 
-/// One row: the key, the value, and whatever the document said beside it.
-fn row(ui: &mut Ui, name: &str, comment: Option<&str>, value: impl FnOnce(&mut Ui)) {
+/// One row: the key, the value, whatever the document said beside it, and the
+/// way to remove it.
+fn row(
+    ui: &mut Ui,
+    name: &str,
+    comment: Option<&str>,
+    path: &[String],
+    siblings: &[String],
+    change: &mut Option<Change>,
+    value: impl FnOnce(&mut Ui),
+) {
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             ui.set_min_width(KEY_WIDTH);
-            ui.label(egui::RichText::new(name).strong());
+            key_name(ui, name, path, siblings, change);
         });
         value(ui);
         if let Some(c) = comment {
             ui.label(comment_text(c));
+        }
+        delete_button(ui, name, path, change);
+    });
+}
+
+/// A section's own name and the way to remove it, drawn inside the section.
+fn controls(
+    ui: &mut Ui,
+    name: &str,
+    path: &[String],
+    siblings: &[String],
+    change: &mut Option<Change>,
+) {
+    if is_protected(path) {
+        return;
+    }
+    ui.horizontal(|ui| {
+        ui.scope(|ui| {
+            ui.set_min_width(KEY_WIDTH);
+            key_name(ui, name, path, siblings, change);
+        });
+        delete_button(ui, name, path, change);
+    });
+}
+
+/// The key, as a name to read or a name to change.
+fn key_name(
+    ui: &mut Ui,
+    name: &str,
+    path: &[String],
+    siblings: &[String],
+    change: &mut Option<Change>,
+) {
+    if is_protected(path) {
+        ui.label(egui::RichText::new(name).strong());
+        return;
+    }
+
+    let id = ui.make_persistent_id((path.join("."), "key"));
+    let committed = key_field(ui, id, name);
+
+    // Said while it is being typed rather than after, because a name already
+    // taken is refused and the field would otherwise just spring back.
+    let typed: Option<String> = ui.data_mut(|d| d.get_temp(id));
+    if ui.memory(|m| m.has_focus(id)) {
+        if let Some(t) = &typed {
+            if t.is_empty() || (t != name && siblings.iter().any(|s| s == t)) {
+                ui.label(egui::RichText::new("name taken").italics().weak());
+            }
+        }
+    }
+
+    if let Some(to) = committed {
+        if !to.is_empty() && to != name && !siblings.contains(&to) {
+            *change = Some(Change::Rename(name.to_owned(), to));
+        }
+    }
+}
+
+/// A field holding a key's name, which takes effect when it is left.
+///
+/// Not as it is typed: renaming `first` to `primary` one keystroke at a time
+/// would rename it to `f` on the way, and then to `fi`, each one a key of its
+/// own.
+fn key_field(ui: &mut Ui, id: egui::Id, current: &str) -> Option<String> {
+    let focused = ui.memory(|m| m.has_focus(id));
+    let mut text = if focused {
+        ui.data_mut(|d| d.get_temp::<String>(id))
+            .unwrap_or_else(|| current.to_owned())
+    } else {
+        current.to_owned()
+    };
+
+    let field = egui::TextEdit::singleline(&mut text)
+        .id(id)
+        .desired_width(KEY_WIDTH - 28.0);
+    let response = ui.add(field);
+    if response.changed() {
+        ui.data_mut(|d| d.insert_temp(id, text.clone()));
+    }
+    (response.lost_focus() && text != current).then_some(text)
+}
+
+/// The way to remove a key, where removing it is allowed.
+fn delete_button(ui: &mut Ui, name: &str, path: &[String], change: &mut Option<Change>) {
+    if is_protected(path) {
+        return;
+    }
+    // One press, and nothing reaches the container until Save. DESIGN.md §5
+    // keeps the writing explicit, and this keeps the removing that way too.
+    if ui
+        .small_button("✕")
+        .on_hover_text("Remove this key")
+        .clicked()
+    {
+        *change = Some(Change::Delete(name.to_owned()));
+    }
+}
+
+/// The row that adds a key: a name, what it starts as, and Add.
+fn add_row(ui: &mut Ui, path: &[String], siblings: &[String], change: &mut Option<Change>) {
+    let id = ui.make_persistent_id((path.join("."), "add"));
+    let mut name: String = ui.data_mut(|d| d.get_temp(id)).unwrap_or_default();
+    let mut kind: NewKey = ui
+        .data_mut(|d| d.get_temp(id.with("kind")))
+        .unwrap_or(NewKey::Text);
+
+    ui.horizontal(|ui| {
+        ui.scope(|ui| {
+            ui.set_min_width(KEY_WIDTH);
+            let field = egui::TextEdit::singleline(&mut name)
+                .id(id.with("name"))
+                .hint_text("add a key")
+                .desired_width(KEY_WIDTH - 28.0);
+            if ui.add(field).changed() {
+                ui.data_mut(|d| d.insert_temp(id, name.clone()));
+            }
+        });
+
+        egui::ComboBox::from_id_salt(id.with("kind picker"))
+            .selected_text(kind.label())
+            .show_ui(ui, |ui| {
+                for one in NewKey::ALL {
+                    if ui.selectable_value(&mut kind, one, one.label()).clicked() {
+                        ui.data_mut(|d| d.insert_temp(id.with("kind"), one));
+                    }
+                }
+            });
+
+        let taken = siblings.contains(&name);
+        if ui
+            .add_enabled(!name.is_empty() && !taken, egui::Button::new("Add"))
+            .clicked()
+        {
+            *change = Some(Change::Add(name.clone(), kind));
+            ui.data_mut(|d| d.insert_temp(id, String::new()));
+        }
+        if taken {
+            ui.label(egui::RichText::new("name taken").italics().weak());
         }
     });
 }
@@ -328,22 +550,27 @@ id = 2
         eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
     }
 
-    /// The two keys SPEC §2.2 requires are shown and not edited, and nothing
-    /// else is. A key of the same name nested under another table is a
-    /// different key and is editable.
+    /// The keys SPEC §2.2 requires are shown and not edited, and so is the
+    /// table holding one: deleting `[payload]` would take `payload.file` with
+    /// it, which making the value read-only would not have stopped.
+    ///
+    /// A key of the same name under another table is a different key, and a
+    /// sibling of a required key is not required.
     #[test]
-    fn only_the_required_keys_are_read_only() {
-        let path = |parts: &[&str]| -> Vec<String> {
-            parts.iter().map(|p| (*p).to_owned()).collect()
-        };
+    fn the_required_keys_and_what_holds_them_are_protected() {
+        let path =
+            |parts: &[&str]| -> Vec<String> { parts.iter().map(|p| (*p).to_owned()).collect() };
 
-        assert!(super::is_required(&path(&["slipcase_version"])));
-        assert!(super::is_required(&path(&["payload", "file"])));
+        assert!(super::is_protected(&path(&["slipcase_version"])));
+        assert!(super::is_protected(&path(&["payload", "file"])));
+        assert!(super::is_protected(&path(&["payload"])));
 
-        assert!(!super::is_required(&path(&["title"])));
-        assert!(!super::is_required(&path(&["payload", "size"])));
-        assert!(!super::is_required(&path(&["elsewhere", "slipcase_version"])));
-        assert!(!super::is_required(&path(&["payload"])));
+        assert!(!super::is_protected(&path(&["title"])));
+        assert!(!super::is_protected(&path(&["payload", "size"])));
+        assert!(!super::is_protected(&path(&[
+            "elsewhere",
+            "slipcase_version"
+        ])));
     }
 
     /// §4: document order is preserved and never sorted. Authoring order

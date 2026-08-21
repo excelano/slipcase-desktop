@@ -26,7 +26,7 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::{Opened, Saved};
+use slipcase_desktop::{add_key, rename_key, NewKey, Opened, Saved};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -116,6 +116,7 @@ struct Report {
     /// §2.5 puts encryption and compression method outside conformance.
     unextractable: Vec<String>,
     rewritten: usize,
+    renamed: usize,
     disagreements: BTreeMap<String, Vec<String>>,
 }
 
@@ -142,6 +143,10 @@ impl Report {
             println!(
                 "{} rewritten through Repack and read back conformant, and untouched when nothing was edited.",
                 self.rewritten
+            );
+            println!(
+                "{} renamed a key and got the others back in the order they were written.",
+                self.renamed
             );
             return Ok(());
         }
@@ -285,6 +290,82 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
 
     unedited_writes_nothing(c, &copy, &untouched, report)
         && edited_round_trips(c, &copy, &order_before, report)
+        && rename_round_trips(c, &copy, &order_before, report)
+}
+
+/// The key added a moment ago, renamed, saved, and read back.
+///
+/// `rename_key` takes every entry out of the table and puts it back, which is
+/// what keeps a renamed key in its place. Doing that to 37 real documents is
+/// the check worth having: what could go wrong is the other keys moving.
+fn rename_round_trips(
+    c: &Case,
+    copy: &Path,
+    order_before: &[String],
+    report: &mut Report,
+) -> bool {
+    let mut opened = Opened::open(copy);
+    let Some(document) = opened.metadata.as_mut() else {
+        return false;
+    };
+    if !rename_key(document.as_table_mut(), ADDED, RENAMED) {
+        report.disagree(
+            "the rename: the key added a moment ago would not rename".to_owned(),
+            c,
+            "rename_key refused a key it had just been shown",
+        );
+        return false;
+    }
+
+    match opened.save() {
+        Ok(Saved::Written) => {}
+        Ok(other) => {
+            let said = match other {
+                Saved::Unchanged => "a rename reported nothing to do".to_owned(),
+                Saved::Refused(v) => format!("what was written did not validate: {v}"),
+                Saved::Written => unreachable!(),
+            };
+            report.disagree("the rename: not written".to_owned(), c, &said);
+            return false;
+        }
+        Err(e) => {
+            report.disagree("the rename: the save failed".to_owned(), c, &e.to_string());
+            return false;
+        }
+    }
+
+    let again = Opened::open(copy);
+    if again.verdict_word() != "accept" {
+        report.disagree(
+            "the rename: the container is no longer conformant".to_owned(),
+            c,
+            &again.verdict_line(),
+        );
+        return false;
+    }
+
+    let keys = top_level_keys(&again);
+    if !keys.iter().any(|k| k == RENAMED) {
+        report.disagree(
+            "the rename: the new name is not there".to_owned(),
+            c,
+            &format!("{keys:?}"),
+        );
+        return false;
+    }
+
+    let others: Vec<String> = keys.into_iter().filter(|k| k != RENAMED).collect();
+    if others != order_before {
+        report.disagree(
+            "the rename: it moved the other keys".to_owned(),
+            c,
+            &format!("{order_before:?} became {others:?}"),
+        );
+        return false;
+    }
+
+    report.renamed += 1;
+    true
 }
 
 /// DESIGN.md §5: a container nothing has changed in is not written. Checked on
@@ -345,7 +426,14 @@ fn edited_round_trips(
     };
     // SPEC §2.5 leaves unknown keys unconstrained, so adding one keeps every
     // case conformant.
-    document[ADDED] = slpc::toml_edit::value("written by the corpus runner");
+    if !add_key(document.as_table_mut(), ADDED, NewKey::Text) {
+        report.disagree(
+            "the rewrite: a key could not be added".to_owned(),
+            c,
+            "add_key refused a name no case carries",
+        );
+        return false;
+    }
 
     match edited.save() {
         Ok(Saved::Written) => {}
@@ -412,6 +500,9 @@ fn edited_round_trips(
     report.rewritten += 1;
     true
 }
+
+/// What the added key is renamed to, to exercise renaming on every case.
+const RENAMED: &str = "x_slipcase_desktop_renamed";
 
 /// The key this adds to prove a rewrite happened. SPEC §2.5 leaves unknown keys
 /// unconstrained, so adding one keeps every case conformant.
