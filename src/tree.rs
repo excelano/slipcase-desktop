@@ -211,15 +211,22 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
                 .then(|| Value::from(text))
         }
         Value::Integer(i) => {
-            // Right-aligned, which needs a column to be aligned within.
+            // Right-aligned, which needs a column of a fixed size to be aligned
+            // within. `set_min_width` sets a floor and not a ceiling, so a
+            // right-to-left layout inside one aligns against everything left in
+            // the row: the number lands against the window's edge and whatever
+            // follows it in the row lands past it, off the end.
             let mut n = *i.value();
             let mut changed = false;
-            ui.scope(|ui| {
-                ui.set_min_width(NUMBER_WIDTH);
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    changed = ui.add_enabled(editable, egui::DragValue::new(&mut n)).changed();
-                });
-            });
+            ui.allocate_ui_with_layout(
+                egui::vec2(NUMBER_WIDTH, ui.spacing().interact_size.y),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    changed = ui
+                        .add_enabled(editable, egui::DragValue::new(&mut n))
+                        .changed();
+                },
+            );
             changed.then(|| Value::from(n))
         }
         Value::Float(f) => {
@@ -548,6 +555,33 @@ id = 2
     fn every_toml_type_renders() {
         let mut doc = parsed();
         eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
+    }
+
+    /// An integer is right-aligned inside a column of its own rather than
+    /// against the far edge of the window.
+    ///
+    /// The first version aligned against everything left in the row, which put
+    /// the number at the window's edge and the button that removes it past
+    /// that, off the end. Measured rather than looked at, because nothing here
+    /// can look.
+    #[test]
+    fn an_integer_stays_beside_its_key() {
+        let doc: DocumentMut = "pages = 44\n".parse().expect("valid TOML");
+        let mut doc = doc;
+
+        let mut content = 0.0;
+        eframe::egui::__run_test_ui(|ui| {
+            ui.set_max_width(900.0);
+            render(ui, &mut doc);
+            content = ui.min_rect().width();
+        });
+
+        // The row is a key column, a number column, and a button. Anything near
+        // the full 900 means the number was pushed against the edge.
+        assert!(
+            content < 600.0,
+            "the tree spread to {content:.0} of 900 available"
+        );
     }
 
     /// The keys SPEC §2.2 requires are shown and not edited, and so is the
