@@ -17,6 +17,15 @@ use slpc::toml_edit::{Array, Datetime, DocumentMut, InlineTable, Item, RawString
 
 use crate::{add_key, remove_key, rename_key, set_value, NewKey};
 
+/// What the button that removes a key is marked with.
+///
+/// A wastebasket, because the control is destructive and has to look it. The
+/// first version used U+2715, which is in none of egui's default fonts and drew
+/// a replacement box: an empty square beside rows that carry real checkboxes
+/// for their booleans, which is how somebody comes to press one thinking it
+/// toggles something. A test holds the glyph against the fonts.
+const REMOVE: &str = "\u{1F5D1}";
+
 /// The width a key is given before its value starts, so values line up down a
 /// section without a grid, which cannot hold rows of mixed height in document
 /// order.
@@ -235,12 +244,22 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
         Value::Datetime(d) => {
             let current = d.value().to_string();
             let typed = buffered_text(ui, id, &current, editable);
-            let shown = typed.as_deref().unwrap_or(&current);
+            // Trimmed, because a space either side of a date is a typing
+            // artefact rather than something somebody meant.
+            let shown = typed.as_deref().unwrap_or(&current).trim();
             match shown.parse::<Datetime>() {
                 Ok(parsed) if typed.is_some() => Some(Value::from(parsed)),
                 Ok(_) => None,
+                // Said in the colour this theme uses for things that are wrong.
+                // A weak grey note beside a field is one nobody sees, and what
+                // it is not saying is that the value is being refused: TOML
+                // wants two digits in an hour, so `9:00:00` is not a time and
+                // `09:00:00` is, which is not a difference anybody guesses at.
                 Err(_) => {
-                    ui.label(egui::RichText::new("not a date").italics().weak());
+                    ui.label(
+                        egui::RichText::new("not a date or time; not saved")
+                            .color(ui.visuals().error_fg_color),
+                    );
                     None
                 }
             }
@@ -411,7 +430,7 @@ fn delete_button(ui: &mut Ui, name: &str, path: &[String], change: &mut Option<C
     // One press, and nothing reaches the container until Save. DESIGN.md §5
     // keeps the writing explicit, and this keeps the removing that way too.
     if ui
-        .small_button("✕")
+        .small_button(REMOVE)
         .on_hover_text("Remove this key")
         .clicked()
     {
@@ -542,6 +561,29 @@ id = 2
     fn every_toml_type_renders() {
         let mut doc = parsed();
         eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
+    }
+
+    /// The mark on the button that removes a key is one the fonts can draw.
+    ///
+    /// A glyph they cannot draw comes out as a replacement box, and an empty
+    /// square beside rows carrying real checkboxes reads as one. That is how
+    /// the first version of this button came to be pressed by somebody who
+    /// thought it toggled something.
+    ///
+    /// Uses a real context rather than `__run_test_ui`, which loads no fonts at
+    /// all and would report every glyph missing, including the ones that work.
+    #[test]
+    fn the_remove_button_has_a_glyph_the_fonts_can_draw() {
+        let ctx = eframe::egui::Context::default();
+        ctx.run_ui(eframe::egui::RawInput::default(), |_| {})
+            .drop_without_applying_deltas();
+
+        let font = eframe::egui::FontId::proportional(14.0);
+        assert!(
+            ctx.fonts_mut(|f| f.has_glyphs(&font, super::REMOVE)),
+            "the fonts cannot draw {:?}, so it would come out as a box",
+            super::REMOVE
+        );
     }
 
     /// A row stays inside the width it was given.
