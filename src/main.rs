@@ -154,8 +154,8 @@ struct App {
     scratch: Option<tempfile::TempDir>,
     /// What the last Open did.
     extraction: Extraction,
-    /// What the last Save did, in a sentence.
-    save_said: Option<String>,
+    /// What the last Save did.
+    save_said: Option<Said>,
     /// A file dialog open on another thread.
     picking: Option<mpsc::Receiver<Option<PathBuf>>>,
 }
@@ -172,6 +172,14 @@ enum Extraction {
     Cancelled,
     /// It could not be extracted, or could not be handed over.
     Failed(String),
+}
+
+/// What the last Save did, in a sentence.
+struct Said {
+    text: String,
+    /// Whether it is something that went wrong, which decides its colour. A
+    /// save that did not happen has to look different from one that did.
+    wrong: bool,
 }
 
 /// A copy under way.
@@ -201,6 +209,18 @@ impl App {
         self.save_said = None;
     }
 
+    /// What the bar has to say about the document.
+    ///
+    /// Both, and not one or the other. A save that failed changed nothing, so
+    /// the document is still edited, and showing only the edited mark hides the
+    /// reason behind the very state the failure caused.
+    fn notes(&self) -> (bool, Option<&Said>) {
+        (
+            self.opened.as_ref().is_some_and(Opened::metadata_edited),
+            self.save_said.as_ref(),
+        )
+    }
+
     /// Write the edited metadata back, and show what happened.
     fn save(&mut self) {
         let Some(opened) = &self.opened else {
@@ -210,12 +230,22 @@ impl App {
         let outcome = opened.save();
 
         let said = match &outcome {
-            Ok(Saved::Written) => "Saved.".to_owned(),
-            Ok(Saved::Unchanged) => "Nothing had changed, so nothing was written.".to_owned(),
-            Ok(Saved::Refused(v)) => {
-                format!("Not saved. What was written did not read back conformant: {v}")
-            }
-            Err(e) => format!("Not saved: {e}"),
+            Ok(Saved::Written) => Said {
+                text: "Saved.".to_owned(),
+                wrong: false,
+            },
+            Ok(Saved::Unchanged) => Said {
+                text: "Nothing had changed, so nothing was written.".to_owned(),
+                wrong: false,
+            },
+            Ok(Saved::Refused(v)) => Said {
+                text: format!("Not saved. What was written did not read back conformant: {v}"),
+                wrong: true,
+            },
+            Err(e) => Said {
+                text: format!("Not saved: {e}"),
+                wrong: true,
+            },
         };
 
         if matches!(outcome, Ok(Saved::Written)) {
@@ -453,7 +483,7 @@ impl App {
 
         if self.opened.is_some() {
             // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
-            let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited);
+            let (edited, said) = self.notes();
             egui::Panel::top("bar").show(ui, |ui| {
                 ui.horizontal(|ui| {
                     let picking = self.picking.is_some();
@@ -474,8 +504,14 @@ impl App {
                     }
                     if edited {
                         ui.label(egui::RichText::new("edited").italics().weak());
-                    } else if let Some(said) = &self.save_said {
-                        ui.label(egui::RichText::new(said).weak());
+                    }
+                    if let Some(said) = said {
+                        let text = egui::RichText::new(&said.text);
+                        ui.label(if said.wrong {
+                            text.color(ui.visuals().error_fg_color)
+                        } else {
+                            text.weak()
+                        });
                     }
                 });
             });
@@ -606,5 +642,71 @@ mod tests {
 
         assert!(matches!(app.extraction, Extraction::Idle));
         assert!(app.opened.is_some());
+    }
+}
+
+#[cfg(all(test, unix))]
+mod save_failure_tests {
+    use super::{App, Extraction};
+    use slipcase_desktop::{set_value, Opened};
+    use slpc::toml_edit::{DocumentMut, Value};
+    use std::os::unix::fs::PermissionsExt;
+
+    /// A save that could not happen has to say so.
+    ///
+    /// It did not: the message was drawn only where the document was not
+    /// edited, and a save that fails changes nothing, so the document is still
+    /// edited and the mark saying so took the place of the reason. Pressing
+    /// Save looked like pressing nothing.
+    #[test]
+    fn a_save_that_cannot_happen_says_why() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let locked = dir.path().join("locked");
+        std::fs::create_dir(&locked).expect("makes a directory");
+
+        let path = locked.join("built-by-the-test.slpc");
+        let metadata: DocumentMut = "title = \"before\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes");
+
+        // Nothing can be created beside it now, which is what a `Destination`
+        // has to do before it can replace anything.
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o555))
+            .expect("locks the directory");
+
+        let mut app = App {
+            opened: Some(Opened::open(&path)),
+            scratch: None,
+            extraction: Extraction::Idle,
+            save_said: None,
+            picking: None,
+        };
+
+        let document = app
+            .opened
+            .as_mut()
+            .expect("a container")
+            .metadata
+            .as_mut()
+            .expect("a document");
+        set_value(
+            document["title"].as_value_mut().expect("a value"),
+            Value::from("after"),
+        );
+
+        app.save();
+
+        // Both notes, and not one or the other: the document is still edited,
+        // and that is the state the reason used to be hidden behind.
+        let (edited, said) = app.notes();
+        assert!(edited, "a save that failed leaves the document edited");
+
+        let said = said.expect("a save says what it did");
+        assert!(said.wrong, "{}", said.text);
+        assert!(said.text.starts_with("Not saved"), "{}", said.text);
+
+        std::fs::set_permissions(&locked, std::fs::Permissions::from_mode(0o755))
+            .expect("unlocks it so the directory can be removed");
     }
 }
