@@ -15,7 +15,10 @@
 use eframe::egui::{self, Ui};
 use slpc::toml_edit::{Array, Datetime, DocumentMut, InlineTable, Item, RawString, Table, Value};
 
-use crate::{add_key, remove_key, rename_key, set_value, NewKey};
+use crate::{
+    add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
+    set_value, NewKey,
+};
 
 /// What the button that removes a key is marked with.
 ///
@@ -67,7 +70,7 @@ fn table(ui: &mut Ui, t: &mut Table, path: &mut Vec<String>) {
         path.pop();
     }
 
-    add_row(ui, path, &siblings, &mut change);
+    add_row(ui, path, &siblings, &NewKey::ALL, &mut change);
 
     if let Some(change) = change {
         apply(t, change);
@@ -147,18 +150,28 @@ fn value(
 /// An inline table's entries. TOML 1.1 lets one span lines, so its keys can
 /// carry comments of their own.
 ///
-/// Its values are editable and its keys are not added to, renamed, or removed:
-/// an inline table is written on one line and rearranging it is a different
-/// operation from rearranging a table. Nothing is offered here rather than
-/// something that would work differently from everywhere else.
+/// Its keys can be added to, renamed, and removed like any other table's. They
+/// could not at first, and the buttons were drawn anyway and did nothing, which
+/// is how somebody comes to press one twice and wonder what is broken. Being
+/// written on one line is a fact about how it is laid out and not about what
+/// can be done to it.
 fn inline_table(ui: &mut Ui, t: &mut InlineTable, path: &mut Vec<String>) {
-    let mut ignored = None;
+    let siblings: Vec<String> = t.iter().map(|(k, _)| k.to_owned()).collect();
+    let mut change = None;
+
     for (key, v) in t.iter_mut() {
         let name = key.get().to_owned();
         let above = comment_lines(key.leaf_decor().prefix());
         path.push(name.clone());
-        value(ui, &name, v, above, path, &[], &mut ignored);
+        value(ui, &name, v, above, path, &siblings, &mut change);
         path.pop();
+    }
+
+    // Values only: an inline table holds no tables.
+    add_row(ui, path, &siblings, &NewKey::SCALARS, &mut change);
+
+    if let Some(change) = change {
+        apply_inline(t, change);
     }
 }
 
@@ -194,6 +207,21 @@ fn apply(t: &mut Table, change: Change) {
         }
         Change::Add(name, kind) => {
             add_key(t, &name, kind);
+        }
+    }
+}
+
+/// The same, for a table written on one line.
+fn apply_inline(t: &mut InlineTable, change: Change) {
+    match change {
+        Change::Delete(name) => {
+            remove_inline_key(t, &name);
+        }
+        Change::Rename(from, to) => {
+            rename_inline_key(t, &from, &to);
+        }
+        Change::Add(name, kind) => {
+            add_inline_key(t, &name, kind);
         }
     }
 }
@@ -477,11 +505,18 @@ fn delete_button(ui: &mut Ui, name: &str, path: &[String], change: &mut Option<C
 }
 
 /// The row that adds a key: a name, what it starts as, and Add.
-fn add_row(ui: &mut Ui, path: &[String], siblings: &[String], change: &mut Option<Change>) {
+fn add_row(
+    ui: &mut Ui,
+    path: &[String],
+    siblings: &[String],
+    kinds: &[NewKey],
+    change: &mut Option<Change>,
+) {
     let id = ui.make_persistent_id((path.join("."), "add"));
     let mut name: String = ui.data_mut(|d| d.get_temp(id)).unwrap_or_default();
     let mut kind: NewKey = ui
         .data_mut(|d| d.get_temp(id.with("kind")))
+        .filter(|k| kinds.contains(k))
         .unwrap_or(NewKey::Text);
 
     ui.horizontal(|ui| {
@@ -499,7 +534,7 @@ fn add_row(ui: &mut Ui, path: &[String], siblings: &[String], change: &mut Optio
         egui::ComboBox::from_id_salt(id.with("kind picker"))
             .selected_text(kind.label())
             .show_ui(ui, |ui| {
-                for one in NewKey::ALL {
+                for one in kinds.iter().copied() {
                     if ui.selectable_value(&mut kind, one, one.label()).clicked() {
                         ui.data_mut(|d| d.insert_temp(id.with("kind"), one));
                     }

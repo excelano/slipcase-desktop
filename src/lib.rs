@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use slpc::toml_edit::{Datetime, DocumentMut, Item, Key, Table, Value};
+use slpc::toml_edit::{Datetime, DocumentMut, InlineTable, Item, Key, Table, Value};
 use slpc::Verdict;
 
 /// How much of a copy has happened, and whether it should stop.
@@ -204,6 +204,19 @@ pub enum NewKey {
 }
 
 impl NewKey {
+    /// The kinds an inline table can hold.
+    ///
+    /// It holds values, and a table is not one. A table inside an inline table
+    /// would have to be another inline table, which is structure inside
+    /// structure and is not offered any more than an array is.
+    pub const SCALARS: [Self; 5] = [
+        Self::Text,
+        Self::Integer,
+        Self::Float,
+        Self::Boolean,
+        Self::Datetime,
+    ];
+
     /// Every kind, in the order a picker offers them.
     pub const ALL: [Self; 6] = [
         Self::Text,
@@ -224,6 +237,14 @@ impl NewKey {
             Self::Boolean => "boolean",
             Self::Datetime => "date and time",
             Self::Table => "table",
+        }
+    }
+
+    /// What it starts as, where only a value will do.
+    fn as_value(self) -> Option<Value> {
+        match self.item() {
+            Item::Value(v) => Some(v),
+            _ => None,
         }
     }
 
@@ -289,6 +310,59 @@ pub fn rename_key(t: &mut Table, from: &str, to: &str) -> bool {
             t.insert_formatted(&renamed, item);
         } else {
             t.insert_formatted(&key, item);
+        }
+    }
+    true
+}
+
+/// Add a key to an inline table.
+///
+/// The same refusals as [`add_key`], and one more: a kind an inline table
+/// cannot hold.
+pub fn add_inline_key(t: &mut InlineTable, name: &str, kind: NewKey) -> bool {
+    if name.is_empty() || t.contains_key(name) {
+        return false;
+    }
+    match kind.as_value() {
+        Some(value) => {
+            t.insert(name, value);
+            true
+        }
+        None => false,
+    }
+}
+
+/// Remove a key from an inline table.
+pub fn remove_inline_key(t: &mut InlineTable, name: &str) -> bool {
+    t.remove(name).is_some()
+}
+
+/// Rename a key in an inline table, keeping its place and its decor.
+///
+/// The same rebuild [`rename_key`] does, for the same reason: there is no
+/// rename, and re-inserting would move the key to the end of a line somebody
+/// wrote in an order they chose.
+pub fn rename_inline_key(t: &mut InlineTable, from: &str, to: &str) -> bool {
+    if to.is_empty() || from == to || !t.contains_key(from) || t.contains_key(to) {
+        return false;
+    }
+
+    let names: Vec<String> = t.iter().map(|(k, _)| k.to_owned()).collect();
+    let mut taken: Vec<(Key, Value)> = Vec::with_capacity(names.len());
+    for name in &names {
+        if let Some(entry) = t.remove_entry(name) {
+            taken.push(entry);
+        }
+    }
+
+    for (key, value) in taken {
+        if key.get() == from {
+            let renamed = Key::new(to)
+                .with_leaf_decor(key.leaf_decor().clone())
+                .with_dotted_decor(key.dotted_decor().clone());
+            t.insert_formatted(&renamed, value);
+        } else {
+            t.insert_formatted(&key, value);
         }
     }
     true
@@ -973,5 +1047,70 @@ inner = true
         assert_eq!(keys(&d), ["first", "second"]);
         assert!(!d.to_string().contains("inner"));
         assert!(!remove_key(d.as_table_mut(), "third"));
+    }
+}
+
+#[cfg(test)]
+mod inline_tests {
+    use super::{add_inline_key, remove_inline_key, rename_inline_key, NewKey};
+    use slpc::toml_edit::DocumentMut;
+
+    fn doc() -> DocumentMut {
+        "owner = { name = \"D. Anderson\", team = \"consulting\" }\n"
+            .parse()
+            .expect("valid TOML")
+    }
+
+    fn owner(d: &mut DocumentMut) -> &mut slpc::toml_edit::InlineTable {
+        d["owner"].as_inline_table_mut().expect("an inline table")
+    }
+
+    /// The bug this closes: the buttons were drawn inside an inline table and
+    /// the change was thrown away, so `owner` could be removed and `owner.name`
+    /// could not.
+    #[test]
+    fn a_key_inside_an_inline_table_can_be_removed() {
+        let mut d = doc();
+        assert!(remove_inline_key(owner(&mut d), "name"));
+        assert!(!remove_inline_key(owner(&mut d), "name"));
+
+        let written = d.to_string();
+        assert!(!written.contains("name"), "{written}");
+        assert!(written.contains("team = \"consulting\""), "{written}");
+    }
+
+    /// Renamed in place, not moved to the end of a line somebody wrote in an
+    /// order they chose.
+    #[test]
+    fn a_key_inside_an_inline_table_keeps_its_place_when_renamed() {
+        let mut d = doc();
+        assert!(rename_inline_key(owner(&mut d), "name", "who"));
+
+        let written = d.to_string();
+        assert!(
+            written.find("who").unwrap() < written.find("team").unwrap(),
+            "{written}"
+        );
+        assert!(written.contains("who = \"D. Anderson\""), "{written}");
+
+        // Refused for the same reasons as anywhere else.
+        assert!(!rename_inline_key(owner(&mut d), "who", "team"));
+        assert!(!rename_inline_key(owner(&mut d), "who", ""));
+    }
+
+    /// An inline table holds values, so a table is not among the kinds offered
+    /// and is refused if it arrives anyway.
+    #[test]
+    fn an_inline_table_takes_values_and_not_tables() {
+        let mut d = doc();
+        assert!(add_inline_key(owner(&mut d), "since", NewKey::Integer));
+        assert!(!add_inline_key(owner(&mut d), "nested", NewKey::Table));
+        assert!(!add_inline_key(owner(&mut d), "name", NewKey::Text));
+
+        assert!(!NewKey::SCALARS.contains(&NewKey::Table));
+
+        let written = d.to_string();
+        assert!(written.contains("since = 0"), "{written}");
+        written.parse::<DocumentMut>().expect("still parses");
     }
 }
