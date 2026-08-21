@@ -173,7 +173,7 @@ pub struct Opened {
     /// The document as it was parsed, for telling whether it has been edited.
     ///
     /// Compared against rather than the bytes in the container, because two of
-    /// the corpus's 36 conformant containers do not re-serialize to the bytes
+    /// the corpus's 37 conformant containers do not re-serialize to the bytes
     /// they came from: a leading byte order mark is dropped and CRLF line
     /// endings come back as LF. Comparing against the stored bytes would call
     /// those two edited the moment they were opened, and §5 says a container
