@@ -24,6 +24,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use slpc::toml_edit::DocumentMut;
+use slpc::Error;
 
 use slipcase_desktop::Opened;
 
@@ -104,6 +105,55 @@ fn main() -> ExitCode {
     }
 }
 
+/// What the run has seen.
+#[derive(Default)]
+struct Report {
+    agreed: usize,
+    trees: usize,
+    cards: usize,
+    extracted: usize,
+    /// Conformant containers the Open button cannot serve. Not failures: SPEC
+    /// §2.5 puts encryption and compression method outside conformance.
+    unextractable: Vec<String>,
+    disagreements: BTreeMap<String, Vec<String>>,
+}
+
+impl Report {
+    fn disagree(&mut self, what: String, c: &Case, said: &str) {
+        self.disagreements.entry(what).or_default().push(detail(c, said));
+    }
+
+    /// Say what happened, and fail where anything did not agree.
+    fn print(&self, total: usize) -> Result<(), String> {
+        if self.disagreements.is_empty() {
+            println!(
+                "{total} cases, all agree. {} showed a metadata tree, {} a payload card.",
+                self.trees, self.cards
+            );
+            println!(
+                "{} of {} payloads extracted at their declared length.",
+                self.extracted,
+                self.extracted + self.unextractable.len()
+            );
+            for one in &self.unextractable {
+                println!("  the Open button cannot serve {one}");
+            }
+            return Ok(());
+        }
+
+        let failed = total - self.agreed;
+        println!("{total} cases: {} agree, {failed} did not.\n", self.agreed);
+        for (what, which) in &self.disagreements {
+            println!("=== {what}  ({} case{})", which.len(), s(which.len()));
+            for line in which {
+                println!("{line}");
+            }
+            println!();
+        }
+        Err(format!("{failed} of {total} cases did not agree"))
+    }
+}
+
 fn run(conformance: &Path) -> Result<(), String> {
     let cases = read_manifest(conformance)?;
 
@@ -118,88 +168,126 @@ fn run(conformance: &Path) -> Result<(), String> {
     missing_files(&cases)?;
     ungoverned_files(conformance, &cases)?;
 
-    let mut agreed = 0usize;
-    let mut disagreements: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    // One directory for all of them. Payload names repeat across the corpus, so
+    // each extraction overwrites the last, which is all this needs: the check is
+    // that the bytes arrived, not that they stayed.
+    let scratch = tempfile::Builder::new()
+        .prefix("slipcase-corpus-")
+        .tempdir()
+        .map_err(|e| format!("no temporary directory to extract into: {e}"))?;
 
-    let mut trees = 0usize;
-    let mut cards = 0usize;
-
+    let mut report = Report::default();
     for c in &cases {
-        if !KNOWN.contains(&c.expect.as_str()) {
-            return Err(format!(
-                "{}: the manifest expects {:?}, which is not one of the four answers this build knows",
-                c.id, c.expect
-            ));
-        }
+        check(c, scratch.path(), &mut report)?;
+    }
+    report.print(cases.len())
+}
 
-        let opened = Opened::open(&c.file);
-        let mut ok = true;
+/// One case, against every column of DESIGN.md §6 this build has reached.
+fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
+    if !KNOWN.contains(&c.expect.as_str()) {
+        return Err(format!(
+            "{}: the manifest expects {:?}, which is not one of the four answers this build knows",
+            c.id, c.expect
+        ));
+    }
 
-        let got = opened.verdict_word();
-        if got != c.expect {
+    let opened = Opened::open(&c.file);
+    let mut ok = true;
+
+    let got = opened.verdict_word();
+    if got != c.expect {
+        ok = false;
+        report.disagree(
+            format!("the verdict: expected {}, got {got}", c.expect),
+            c,
+            &opened.verdict_line(),
+        );
+    }
+
+    let shown = opened.metadata.is_some();
+    if shown {
+        report.trees += 1;
+    }
+    if let Some(owed) = owed_tree(&c.expect) {
+        if shown != owed {
             ok = false;
-            disagreements
-                .entry(format!("the verdict: expected {}, got {got}", c.expect))
-                .or_default()
-                .push(detail(c, &opened.verdict_line()));
-        }
-
-        let shown = opened.metadata.is_some();
-        if shown {
-            trees += 1;
-        }
-        if let Some(owed) = owed_tree(&c.expect) {
-            if shown != owed {
-                ok = false;
-                let said = if shown {
-                    "a tree, where §6 shows the verdict and nothing further"
-                } else {
-                    "no tree, where §6 shows the verdict and the tree"
-                };
-                disagreements
-                    .entry(format!("the tree: a {} container showed {said}", c.expect))
-                    .or_default()
-                    .push(detail(c, &opened.verdict_line()));
-            }
-        }
-
-        let card = opened.payload.is_some();
-        if card {
-            cards += 1;
-        }
-        if card != owed_card(&c.expect) {
-            ok = false;
-            let said = if card {
-                "a card, where §6 gives one to a conformant container alone"
+            let said = if shown {
+                "a tree, where §6 shows the verdict and nothing further"
             } else {
-                "no card, where §6 shows everything"
+                "no tree, where §6 shows the verdict and the tree"
             };
-            disagreements
-                .entry(format!("the card: a {} container showed {said}", c.expect))
-                .or_default()
-                .push(detail(c, &opened.verdict_line()));
-        }
-
-        if ok {
-            agreed += 1;
+            report.disagree(
+                format!("the tree: a {} container showed {said}", c.expect),
+                c,
+                &opened.verdict_line(),
+            );
         }
     }
 
-    let total = cases.len();
-    if disagreements.is_empty() {
-        println!("{total} cases, all agree. {trees} showed a metadata tree, {cards} a payload card.");
-        return Ok(());
+    let card = opened.payload.is_some();
+    if card {
+        report.cards += 1;
+    }
+    if card != owed_card(&c.expect) {
+        ok = false;
+        let said = if card {
+            "a card, where §6 gives one to a conformant container alone"
+        } else {
+            "no card, where §6 shows everything"
+        };
+        report.disagree(
+            format!("the card: a {} container showed {said}", c.expect),
+            c,
+            &opened.verdict_line(),
+        );
     }
 
-    println!("{total} cases: {agreed} agree, {} did not.\n", total - agreed);
-    for (what, which) in &disagreements {
-        println!("=== {what}  ({} case{})", which.len(), s(which.len()));
-        for line in which {
-            println!("{line}");
-        }
-        println!();
+    // Only a conformant container has a payload to extract.
+    if c.expect == "accept" && !extracts(c, &opened, scratch, report) {
+        ok = false;
     }
-    Err(format!("{} of {total} cases did not agree", total - agreed))
+
+    if ok {
+        report.agreed += 1;
+    }
+    Ok(())
+}
+
+/// Whether the payload came out whole, and whether a refusal was one SPEC §2.5
+/// allows.
+fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool {
+    match opened.extract_to(scratch) {
+        Ok(path) => {
+            let declared = opened.payload.as_ref().map_or(0, |p| p.size);
+            let arrived = std::fs::metadata(&path).map(|m| m.len()).unwrap_or_default();
+            if arrived == declared {
+                report.extracted += 1;
+                return true;
+            }
+            report.disagree(
+                "the payload: extracted a different length than the central directory declared"
+                    .to_owned(),
+                c,
+                &format!("{arrived} bytes arrived, {declared} declared"),
+            );
+            false
+        }
+        // A sound container whose payload this build cannot decode. Not a
+        // disagreement, and the population the Open button cannot serve.
+        Err(Error::Unsupported(u)) => {
+            report.unextractable.push(format!("{}: {u}", c.id));
+            true
+        }
+        Err(e) => {
+            report.disagree(
+                "the payload: a conformant container would not extract".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            false
+        }
+    }
 }
 
 /// The cases the manifest describes.

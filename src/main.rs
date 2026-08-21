@@ -6,6 +6,8 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic)]
 
+use std::path::PathBuf;
+
 use eframe::egui;
 
 use slipcase_desktop::{tree, Opened};
@@ -35,14 +37,88 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Slipcase",
         options,
-        Box::new(move |_cc| Ok(Box::new(App { opened }))),
+        Box::new(move |_cc| {
+            Ok(Box::new(App {
+                opened,
+                scratch: None,
+                extraction: Extraction::Idle,
+            }))
+        }),
     )
 }
 
 struct App {
-    /// The container named on the command line, if there was one. The metadata
-    /// tree and the payload card arrive in slices 2 and 3.
+    /// The container named on the command line, if there was one. A dialog and
+    /// a drop arrive in slice 5.
     opened: Option<Opened>,
+    /// Where extraction goes: a directory of this process's own, made on the
+    /// first Open and removed with its contents when this drops. DESIGN.md §5
+    /// keeps the application from ever writing beside the container it opened.
+    scratch: Option<tempfile::TempDir>,
+    /// What the last Open did.
+    extraction: Extraction,
+}
+
+/// What became of an Open.
+enum Extraction {
+    /// Nothing has been asked for.
+    Idle,
+    /// The payload is on disk and the platform was handed it.
+    Handed(PathBuf),
+    /// It could not be extracted, or could not be handed over.
+    Failed(String),
+}
+
+impl App {
+    /// Extract the payload and give it to whatever opens it.
+    ///
+    /// Synchronous, so a large payload holds the window still while it copies.
+    /// Slice 6 moves it off this thread and gives it progress and a cancel.
+    fn open_payload(&mut self) -> Extraction {
+        let dir = match self.scratch_dir() {
+            Ok(dir) => dir,
+            Err(why) => return Extraction::Failed(why),
+        };
+        let Some(opened) = &self.opened else {
+            return Extraction::Idle;
+        };
+
+        let path = match opened.extract_to(&dir) {
+            Ok(path) => path,
+            // The library's own wording. An encrypted payload and one
+            // compressed by a method this build lacks both arrive here, and
+            // both sit in a container that is conformant.
+            Err(e) => return Extraction::Failed(e.to_string()),
+        };
+
+        match opener::open(&path) {
+            Ok(()) => Extraction::Handed(path),
+            // Extraction worked and the handover did not, which is a different
+            // sentence: the payload is on disk either way.
+            Err(e) => Extraction::Failed(format!(
+                "{} was extracted, and the system would not open it: {e}",
+                path.display()
+            )),
+        }
+    }
+
+    /// The scratch directory, made on first use.
+    fn scratch_dir(&mut self) -> Result<PathBuf, String> {
+        if self.scratch.is_none() {
+            let made = tempfile::Builder::new()
+                .prefix("slipcase-")
+                .tempdir()
+                .map_err(|e| format!("no temporary directory to extract into: {e}"))?;
+            self.scratch = Some(made);
+        }
+        // Not `unwrap_or_default`: an empty path here would be a relative one,
+        // and extraction would land beside the working directory, which is the
+        // one thing DESIGN.md §5 says never to do.
+        match &self.scratch {
+            Some(dir) => Ok(dir.path().to_owned()),
+            None => Err("no temporary directory to extract into".to_owned()),
+        }
+    }
 }
 
 impl eframe::App for App {
@@ -50,6 +126,10 @@ impl eframe::App for App {
     // carries no margin or background of its own, so the panel is what gives
     // the window its own. `ui.ctx()` is where the context went.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        // Read inside the panel and acted on after it, because the panel holds
+        // a borrow of the state the Open changes.
+        let mut open_clicked = false;
+
         egui::CentralPanel::default().show(ui, |ui| match &self.opened {
             None => {
                 ui.heading("Slipcase");
@@ -74,6 +154,18 @@ impl eframe::App for App {
                         if let Some(application) = &payload.opens_with {
                             ui.label(format!("Opens with {application}"));
                         }
+                        if ui.button("Open").clicked() {
+                            open_clicked = true;
+                        }
+                        match &self.extraction {
+                            Extraction::Idle => {}
+                            Extraction::Handed(path) => {
+                                ui.label(format!("Extracted to {}", path.display()));
+                            }
+                            Extraction::Failed(why) => {
+                                ui.label(egui::RichText::new(why).italics());
+                            }
+                        }
                     });
                 }
 
@@ -87,5 +179,9 @@ impl eframe::App for App {
                 }
             }
         });
+
+        if open_clicked {
+            self.extraction = self.open_payload();
+        }
     }
 }

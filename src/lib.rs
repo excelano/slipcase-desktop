@@ -167,6 +167,35 @@ impl Opened {
         }
     }
 
+    /// Extract the payload into a directory, and say where it landed.
+    ///
+    /// Streamed rather than buffered whole: a payload is a file of arbitrary
+    /// size, and `io::copy` moves it through a buffer of its own choosing.
+    ///
+    /// The failure that is not a defect is [`slpc::Error::Unsupported`], which
+    /// is what a conformant container whose payload is encrypted or compressed
+    /// by a method this build lacks comes back with. SPEC §2.5 puts both
+    /// outside conformance, so the container is sound and the bytes are still
+    /// out of reach.
+    ///
+    /// # Errors
+    ///
+    /// Returns whatever the library says about reading the container, and any
+    /// error from writing the file.
+    pub fn extract_to(&self, dir: &Path) -> slpc::Result<PathBuf> {
+        let mut container = slpc::Container::open(&self.path)?;
+        // `Container::open` has already put this name through
+        // `slpc::check_payload_name`, which rejects every separator and every
+        // traversal, so joining it onto a directory cannot leave that
+        // directory.
+        let out = dir.join(container.payload_name());
+
+        let mut payload = container.payload()?;
+        let mut file = std::fs::File::create(&out)?;
+        std::io::copy(&mut payload, &mut file)?;
+        Ok(out)
+    }
+
     /// This application's answer, in the conformance corpus's vocabulary.
     ///
     /// `manifest.toml` states one of the first four per case. The last two are
@@ -263,5 +292,63 @@ mod payload_tests {
             sized(3_221_225_472).size_line(),
             "3.0 GiB (3221225472 bytes)"
         );
+    }
+}
+
+#[cfg(test)]
+mod extraction_tests {
+    use super::Opened;
+    use slpc::toml_edit::DocumentMut;
+
+    /// A container this test built itself, so nothing here needs the
+    /// conformance corpus checked out. The payload is large enough to cross
+    /// `io::copy`'s buffer several times, which is the part of streaming that a
+    /// small fixture would not reach.
+    #[test]
+    fn a_payload_extracts_byte_for_byte() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = dir.path().join("built-by-the-test.slpc");
+
+        let payload: Vec<u8> = (0..100_000u32).map(|i| u8::try_from(i % 251).unwrap()).collect();
+        let metadata: DocumentMut = "title = \"built by the test\"\n"
+            .parse()
+            .expect("valid TOML");
+
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&container, &bytes).expect("writes the container");
+
+        let opened = Opened::open(&container);
+        assert_eq!(opened.verdict_word(), "accept");
+
+        let card = opened.payload.as_ref().expect("a conformant container has a card");
+        assert_eq!(card.name, "report.pdf");
+        assert_eq!(card.size, u64::try_from(payload.len()).unwrap());
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory to extract into");
+        let out = opened.extract_to(&into).expect("extracts");
+
+        // Into the directory it was given, under the name the container gave.
+        assert_eq!(out, into.join("report.pdf"));
+        assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
+    }
+
+    /// Nothing is written for a payload that cannot be read. The reader is
+    /// asked for before the file is created, so a refusal leaves no empty file
+    /// where a person would later find one and take it for the payload.
+    #[test]
+    fn a_container_that_is_not_one_leaves_no_file_behind() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = dir.path().join("not-a-container.slpc");
+        std::fs::write(&container, b"this is not an archive").expect("writes");
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory to extract into");
+
+        let opened = Opened::open(&container);
+        assert_eq!(opened.verdict_word(), "reject");
+        assert!(opened.extract_to(&into).is_err());
+        assert_eq!(std::fs::read_dir(&into).expect("reads").count(), 0);
     }
 }

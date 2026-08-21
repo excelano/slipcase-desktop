@@ -34,3 +34,10 @@ rfd = "0.17"
 # Hands a path to the platform's own mechanism rather than carrying a table of
 # programs to run. DESIGN.md §3.
 opener = "0.8"
+# The directory extraction goes to. Already in the tree under slpc's `fs`
+# feature, so this compiles nothing new. Named here rather than hand-rolled
+# because a directory built from a process id is wrong twice: a crashed run
+# leaves one behind for whoever next holds that id, and `create_dir` leaves it
+# readable by everyone on the machine. `TempDir` is 0700 and unguessable, and
+# removes its tree when it drops. DESIGN.md §5.
+tempfile = "3.27"
