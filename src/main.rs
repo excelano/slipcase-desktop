@@ -51,8 +51,7 @@ fn main() -> eframe::Result {
 }
 
 struct App {
-    /// The container named on the command line, if there was one. A dialog and
-    /// a drop arrive in slice 5.
+    /// The container named on the command line, if there was one.
     opened: Option<Opened>,
     /// Where extraction goes: a directory of this process's own, made on the
     /// first Open and removed with its contents when this drops. DESIGN.md §5
@@ -349,13 +348,6 @@ impl App {
         let mut pick_clicked = false;
         let mut save_clicked = false;
 
-        // Only the first of several. A single window shows one container, and
-        // choosing among a handful dropped together would be a guess.
-        let dropped = ui
-            .ctx()
-            .input(|i| i.raw.dropped_files.first().map(|f| f.path().to_owned()));
-        let hovering = ui.ctx().input(|i| !i.raw.hovered_files.is_empty());
-
         if self.opened.is_some() {
             // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
             let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited);
@@ -403,14 +395,9 @@ impl App {
                         pick_clicked = true;
                     }
                     ui.add_space(6.0);
-                    // A drop target that gives no sign it takes drops is one
-                    // nobody tries.
-                    let hint = if hovering {
-                        "drop it to open"
-                    } else {
-                        "or drop one on this window"
-                    };
-                    ui.label(egui::RichText::new(hint).weak());
+                    ui.label(
+                        egui::RichText::new("or name one on the command line").weak(),
+                    );
                 });
             }
             Some(opened) => {
@@ -437,11 +424,7 @@ impl App {
             }
         });
 
-        // A drop beats the dialog: it names a container outright, and the
-        // dialog would still be open in the same frame only by coincidence.
-        if let Some(path) = dropped {
-            self.show(Opened::open(path));
-        } else if pick_clicked {
+        if pick_clicked {
             self.start_picking(ui.ctx());
         }
 
