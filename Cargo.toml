@@ -41,3 +41,27 @@ opener = "0.8"
 # readable by everyone on the machine. `TempDir` is 0700 and unguessable, and
 # removes its tree when it drops. DESIGN.md §5.
 tempfile = "3.27"
+
+# Launch Services answers `opens_with` on macOS, and it is a C API this crate
+# cannot call: `#![forbid(unsafe_code)]` is a property of this source. These
+# four carry that unsafe on our behalf, the way `rfd` and `opener` already do,
+# and every call `src/opens_with.rs` makes into them is a safe function — the
+# module compiles under `forbid` with no unsafe block in it.
+#
+# Already in the tree on this target under `winit`, `rfd`, and `arboard`, so
+# only `objc2-uniform-type-identifiers` is new. Features are named rather than
+# taken, and not for weight alone: `cargo add` takes 176 features of
+# `objc2-foundation` and rustc 1.98.0 segfaults in LLVM's debug-info emission
+# compiling that. The narrow set below is also what the rest of the tree
+# already enables.
+[target.'cfg(target_os = "macos")'.dependencies]
+# `Retained`, which the other three return and none of them re-export.
+objc2 = { version = "0.6", default-features = false, features = ["std"] }
+# `UTType`, which turns a filename extension into a type without a file.
+objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType"] }
+# `NSWorkspace`, which names the application for a type. The feature named
+# after the crate above is what exposes the query that takes a `UTType`.
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "objc2-uniform-type-identifiers"] }
+# `NSBundle`, for what an application calls itself, and the strings and URLs
+# the other two speak in.
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle"] }

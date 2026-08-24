@@ -16,12 +16,21 @@ pub fn opens_with(payload_name: &str) -> Option<String> {
     linux::display_name(&entry)
 }
 
+/// The name of the application the platform would open this payload with.
+#[cfg(target_os = "macos")]
+#[must_use]
+pub fn opens_with(payload_name: &str) -> Option<String> {
+    let extension = macos::extension_of(payload_name)?;
+    let application = macos::application_for(extension)?;
+    macos::display_name(&application)
+}
+
 /// Not yet asked on this platform, so the card says nothing.
 ///
-/// macOS answers through Launch Services and Windows through
-/// `AssocQueryString`, both from an extension alone and neither testable on the
-/// machine this was written on. Slice 11 has the platforms to try them on.
-#[cfg(not(target_os = "linux"))]
+/// Windows answers through `AssocQueryString` from an extension alone, and it
+/// was not testable on the machine this was written on. `HANDOFF-windows.md`
+/// is the brief for the platform that can.
+#[cfg(not(any(target_os = "linux", target_os = "macos")))]
 #[must_use]
 pub fn opens_with(_payload_name: &str) -> Option<String> {
     None
@@ -196,6 +205,137 @@ Name=New Window
         #[test]
         fn an_entry_without_a_name_gives_nothing() {
             assert_eq!(name_in("[Desktop Entry]\nType=Application\n"), None);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+mod macos {
+    use objc2::rc::Retained;
+    use objc2_app_kit::NSWorkspace;
+    use objc2_foundation::{NSBundle, NSString, NSURL};
+    use objc2_uniform_type_identifiers::UTType;
+
+    /// The filename extension the question is asked of.
+    ///
+    /// Launch Services takes an extension rather than a whole name, so unlike
+    /// Linux this needs no file on disk and no placeholder: the question can be
+    /// asked of a payload that has never been extracted, which is what
+    /// DESIGN.md §3 wants and what the Linux arm has to work around.
+    ///
+    /// A name with no extension, a name that is nothing but an extension, and a
+    /// name ending in a bare dot all give nothing. A separator is refused for
+    /// the same reason the Linux arm refuses one: `slpc::check_payload_name`
+    /// rejects every separator, so a name carrying one is not a payload's, and
+    /// answering for it would be answering about a path this application was
+    /// never given.
+    pub fn extension_of(payload_name: &str) -> Option<&str> {
+        if payload_name.contains(['/', '\\']) {
+            return None;
+        }
+        let extension = std::path::Path::new(payload_name).extension()?.to_str()?;
+        if extension.is_empty() {
+            None
+        } else {
+            Some(extension)
+        }
+    }
+
+    /// The application Launch Services would open a file of this extension
+    /// with, asked through the type the extension names.
+    ///
+    /// Where no type is declared for an extension, macOS synthesises a dynamic
+    /// one — `dyn.ah62d4rv4ge81g5duqq` for `slpc` before this application is
+    /// registered — rather than answering nothing. Nothing claims a synthesised
+    /// type, so Launch Services then names no application and the answer is
+    /// `None` without this needing to inspect the type: measured against
+    /// `slpc`, `qqzz`, and the extensions in the example, a dynamic type never
+    /// reached an application. A declared type reaching no application is the
+    /// same `None` and just as honest — `xlsx` is declared on a machine with
+    /// nothing installed that opens it.
+    pub fn application_for(extension: &str) -> Option<Retained<NSURL>> {
+        let content_type = UTType::typeWithFilenameExtension(&NSString::from_str(extension))?;
+        NSWorkspace::sharedWorkspace().URLForApplicationToOpenContentType(&content_type)
+    }
+
+    /// The name the application bundle gives itself.
+    ///
+    /// A person recognises Preview; nobody recognises `com.apple.Preview` or
+    /// `/System/Applications/Preview.app`. This reads the bundle rather than
+    /// asking `NSFileManager` for a display name, because the display name
+    /// follows the Finder preference for showing every filename extension and
+    /// becomes `Preview.app` for a person who has turned it on. What the bundle
+    /// calls itself does not move.
+    ///
+    /// `CFBundleDisplayName` first and `CFBundleName` after it: the first is
+    /// what most applications carry, and `DiskImageMounter`, which opens a `dmg`,
+    /// carries only the second. Where the bundle gives neither, nothing is
+    /// shown rather than the path or the identifier — DESIGN.md §3 again.
+    pub fn display_name(application: &NSURL) -> Option<String> {
+        let bundle = NSBundle::bundleWithURL(application)?;
+        for key in ["CFBundleDisplayName", "CFBundleName"] {
+            let value = bundle.objectForInfoDictionaryKey(&NSString::from_str(key));
+            let Some(name) = value.and_then(|v| v.downcast::<NSString>().ok()) else {
+                continue;
+            };
+            let name = name.to_string();
+            if !name.is_empty() {
+                return Some(name);
+            }
+        }
+        None
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::extension_of;
+
+        /// A name that is all name gives nothing, rather than the whole of it
+        /// being handed to Launch Services as though it were an extension.
+        #[test]
+        fn a_name_without_an_extension_gives_nothing() {
+            assert_eq!(extension_of("README"), None);
+        }
+
+        /// A leading dot makes a hidden file, not an extension, and asking
+        /// about `bash_profile` would be asking about the wrong thing.
+        #[test]
+        fn a_leading_dot_is_not_an_extension() {
+            assert_eq!(extension_of(".bash_profile"), None);
+        }
+
+        /// A name ending in a bare dot has an extension of no characters, and
+        /// `UTType` answers nothing for it. Refused here so that the question
+        /// is never asked rather than asked and discarded.
+        #[test]
+        fn a_trailing_dot_gives_nothing() {
+            assert_eq!(extension_of("archive."), None);
+        }
+
+        /// The last extension is the one the platform answers for: macOS opens
+        /// `a.tar.gz` with what claims `gz`, and answering for `tar` would name
+        /// the wrong application.
+        #[test]
+        fn the_last_extension_of_a_compound_name_wins() {
+            assert_eq!(extension_of("a.tar.gz"), Some("gz"));
+        }
+
+        /// A separator means this is not a payload's name — `check_payload_name`
+        /// rejects every one — and taking the extension from it would answer
+        /// about a path this application was never given.
+        #[test]
+        fn a_name_carrying_a_separator_is_refused() {
+            assert_eq!(extension_of("/etc/passwd.pdf"), None);
+            assert_eq!(extension_of("dir\\report.pdf"), None);
+        }
+
+        /// The extension is passed on as it was written. Launch Services is
+        /// case-insensitive — `REPORT.PDF` and `report.pdf` both answer
+        /// Preview — so folding the case here would be work that changes no
+        /// answer.
+        #[test]
+        fn the_case_of_an_extension_is_left_alone() {
+            assert_eq!(extension_of("REPORT.PDF"), Some("PDF"));
         }
     }
 }

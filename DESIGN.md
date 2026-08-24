@@ -26,6 +26,8 @@ The specification in `excelano/slipcase` is the authority on the format, and thi
 - **Launching the payload** — `opener`, which hands a path to the platform's own mechanism.
 - **TOML** — none taken directly. `slpc` re-exports the `toml_edit` it is built on.
 
+**Amended: answering on macOS costs four dependencies.** `§3` describes the platform question as one function returning an optional string, which on Linux it is, because `xdg-mime` is a command and costs nothing to ask. Launch Services is a C API and `#![forbid(unsafe_code)]` is a property of this crate's own source, so the question goes through `objc2`, `objc2-foundation`, `objc2-app-kit`, and `objc2-uniform-type-identifiers`, which carry that unsafe on our behalf the way `rfd` and `opener` already do. Every call `src/opens_with.rs` makes into them is a safe function, and the module compiles under `forbid` with no unsafe block in it. Three of the four are already in the tree on that target under `winit`, `rfd`, and `arboard`, so one crate is new. Their features are named rather than taken, and not for weight alone: `cargo add` enables 176 features of `objc2-foundation`, and rustc 1.98.0 on `x86_64-apple-darwin` segfaults inside LLVM's debug information emission compiling that, at the default stack size and again at the larger one it suggests. Nothing added here compiles C.
+
 **Nothing compiles C.** `cc`, `cmake`, `pkg-config`, and `bindgen` are all absent from the build-dependency tree. `wayland-sys` and `linux-raw-sys` are declaration crates that resolve their symbols at run time. A build needs a Rust toolchain and nothing else.
 
 **It cross-compiles.** `cargo check --target x86_64-pc-windows-msvc` succeeds on a Linux machine carrying no MSVC toolchain.
@@ -47,6 +49,8 @@ A single window.
 **There is no preview surface.** It keeps this a small, pure-Rust, single-binary application. Text and image preview may be added later if they are wanted; PDF, office, and CAD are out permanently.
 
 **What the card says about type is what the platform says.** The application ships no table mapping filenames to types. On Linux the question goes to `xdg-mime`, on macOS to Launch Services, on Windows to `AssocQueryString`, each behind one function returning an optional string. Where the platform will not answer, the card says nothing rather than guessing, and the Open button still works.
+
+**Amended: the two platforms that answer do not answer alike, and one of them invents.** `data.bin` is the case. Linux declines it, because nothing claims that name and the two placeholders `mime_of` writes then disagree, while macOS names Archive Utility, because `com.apple.macbinary-archive` is declared for that extension whether or not the payload is one. Both are the platform's own answer rather than this application's, which is what this section asks for, so the same container legitimately reads differently on two machines. Where macOS knows nothing of an extension it does not decline either: it synthesises a dynamic type, `dyn.ah62d4rv4ge81g5duqq` for `slpc` until `§8` registers one. Nothing claims a synthesised type, so Launch Services names no application and the card is silent for the right reason without this code having to inspect the type. A declared type reaching no application is that same silence, measured on `xlsx` on a machine carrying nothing that opens it.
 
 **Accessibility.** `eframe` enables AccessKit by default and it stays on.
 
