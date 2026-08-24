@@ -41,3 +41,13 @@ opener = "0.8"
 # readable by everyone on the machine. `TempDir` is 0700 and unguessable, and
 # removes its tree when it drops. DESIGN.md §5.
 tempfile = "3.27"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# What the platform would open a payload with, which on Windows is a question
+# for the registry. `AssocQueryString` is the textbook answer and is a raw FFI
+# call this crate cannot make under `#![forbid(unsafe_code)]`; this is a safe
+# API over the same hive, with its unsafe inside it as `rfd` and `opener`
+# already have theirs. Pure Rust, no build script, and its three dependencies
+# were already in the tree under `eframe`, so it compiles one new crate.
+# DESIGN.md §3.
+windows-registry = "0.6.1"

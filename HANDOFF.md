@@ -23,11 +23,21 @@ rule in this area with no exceptions.
 
 ## What is missing
 
-`src/opens_with.rs` returns `None` on macOS and on Windows. The card then says
-nothing about type, which the design permits where the platform will not answer
-but not as a way of never asking.
+`src/opens_with.rs` returns `None` on macOS. The card then says nothing about
+type, which the design permits where the platform will not answer but not as a
+way of never asking.
+
+Windows answers, as of `HANDOFF-windows.md` task 1. It reads the registry along
+the path the shell takes rather than calling `AssocQueryString`, which is a raw
+call this crate cannot make; DESIGN.md §3 carries the amendment and the
+measurement behind it. Task 2 there — packaging and file association — is not
+started.
 
 Neither platform has any packaging at all.
+
+`CHECKLIST.md` is named by this file's conventions, by `CLAUDE.md`, and by both
+briefs, and has never been in this repository. Whoever writes the first one is
+starting it rather than adding to it.
 
 ## The briefs
 
