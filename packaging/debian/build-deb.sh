@@ -90,6 +90,21 @@ sed -e "s/@VERSION@/${version}/" -e "s/@ARCH@/${arch}/" \
     -e "s/@SIZE@/$(du -ks "${stage}/usr" | cut -f1)/" \
     "${here}/control.in" > "${stage}/DEBIAN/control"
 
+
+# `dpkg -V` verifies an installed copy against this file, and its absence is
+# what lintian tags `no-md5sums-control-file`. Generated after the strip above,
+# so the hash recorded is the hash of the binary that actually ships. `%P`
+# prints the path without the leading `./` that dpkg does not want, and
+# `DEBIAN` is excluded because a package does not checksum its own control
+# files.
+(
+    cd "$stage"
+    find . -type f ! -path './DEBIAN/*' -printf '%P\0' \
+        | sort -z \
+        | xargs -0 --no-run-if-empty md5sum > DEBIAN/md5sums
+)
+chmod 0644 "${stage}/DEBIAN/md5sums"
+
 mkdir -p "$outdir"
 dpkg-deb --root-owner-group --build "$stage" "${outdir}/${name}.deb" >/dev/null
 echo "${outdir}/${name}.deb"
