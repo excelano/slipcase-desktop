@@ -149,11 +149,13 @@ that had already been pushed, which cost a rewrite and a force-push. Read what
 you are about to commit rather than trusting what the harness composed.
 
 **Some things only a hand can test.** `CHECKLIST.md` at the root is the record.
-On Linux the walkthrough found seven defects that the tests and the corpus
-could not reach — layout geometry, font coverage, frame timing, and controls
-that were drawn but did nothing; on Windows it found two more, a console window
-behind the application and a window with no icon. Add a section for anything
-you build that only a hand can check, and run it.
+On Linux it found eight defects the tests and the corpus could not reach, then
+three more when the association was walked; on Windows two, a console window
+behind the application and a window with no icon; on macOS the refusal a
+double-click produced. They are enumerated there rather than counted here,
+because the count in this paragraph was wrong for three days and nobody could
+tell, the list having never been written down. Add a section for anything you
+build that only a hand can check, run it, and write down what it found.
 
 ---
 

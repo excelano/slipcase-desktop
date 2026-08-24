@@ -4,8 +4,7 @@
 existed. It did not: `git log --diff-filter=A` finds no commit that ever added
 it. Windows wrote the first section, macOS the second, and Linux the third,
 after running the association walkthrough that the other two had already been
-through. What Linux still owes is narrower: the seven defects its first
-walkthrough found are recorded in commit messages rather than here.
+through.
 
 A section per platform. Each item says what to do, what should happen, and —
 where a run found something — what actually happened.
@@ -128,6 +127,38 @@ does not notice: GNOME reads the mime database once per session.
 11. `md5sum -c` the extracted tree against the package's own `md5sums`, then
     change a byte and watch it fail.
 
+### What the first walkthrough found
+
+All fixed in August, listed here because a count is not a record and the count
+this file carried was wrong. Eight defects across six commits, none of which
+59 tests or the conformance corpus could reach.
+
+1. The window reported as hung while the file dialog was open, and GNOME
+   offered to force quit it. The dialog blocks in another process, so blocking
+   here bought nothing and cost the compositor its answers. `e02af29`
+2. Integers drew hard against the right edge, past the end of the row and
+   invisible inside a scroll area that scrolls both ways. `eb246e1`
+3. The buttons that remove a key drew as empty squares and read as checkboxes:
+   U+2715 is in none of egui's default fonts. `71f3643`
+4. A refused date said so in weak grey text that nobody notices. `71f3643`
+5. `9:00` was refused where `19:00` was accepted, because TOML wants two digits
+   in an hour and nothing said so. `f885ff2`
+6. The refusal message appeared for one frame and vanished, while the text it
+   was about stayed on screen. `f885ff2`
+7. Keys inside an inline table carried add, rename, and remove buttons that did
+   nothing at all. `609f263`
+8. Saving into a read-only directory did nothing and said nothing. `c2be197`
+
+Seven if 4 and 5 are folded together, which is defensible — the same field in
+the same sitting, split across two commits only because the colour was fixed
+before the parsing was. Written as eight here because the list is the record
+and the number is not.
+
+One further finding is not a defect of ours: dropping a file on the window does
+nothing, because winit 0.30's Wayland backend carries no data-device plumbing
+and `DroppedFile` reaches only its X11 backend. Unexercised rather than wrong,
+and it wants trying under X11.
+
 ### What the association run found
 
 Three defects. All three passed 59 tests, the whole conformance corpus, and a
@@ -158,9 +189,6 @@ installed copy. Found by looking inside the archive rather than by any test.
 - **A second desktop.** Everything above is GNOME on Wayland with Adwaita. The
   icon defect was a property of which theme carried which name, so KDE or XFCE
   could reach a different answer by the same mechanism.
-- **The seven defects the first walkthrough found** — layout geometry, font
-  coverage, frame timing, and controls drawn but inert — are recorded in
-  `git log` and still not reconstructed here.
 
 ---
 
