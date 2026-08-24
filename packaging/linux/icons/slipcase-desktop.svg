@@ -1,17 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--
-  Slipcase: a card sliding into an open-topped case.
-
-  Author: David M. Anderson
-  Built with AI assistance (Claude, Anthropic)
-
-  Drawn on a 64-unit grid with 3-unit strokes, so it survives the 16-pixel size
-  a file manager uses in a list. The card is drawn first and the case over it,
-  which is what puts the card inside rather than in front. Two shapes and one
-  band: anything finer than this is mud at 16 pixels, which is where it was
-  checked.
--->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!--
+    Slipcase: a card sliding into an open-topped case.
+
+    Author: David M. Anderson
+    Built with AI assistance (Claude, Anthropic)
+
+    This comment is inside the element rather than above it, and that is not a
+    style choice. gdk-pixbuf decides a file's format by sniffing for `<svg`
+    near the start, and the window is 256 bytes: the same drawing loads with
+    `<svg` at byte 256 and fails at 300, measured by moving it. With this
+    comment above the opening tag `<svg` began at byte 502, gdk-pixbuf refused
+    the file as an unrecognised format, and every file manager fell back to the
+    generic archive icon. `rsvg-convert` parses rather than sniffs, so it
+    rendered the file perfectly throughout and the defect survived being
+    checked at four sizes. Keep the opening tag on the second line.
+
+    Drawn on a 64-unit grid with 3-unit strokes, so it survives the 16-pixel
+    size a file manager uses in a list. The card is drawn first and the case
+    over it, which is what puts the card inside rather than in front. Two
+    shapes and one band: anything finer than this is mud at 16 pixels, which is
+    where it was checked.
+  -->
   <g stroke="#2f3337" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">
     <!-- The card, protruding well above the case's mouth. -->
     <rect x="20" y="4" width="25" height="36" rx="2" fill="#f2ece1"/>
