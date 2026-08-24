@@ -139,6 +139,15 @@ as a record.
 characters, prose body with the measurement and the alternatives rejected. Read
 `git log` before writing your first one.
 
+**The trailer block is one line.** A `Co-Authored-By` naming the model, and
+nothing under it. Some harnesses also append a `Claude-Session:` line carrying a
+URL, and a co-author naming a context window rather than a model. This
+repository is public, so a session URL in a commit message is a private
+identifier written into a permanent public record for no reader's benefit. Both
+have now been stripped from this history twice, the second time from commits
+that had already been pushed, which cost a rewrite and a force-push. Read what
+you are about to commit rather than trusting what the harness composed.
+
 **Some things only a hand can test.** `CHECKLIST.md` at the root is the record.
 On Linux the walkthrough found seven defects that the tests and the corpus
 could not reach — layout geometry, font coverage, frame timing, and controls
