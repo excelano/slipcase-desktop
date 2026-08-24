@@ -19,6 +19,18 @@
     <sub-class-of type="application/zip"/>
     <glob pattern="*.slpc"/>
     <icon name="application-x.slipcase+zip"/>
-    <generic-icon name="package-x-generic"/>
+    <!--
+    Our own icon rather than `package-x-generic`, and the reason is a property
+    of how GTK searches. GIO hands the file manager the whole name list at
+    once, and GTK4 searches theme-major: it looks for every name in Adwaita
+    before it looks for any name in hicolor. `package-x-generic` exists in
+    Adwaita and this icon exists only in hicolor, so the generic won on every
+    lookup regardless of the order here, and every container drew as a plain
+    archive. Measured both ways — paired with a name that exists nowhere, this
+    icon is found; paired with any name Adwaita carries, it is not. Naming the
+    specific icon here leaves no name for Adwaita to answer, so hicolor is
+    reached and the drawing appears.
+    -->
+    <generic-icon name="application-x.slipcase+zip"/>
   </mime-type>
 </mime-info>
