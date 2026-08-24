@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The bundle's property list. `build-app.sh` substitutes @VERSION@ from
+  Cargo.toml, the way `packaging/debian/control.in` is substituted.
+
+  Two declarations do the association, and they are not the same thing.
+  `UTExportedTypeDeclarations` says what a slipcase container *is*, and it is
+  exported rather than imported because this application defines the type:
+  SPEC 4 is the authority and it lives in `excelano/slipcase`, not in somebody
+  else's product. `CFBundleDocumentTypes` says that this application handles
+  that type. A bundle carrying only the second claims documents it never
+  defined; one carrying only the first defines a type nothing opens.
+
+  `com.excelano.slipcase` names the format and `com.excelano.slipcase-desktop`
+  names the application, which are different things and get different
+  identifiers. The second is the reverse-DNS of `APP_ID` in `src/main.rs`, so
+  the binary, the Linux desktop entry, and this bundle all say
+  `slipcase-desktop` and only the product name differs.
+
+  `LSMinimumSystemVersion` is 12.0 because `src/opens_with.rs` calls
+  `-[NSWorkspace URLForApplicationToOpenContentType:]`, which is macOS 12 and
+  later. It is a measured floor rather than a guess: see `packaging/macos/README.md`
+  for what happens below it.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>slipcase-desktop</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.excelano.slipcase-desktop</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+
+	<!--
+	  "Slipcase" rather than the crate name, which is DESIGN.md 8's naming
+	  rule and the same choice `eframe::run_native` already makes for the
+	  window title. `display_name` in `src/opens_with.rs` reads
+	  CFBundleDisplayName first, so once this bundle is registered a
+	  container carrying a `.slpc` payload reports Slipcase by the same path
+	  that reports Preview for a PDF.
+	-->
+	<key>CFBundleName</key>
+	<string>Slipcase</string>
+	<key>CFBundleDisplayName</key>
+	<string>Slipcase</string>
+
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>CFBundleIconFile</key>
+	<string>slipcase-desktop</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+
+	<!--
+	  The role is Editor rather than Viewer. DESIGN.md 5 writes edited
+	  metadata back into the container through `Destination`, so this
+	  application does modify the documents it opens, and Viewer would be a
+	  claim to the platform that is not true. The cost of Editor is that
+	  macOS offers Slipcase in more places, and it is bounded: the only type
+	  claimed here is the one declared below, so nothing but a `.slpc` is
+	  affected.
+
+	  LSHandlerRank is Owner because the exported declaration below is this
+	  application's own. An application that merely opened somebody else's
+	  format would rank Alternate.
+	-->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Slipcase container</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.excelano.slipcase</string>
+			</array>
+			<key>CFBundleTypeIconFile</key>
+			<string>slipcase-desktop</string>
+		</dict>
+	</array>
+
+	<!--
+	  Conformance to `public.zip-archive` is the macOS half of what
+	  `sub-class-of application/zip` does on Linux, and it is true for the
+	  same reason: a container is a ZIP, so an archive tool has something to
+	  offer and a Mac that has never heard of a slipcase is not stuck.
+
+	  `public.data` is listed although `public.zip-archive` already conforms
+	  to it. It is stated rather than inherited because a container is a
+	  file of bytes whatever else it is, and a reader of this file should not
+	  have to walk Apple's conformance tree to learn that.
+
+	  The extension and the media type are both SPEC 4's and neither is
+	  invented here. There is no magic-bytes tag, for the same reason the
+	  Linux media type carries no `<magic>`: SPEC 4 reserves none, and a
+	  container is identified by opening it and finding a conformant
+	  metadata member, which is not a question Launch Services can ask.
+	-->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.excelano.slipcase</string>
+			<key>UTTypeDescription</key>
+			<string>Slipcase container</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.zip-archive</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeIconFile</key>
+			<string>slipcase-desktop</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>slpc</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/x.slipcase+zip</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
+</plist>

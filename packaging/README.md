@@ -3,9 +3,8 @@
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
 distributed.
 
-Only `linux` and `debian` exist. macOS and Windows are briefed in
-`HANDOFF-macos.md` and `HANDOFF-windows.md` at the root of the repository, and
-neither has ever been built.
+Windows does not exist yet and is briefed in `HANDOFF-windows.md` at the root of
+the repository.
 
 ## linux
 
@@ -28,6 +27,20 @@ Check that it took:
 
 Before the media type is installed a `.slpc` reports as `application/zip`, which
 is true and useless: it is what every slipcase is underneath.
+
+## macos
+
+The application bundle, the exported type declaration, and the icon:
+
+    cargo build --release
+    ./packaging/macos/build-app.sh
+
+`packaging/macos/README.md` is the detail, including two things worth knowing
+before reading anything else. A double-clicked container is refused with an error
+dialog, because macOS delivers an opened document as an Apple Event rather than
+as `argv[1]` and receiving one would need unsafe code in this crate. And `mdls`
+reports the wrong type for a `.slpc` even after the bundle is registered, while
+Launch Services reports the right one. Both are measured and neither is hidden.
 
 ## debian
 

@@ -5,18 +5,19 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 
 ---
 
-## If you are on macOS or Windows, you have a brief
+## If you are on Windows, you have a brief
 
-This application was written, built, and tested entirely on Linux. Two platforms
-have never drawn a frame of it, and each has a task waiting.
+This application was written, built, and tested on Linux, and macOS has since
+been done on a Mac. Windows has never drawn a frame of it and has a task
+waiting.
 
-- **macOS** — read `HANDOFF-macos.md`, then `HANDOFF.md` for context.
 - **Windows** — read `HANDOFF-windows.md`, then `HANDOFF.md` for context.
-- **Linux** — nothing is waiting; `HANDOFF.md` says what the other two owe.
+- **macOS** — nothing is waiting. `packaging/macos/README.md` says what was
+  found there, including two things measured and left unresolved.
+- **Linux** — nothing is waiting; `HANDOFF.md` says what Windows still owes.
 
-Take your own platform's brief and leave the other alone. They touch different
-`#[cfg]` arms of `src/opens_with.rs` and different directories under
-`packaging/`, so they do not conflict, but only if each stays inside its own.
+Stay inside your own platform's `#[cfg]` arm of `src/opens_with.rs` and your own
+directory under `packaging/`.
 
 ---
 
@@ -43,13 +44,16 @@ of why everything is the way it is, and it is written to be read.
 
     cargo build                   # debug
     cargo build --release
-    cargo test                    # 59 tests
+    cargo test                    # 59 on Linux, 63 on macOS: the count is
+                                  # platform-specific, because each platform's
+                                  # arm of opens_with.rs carries its own tests
     cargo clippy --all-targets    # must be silent
-    cargo check --target x86_64-pc-windows-msvc   # cross-check, succeeds on Linux
+    cargo check --target x86_64-pc-windows-msvc   # cross-check, from Linux or macOS
 
     cargo run --example opens-with -- report.pdf notes.txt data.bin
     ./packaging/linux/install.sh          # Linux desktop integration
     ./packaging/debian/build-deb.sh       # the .deb, after a release build
+    ./packaging/macos/build-app.sh        # Slipcase.app, after a release build
 
 **The conformance corpus is a command and never a test.** It needs a checkout of
 `excelano/slipcase` with its cases generated, which `cargo test` does not imply,
