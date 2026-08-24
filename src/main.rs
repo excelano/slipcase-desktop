@@ -3,7 +3,13 @@
 // Author: David M. Anderson
 // Built with AI assistance (Claude, Anthropic)
 
-#![forbid(unsafe_code)]
+// `deny` rather than `forbid`, and the difference is the whole of the
+// exception. `forbid` cannot be lifted anywhere beneath it, and receiving a
+// document from macOS needs one Objective-C method, which cannot be written
+// without `unsafe`. Every module below is still denied; `opened_document` is
+// the single `allow`, and `src/lib.rs` — which is where containers are
+// actually read and written — keeps `forbid` untouched. DESIGN.md §2.
+#![deny(unsafe_code)]
 #![warn(clippy::pedantic)]
 // Windows creates a console for a console-subsystem process, and a file
 // manager launching this one is not attached to a terminal, so double-clicking
@@ -12,6 +18,13 @@
 // ignored everywhere else, and it is off in a debug build because that is
 // where a panic message still has somewhere to go.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+// The one exception to `deny(unsafe_code)` above, and the only module in this
+// application that writes `unsafe`. macOS is the only platform of the three
+// that does not deliver a double-clicked container as `argv[1]`.
+#[cfg(target_os = "macos")]
+#[allow(unsafe_code)]
+mod opened_document;
 
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -173,6 +186,14 @@ fn main() -> eframe::Result {
         None => viewport,
     };
 
+    // Before `eframe`, because macOS dispatches the document that launched this
+    // application before `eframe`'s creation closure is reached, and AppKit's
+    // own handler refuses it there. Measured both ways: registering later
+    // opened a container double-clicked into a running window and lost the one
+    // that started it.
+    #[cfg(target_os = "macos")]
+    opened_document::watch();
+
     let options = eframe::NativeOptions {
         viewport,
         ..Default::default()
@@ -183,7 +204,17 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "Slipcase",
         options,
-        Box::new(move |_cc| {
+        Box::new(move |cc| {
+            // After AppKit has installed its own handler for this event, which
+            // is the one that was refusing the document, and so late that the
+            // window exists to be woken. macOS only: the other two platforms
+            // read the path out of `argv` above and never reach this, which is
+            // why the binding has to be spent explicitly on them.
+            #[cfg(target_os = "macos")]
+            opened_document::wake_with(&cc.egui_ctx);
+            #[cfg(not(target_os = "macos"))]
+            let _ = cc;
+
             Ok(Box::new(App {
                 opened,
                 scratch: None,
@@ -721,9 +752,36 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// A container macOS asked this application to open.
+    ///
+    /// Polled rather than read once at startup, because unlike `argv[1]` on the
+    /// other two platforms this arrives after the window is up, and arrives
+    /// again every time somebody double-clicks a container while this is
+    /// already running.
+    ///
+    /// Nothing is taken while a dialog is up, for the reason `poll_picking`
+    /// exists: the container waits rather than replacing what a person is in
+    /// the middle of choosing, and `taken` consumes, so asking early would lose
+    /// it rather than defer it.
+    #[cfg(target_os = "macos")]
+    fn poll_opened_document(&mut self) {
+        if self.picking.is_some() {
+            return;
+        }
+        if let Some(path) = opened_document::taken() {
+            // The same as choosing it in the dialog, because to a person it is:
+            // the next Open should start in the folder they opened this from,
+            // whether they reached it through Finder or through the dialog.
+            last_folder::write(&path);
+            self.show(Opened::open(path));
+        }
+    }
+
     fn render(&mut self, ui: &mut egui::Ui) {
         self.poll();
         self.poll_picking();
+        #[cfg(target_os = "macos")]
+        self.poll_opened_document();
         // A copy under way is the one thing here that changes without anybody
         // touching the window, so it is the one thing that has to ask to be
         // drawn again.

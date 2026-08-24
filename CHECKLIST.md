@@ -3,8 +3,9 @@
 `CLAUDE.md` and both handoff briefs have referred to this file since before it
 existed. It did not: `git log --diff-filter=A` finds no commit that ever added
 it, and the seven defects the Linux walkthrough is said to have found are
-recorded in commit messages rather than here. This is the first one, and it
-starts with Windows because that is the platform that had never drawn a frame.
+recorded in commit messages rather than here. Windows wrote the first section,
+macOS the second, and Linux still owes the one whose defects the paragraph above
+is about.
 
 A section per platform. Each item says what to do, what should happen, and —
 where a run found something — what actually happened.
@@ -86,4 +87,72 @@ there is a job for whoever next has the platform in front of them.
 
 ## macOS
 
-Nothing has run. `HANDOFF-macos.md` has the brief.
+Run against a bundle, because almost nothing below is true of a bare
+executable: it has no bundle identifier, Launch Services files it as a nameless
+foreground process, and nothing can be associated with it.
+
+    cargo build --release
+    ./packaging/macos/build-app.sh
+    /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f dist/Slipcase.app
+
+### The association
+
+1. **Finder draws the icon.** Put a `.slpc` in a folder and look at it as an
+   icon and in list view. Both should show the card-in-a-case rather than the
+   blank page macOS gives an unknown extension.
+2. **Get Info names the type.** The Kind should read `Slipcase container`,
+   which is the bundle's own `UTTypeDescription`, not `Document` and not
+   `slpc File`.
+3. **Double-clicking opens the container, cold.** With Slipcase *not* running,
+   double-click a `.slpc`. The window should come up showing that container —
+   its name, `conformant`, the payload card, the tree — and **no dialog**. The
+   failure this guards against is specific and was the state of things for a
+   while: *The document could not be opened. Slipcase cannot open files in the
+   "Slipcase container" format.*
+4. **Double-clicking opens the container, warm.** With Slipcase already running
+   and a different container open, double-click another. It should replace what
+   is on screen. This is a different code path from the cold launch and one of
+   the three registration moments passes it while failing the cold one, so
+   testing only this would have hidden the defect.
+5. **The Open dialog starts where Finder was.** After opening a container by
+   double-clicking, press Open a slipcase. The dialog should start in that
+   container's folder.
+6. **The card names an application for the payload.** A container carrying
+   `report.pdf` should say Preview. Silence is legitimate for a payload nothing
+   is registered for, so use a name the machine has an association for.
+7. **A container opens Slipcase from the card.** With a `.slpc` as the payload
+   of another container, the card should say `Slipcase`, which is this bundle
+   naming itself through the same code that names Preview.
+
+### What the first run found
+
+The first thing a hand found here was not in the application at all. The
+walkthrough could not be run by machine: `screencapture` returns the desktop
+and the menu bar with every window omitted unless the terminal has been given
+Screen Recording permission, and it reports no error when it does that. Two
+captures of a screen with windows on it came back byte-identical and empty,
+which is the only tell.
+
+The double-click was the defect, and it took a person pressing it to find. The
+tests, the corpus, and every command-line check passed while it was broken:
+`open some.slpc` returns zero and the process starts, and the refusal is a
+dialog that a terminal cannot see. It was recorded here as opening an empty
+window before a person looked and read out the actual message.
+
+A test fixture was wrong in a way that looked like an application defect. The
+first container carried a hand-written stub `report.pdf` with no xref table,
+and Preview refused it. Preview was right. Payloads for this walkthrough are
+made with `cupsfilter` now, and the round trip is checked byte for byte before
+the container is used.
+
+### Not yet done by hand
+
+- **A high-density display.** Every size above was checked on a 2560x1440
+  display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
+  ones has been looked at on a display that would ask for one.
+- **A signed bundle.** Everything above is an unsigned bundle that never left
+  the machine that built it. `mdls` reporting the wrong type is suspected to be
+  a consequence of that and is untested either way.
+- **A downloaded bundle**, carrying `com.apple.quarantine`, to see what
+  Gatekeeper actually shows a person rather than what `spctl` reports.
+- **A second user account**, and an upgrade over an existing install.

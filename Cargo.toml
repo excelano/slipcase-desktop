@@ -55,16 +55,19 @@ tempfile = "3.27"
 # compiling that. The narrow set below is also what the rest of the tree
 # already enables.
 [target.'cfg(target_os = "macos")'.dependencies]
+# The block the notification observer below is given. Already in the tree
+# under `rfd` and `objc2-foundation`, so this compiles nothing new.
+block2 = "0.6"
 # `Retained`, which the other three return and none of them re-export.
 objc2 = { version = "0.6", default-features = false, features = ["std"] }
 # `UTType`, which turns a filename extension into a type without a file.
 objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType"] }
 # `NSWorkspace`, which names the application for a type. The feature named
 # after the crate above is what exposes the query that takes a `UTType`.
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "objc2-uniform-type-identifiers"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "NSApplication", "NSResponder", "objc2-uniform-type-identifiers"] }
 # `NSBundle`, for what an application calls itself, and the strings and URLs
 # the other two speak in.
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "block2", "objc2-core-services"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Reading the window's icon out of the `.ico` the installer also registers.

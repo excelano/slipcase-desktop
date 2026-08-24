@@ -51,25 +51,29 @@ which builds the `.icns`, both stock. `build-app.sh` renders the ten sizes and
 checks each one, because `sips` rasterizes at the size the document declares and
 would otherwise upscale a 64-pixel bitmap in silence.
 
-Two things there are measured and unresolved rather than fixed, both in
-`DESIGN.md` §8. **A double-clicked container is refused with an error dialog**,
-because macOS delivers an opened document as an Apple Event rather than as
-`argv[1]` and winit 0.30.13 exposes no hook for one. This is the one place the
-three platforms differ on the argument path: Linux and Windows both hand the
-path over as `argv[1]` and open the container. And **`mdls` reports the
-synthesised type** for a `.slpc` after registration while Launch Services
-reports the declared one, most likely because an unsigned bundle's exported type
-is flagged `untrusted`.
+**Double-clicking opens the container**, which took three attempts and one
+agreed exception to the unsafe rule. macOS is the only one of the three that
+does not hand the path over as `argv[1]`: it sends an Apple Event, nothing was
+listening, and Finder blamed the application for a format its own bundle
+declared. `src/opened_document.rs` listens, through the Apple Event manager
+rather than the application delegate winit owns. Registering at
+`applicationWillFinishLaunching:` is the only moment that works, and the two
+that do not are tabulated in `packaging/macos/README.md`.
+
+One thing there is measured and unresolved. **`mdls` reports the synthesised
+type** for a `.slpc` after registration while Launch Services reports the
+declared one, most likely because an unsigned bundle's exported type is flagged
+`untrusted`.
 
 `DESIGN.md` §2, §3, and §8 carry every amendment and the measurements behind
 them.
 
 ## What is missing
 
-Nothing is waiting on a platform. The one thing outstanding is the macOS Apple
-Event above, which is not a platform's task but a constraint: receiving the
-document needs an `NSApplicationDelegate` method, and that needs unsafe code in
-this crate.
+Nothing is waiting on a platform, and all three now open a double-clicked
+container. What is left is a signature: an unsigned bundle is refused by
+Gatekeeper on any machine that did not build it, which also looks like the
+reason Spotlight will not take the exported type.
 
 ## Something this file used to be wrong about
 

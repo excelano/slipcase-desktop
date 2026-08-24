@@ -97,52 +97,47 @@ what an unsigned bundle's exported type gets, and that is the likeliest reason
 Spotlight will not take it. Untested, because testing it needs a signature. If
 you sign the bundle, check `mdls` again and record what changed.
 
+## The double-click, and the three attempts it took
+
+**A double-clicked container opens.**
+This section used to say it could not be done. It could.
+
+macOS does not deliver an opened document as `argv[1]` the way Linux and
+Windows do; it launches the application with no arguments at all and sends an
+Apple Event. Nothing was listening, so `AppKit` refused it and Finder reported
+*The document could not be opened. Slipcase cannot open files in the "Slipcase
+container" format* — an accusation against an application whose association was
+correct all along.
+
+`src/opened_document.rs` listens now. It handles the event rather than
+replacing the application delegate: `NSApplication` has exactly one delegate and
+winit owns it, but `NSAppleEventManager` takes a handler directly and a
+notification has any number of observers, so nothing of winit's is displaced.
+It is the one module in this application that writes `unsafe`, and `CLAUDE.md`
+says what that costs.
+
+**The moment of registration is the whole problem.** Two of the three plausible
+moments fail, and both were measured rather than reasoned about:
+
+| Registered | Cold launch | Double-clicked into a running window |
+|---|---|---|
+| Before `NSApplication` exists | refused | refused |
+| At `applicationWillFinishLaunching:` | **opens** | **opens** |
+| From `eframe`'s creation closure | refused | opens |
+
+The first fails because `AppKit` installs its own handler for this event while
+starting up and overwrites anything earlier — and its handler is the one that
+refuses. The third fails because the launch document has already been dispatched
+and refused by then. An instrumented run showed the handler firing *before*
+`eframe`'s creation closure was reached, which is the ordering that explains
+both. The middle row is where Apple's own documentation says to install Apple
+Event handlers, and it is reached here through an observer on
+`NSApplicationWillFinishLaunchingNotification`.
+
+A container opened this way also records its folder for the Open dialog, the
+same as one chosen in the dialog, because to a person it is the same act.
+
 ## What is not done
-
-**A double-clicked container is refused with an error dialog.** This is a defect
-and it is named here rather than hidden. What a person sees is:
-
-> The document "a-pdf.slpc" could not be opened. Slipcase cannot open files in
-> the "Slipcase container" format.
-
-The association is not what fails. That dialog names **Slipcase container**,
-which is this bundle's own `UTTypeDescription`, so Launch Services resolved the
-file to this type and to this application before saying it. Asked directly,
-`URLForApplicationToOpenURL` on the file returns `Slipcase.app`.
-
-What fails is delivery. macOS hands an opened document to a running application
-as an Apple Event rather than as `argv[1]`, and `main` reads
-`std::env::args_os().nth(1)`. Measured: `open some.slpc` launches Slipcase with
-**no arguments at all**. AppKit then finds no delegate willing to take the
-document, refuses the event, and Finder reports the refusal in the words above.
-The application is running behind that dialog, showing its empty state.
-
-An earlier version of this file said the double-click merely opened an empty
-window. That was measured from the command line, where the process starts and
-the exit status is zero, and it missed the dialog. The empty window is real and
-it is the smaller half of what happens.
-
-Receiving it needs `application:openURLs:` on an `NSApplicationDelegate`. winit
-0.30.13 installs its own `WinitApplicationDelegate`, which implements
-`applicationDidFinishLaunching:` and `applicationWillTerminate:` and nothing
-else, and calls `setDelegate` itself, so a second delegate would displace
-winit's own. eframe adds nothing. Implementing the method here would mean
-`unsafe impl NSApplicationDelegate` in this crate's source, and
-`#![forbid(unsafe_code)]` is the rule with no exceptions.
-
-So this is not worked around. It belongs upstream in winit, and until it is
-there the association still earns its place: the type resolves, the icon is
-declared and registered against it, and opening the application and using its
-own Open dialog works.
-
-The bundle itself is sound, and the gap is only in that one delivery path.
-`argv` still reaches it when something passes one:
-
-    open -a dist/Slipcase.app --args some.slpc
-
-which loads the container. That is the way to exercise a bundled build while
-the Apple Event is unhandled, and it is not a fix: nobody double-clicks with
-`--args`.
 
 **Code signing and notarization are out of scope**, and here is the measurement
 so the decision has evidence behind it. `spctl -a -t exec` reports `rejected`,

@@ -81,9 +81,23 @@ ask `cargo metadata` rather than guessing.
 
 ## Rules with no exceptions
 
-**`#![forbid(unsafe_code)]` stays.** It is a property of this crate's own source.
-A dependency containing unsafe on our behalf is fine — `rfd` and `opener`
-already do.
+**Unsafe code has exactly one home, and it is named.** A dependency containing
+unsafe on our behalf is fine and always was — `rfd`, `opener`, and the `objc2`
+crates all do. What this rule is about is unsafe in this crate's own source.
+
+`src/lib.rs`, where containers are read and written, is `#![forbid(unsafe_code)]`
+and that does not move. `src/main.rs` is `#![deny(unsafe_code)]`, and the
+difference between the two words is the whole exception: `forbid` cannot be
+lifted beneath it and `deny` can. Exactly one module lifts it,
+`src/opened_document.rs`, carrying `#[allow(unsafe_code)]` on its declaration.
+
+It exists because macOS is the only platform of the three that does not deliver
+a double-clicked container as `argv[1]`, and receiving one needs an Objective-C
+method. This was documented as impossible before it was done, and both the
+attempt and the correction are in `git log`. Adding a second such module is a
+decision to take with David, not one to take because there is precedent.
+
+The rest of this section still has no exceptions.
 
 **Nothing compiles C.** `cc`, `cmake`, `pkg-config`, and `bindgen` stay out of
 the build-dependency tree. Run `cargo tree -i cc` after adding any dependency. A

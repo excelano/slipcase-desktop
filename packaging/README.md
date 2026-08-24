@@ -35,12 +35,12 @@ The application bundle, the exported type declaration, and the icon:
     cargo build --release
     ./packaging/macos/build-app.sh
 
-`packaging/macos/README.md` is the detail, including two things worth knowing
-before reading anything else. A double-clicked container is refused with an error
-dialog, because macOS delivers an opened document as an Apple Event rather than
-as `argv[1]`. And `mdls` reports the wrong type for a `.slpc` even after the
-bundle is registered, while Launch Services reports the right one. Both are
-measured and neither is hidden.
+`packaging/macos/README.md` is the detail. Two things there are worth knowing
+before reading anything else. Double-clicking works, but only because the Apple
+Event handler is registered at `applicationWillFinishLaunching:` — the two other
+plausible moments are tabulated there, and both fail. And `mdls` reports the
+wrong type for a `.slpc` even after the bundle is registered, while Launch
+Services reports the right one, which is measured and unresolved.
 
 ## windows
 
