@@ -5,6 +5,13 @@
 
 #![forbid(unsafe_code)]
 #![warn(clippy::pedantic)]
+// Windows creates a console for a console-subsystem process, and a file
+// manager launching this one is not attached to a terminal, so double-clicking
+// a container opened a black console window behind the application. Found by
+// looking at the first frame Windows ever drew of this. The attribute is
+// ignored everywhere else, and it is off in a debug build because that is
+// where a panic message still has somewhere to go.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::PathBuf;
 use std::sync::mpsc;
@@ -21,6 +28,37 @@ use slipcase_desktop::{
 /// entry to find the window's icon and its name, so the two have to agree.
 /// DESIGN.md §8 installs that entry; this is the half that lives in the binary.
 const APP_ID: &str = "slipcase-desktop";
+
+/// The window's icon on Windows, which has no `.desktop` entry to find one in.
+///
+/// `APP_ID` above is how Linux answers this question and it does nothing here:
+/// `with_app_id` is Wayland's `xdg_toplevel.set_app_id` and neither egui,
+/// eframe, nor winit turns it into anything on Windows. Measured by reading
+/// all three. Windows takes a window's icon from a resource compiled into the
+/// executable, and compiling one needs `rc.exe` or `windres`, which DESIGN.md
+/// §2 keeps out of the build. So the icon is carried as bytes and handed to
+/// the window at run time, which needs no build step at all.
+#[cfg(target_os = "windows")]
+const WINDOW_ICON: &[u8] = include_bytes!("../packaging/windows/slipcase.ico");
+
+/// The icon at the one size that divides evenly into every size Windows will
+/// draw it at.
+///
+/// A window gets one image and Windows scales it to 16 in the title bar and 32
+/// in the task bar, doubling both on a high-density display. 64 is a whole
+/// multiple of all four, so every one of them is an integer downsample of the
+/// same drawing rather than a resample of a resample.
+#[cfg(target_os = "windows")]
+fn window_icon() -> Option<egui::IconData> {
+    let directory = ico::IconDir::read(std::io::Cursor::new(WINDOW_ICON)).ok()?;
+    let entry = directory.entries().iter().find(|e| e.width() == 64)?;
+    let image = entry.decode().ok()?;
+    Some(egui::IconData {
+        rgba: image.rgba_data().to_vec(),
+        width: image.width(),
+        height: image.height(),
+    })
+}
 
 /// Where the last container was chosen from, remembered between runs.
 ///
@@ -123,10 +161,20 @@ fn main() -> eframe::Result {
     // and nothing here is a command-line interface: `slipcase` is that.
     let opened = std::env::args_os().nth(1).map(Opened::open);
 
+    let viewport = egui::ViewportBuilder::default()
+        .with_app_id(APP_ID)
+        .with_inner_size([900.0, 640.0]);
+
+    // Shadowed rather than made mutable, so that no platform without an icon
+    // to set carries an unused `mut`.
+    #[cfg(target_os = "windows")]
+    let viewport = match window_icon() {
+        Some(icon) => viewport.with_icon(icon),
+        None => viewport,
+    };
+
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id(APP_ID)
-            .with_inner_size([900.0, 640.0]),
+        viewport,
         ..Default::default()
     };
 

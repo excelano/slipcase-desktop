@@ -3,8 +3,8 @@
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
 distributed.
 
-Windows does not exist yet and is briefed in `HANDOFF-windows.md` at the root of
-the repository.
+All four exist. Each platform's own README says what was decided there and what
+was measured rather than assumed.
 
 ## linux
 
@@ -38,9 +38,25 @@ The application bundle, the exported type declaration, and the icon:
 `packaging/macos/README.md` is the detail, including two things worth knowing
 before reading anything else. A double-clicked container is refused with an error
 dialog, because macOS delivers an opened document as an Apple Event rather than
-as `argv[1]` and receiving one would need unsafe code in this crate. And `mdls`
-reports the wrong type for a `.slpc` even after the bundle is registered, while
-Launch Services reports the right one. Both are measured and neither is hidden.
+as `argv[1]`. And `mdls` reports the wrong type for a `.slpc` even after the
+bundle is registered, while Launch Services reports the right one. Both are
+measured and neither is hidden.
+
+## windows
+
+The same job with no freedesktop database to do it in: the extension, the media
+type, the icon, and the entry that opens a container, all written to the
+registry. Per-user, needing no administrator, which is the counterpart of the
+Linux script's default of `~/.local`.
+
+    powershell -ExecutionPolicy Bypass -File packaging\windows\install.ps1
+    powershell -ExecutionPolicy Bypass -File packaging\windows\uninstall.ps1
+
+`packaging/windows/README.md` says where each key goes and why, and records
+three things that were measured there rather than assumed — including that
+`assoc` and `ftype` cannot see a per-user registration and report a successful
+install as no association at all.
+
 
 ## debian
 
@@ -73,6 +89,8 @@ rebuilt by dpkg without a `postinst` asking for it. Those three packages are in
 `packaging/linux/icons/slipcase-desktop.svg`, drawn on a 64-unit grid: a card
 sliding into an open-topped case. It is the source for every platform's icon —
 macOS wants `.icns` and Windows wants `.ico`, both converted from this.
+`packaging/windows/make-ico` is the converter for the second; a `.icns` one has
+still to be written.
 
 It is deliberately two shapes and one band. The first version had a third text
 line on the card and an inset lip on the case, and both turned to mud at 48

@@ -5,18 +5,19 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 
 ---
 
-## If you are on Windows, you have a brief
+## Every platform has drawn a frame now
 
-This application was written, built, and tested on Linux, and macOS has since
-been done on a Mac. Windows has never drawn a frame of it and has a task
-waiting.
+This application was written and first built on Linux. Windows was then done on
+Windows and macOS on a Mac, so both briefs beside `HANDOFF.md` are records
+rather than tasks and nothing is waiting on a platform.
 
-- **Windows** — read `HANDOFF-windows.md`, then `HANDOFF.md` for context.
-- **macOS** — nothing is waiting. `packaging/macos/README.md` says what was
-  found there, including two things measured and left unresolved.
-- **Linux** — nothing is waiting; `HANDOFF.md` says what Windows still owes.
+- **Linux** — `packaging/linux` and `packaging/debian`.
+- **Windows** — `packaging/windows/README.md` says what was decided.
+- **macOS** — `packaging/macos/README.md` says what was decided, including two
+  things measured and left unresolved.
 
-Stay inside your own platform's `#[cfg]` arm of `src/opens_with.rs` and your own
+`HANDOFF.md` summarises what each platform found. Stay inside your own
+platform's `#[cfg]` arm of `src/opens_with.rs` and its own
 directory under `packaging/`.
 
 ---
@@ -44,9 +45,8 @@ of why everything is the way it is, and it is written to be read.
 
     cargo build                   # debug
     cargo build --release
-    cargo test                    # 59 on Linux, 63 on macOS: the count is
-                                  # platform-specific, because each platform's
-                                  # arm of opens_with.rs carries its own tests
+    cargo test                    # 59 on Linux, 61 on Windows, 63 on macOS:
+                                  # each platform's arm carries its own tests
     cargo clippy --all-targets    # must be silent
     cargo check --target x86_64-pc-windows-msvc   # cross-check, from Linux or macOS
 
@@ -54,6 +54,10 @@ of why everything is the way it is, and it is written to be read.
     ./packaging/linux/install.sh          # Linux desktop integration
     ./packaging/debian/build-deb.sh       # the .deb, after a release build
     ./packaging/macos/build-app.sh        # Slipcase.app, after a release build
+
+    powershell -ExecutionPolicy Bypass -File packaging\windows\install.ps1
+    powershell -ExecutionPolicy Bypass -File packaging\windows\uninstall.ps1
+    cd packaging/windows/make-ico && cargo run --release   # rebuild the .ico
 
 **The conformance corpus is a command and never a test.** It needs a checkout of
 `excelano/slipcase` with its cases generated, which `cargo test` does not imply,
@@ -121,11 +125,12 @@ as a record.
 characters, prose body with the measurement and the alternatives rejected. Read
 `git log` before writing your first one.
 
-**Some things only a hand can test.** `CHECKLIST.md` in the walkthrough folder
-is the record. On Linux it found seven defects that the tests and the corpus
+**Some things only a hand can test.** `CHECKLIST.md` at the root is the record.
+On Linux the walkthrough found seven defects that the tests and the corpus
 could not reach — layout geometry, font coverage, frame timing, and controls
-that were drawn but did nothing. Add a section for anything you build that only
-a hand can check, and run it.
+that were drawn but did nothing; on Windows it found two more, a console window
+behind the application and a window with no icon. Add a section for anything
+you build that only a hand can check, and run it.
 
 ---
 

@@ -65,3 +65,19 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 # `NSBundle`, for what an application calls itself, and the strings and URLs
 # the other two speak in.
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+# Reading the window's icon out of the `.ico` the installer also registers.
+# Windows takes a window icon from a resource compiled into the executable, and
+# a resource compiler is exactly what DESIGN.md §2 keeps out of the build, so
+# the icon is embedded as bytes and decoded at startup instead. Pure Rust; its
+# `png` is for the large entries, which are stored that way.
+ico = "0.5.0"
+# What the platform would open a payload with, which on Windows is a question
+# for the registry. `AssocQueryString` is the textbook answer and is a raw FFI
+# call this crate cannot make under `#![forbid(unsafe_code)]`; this is a safe
+# API over the same hive, with its unsafe inside it as `rfd` and `opener`
+# already have theirs. Pure Rust, no build script, and its three dependencies
+# were already in the tree under `eframe`, so it compiles one new crate.
+# DESIGN.md §3.
+windows-registry = "0.6.1"
