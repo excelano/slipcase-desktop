@@ -2,10 +2,10 @@
 
 `CLAUDE.md` and both handoff briefs have referred to this file since before it
 existed. It did not: `git log --diff-filter=A` finds no commit that ever added
-it, and the seven defects the Linux walkthrough is said to have found are
-recorded in commit messages rather than here. Windows wrote the first section,
-macOS the second, and Linux still owes the one whose defects the paragraph above
-is about.
+it. Windows wrote the first section, macOS the second, and Linux the third,
+after running the association walkthrough that the other two had already been
+through. What Linux still owes is narrower: the seven defects its first
+walkthrough found are recorded in commit messages rather than here.
 
 A section per platform. Each item says what to do, what should happen, and —
 where a run found something — what actually happened.
@@ -78,10 +78,89 @@ machine-wide half of the class root only.
 
 ## Linux
 
-Not written. The walkthrough happened — seven defects in layout geometry, font
-coverage, frame timing, and controls that were drawn but did nothing — and the
-record of it is in `git log` rather than in a file. Reconstructing it from
-there is a job for whoever next has the platform in front of them.
+### The association
+
+Run `./packaging/linux/install.sh` first. Log out and back in if the desktop
+does not notice: GNOME reads the mime database once per session.
+
+1. **The type is ours.** `xdg-mime query filetype SOME.slpc` says
+   `application/x.slipcase+zip`. Before installing it says `application/zip`,
+   which is the right answer for a file the desktop knows nothing about, so
+   check it before as well as after.
+2. **The handler is ours.** `xdg-mime query default application/x.slipcase+zip`
+   says `slipcase-desktop.desktop`.
+3. **The folder shows the drawing.** Open a folder of containers in Files. The
+   `.slpc` files carry the slipcase icon rather than a generic archive, and the
+   type reads *Slipcase container*. Put a file beside them whose name does not
+   match `*.slpc` — a copy with any other suffix will do. It should draw as a
+   plain archive, and the two being identical is the tell that the icon is not
+   being reached.
+4. **A double-click loads the container.** Slipcase starts with that container
+   open, not on the empty state. This is the argument path nothing else
+   exercises.
+5. **The window carries the icon**, in the dash and in the task switcher. That
+   is `APP_ID` matching the desktop entry's basename; a mismatch draws a blank.
+6. **The archive manager is still offered.** Right-click a container. Slipcase
+   is the only entry in the *Open With* submenu, and that is correct rather
+   than a defect: `sub-class-of application/zip` makes File Roller a *fallback*
+   application, and GIO surfaces fallbacks inside the full *Open With…* dialog
+   rather than in the context menu. Open that dialog and check File Roller is
+   listed, then open a container with it.
+7. **The loop closes on itself.** `cargo run --example opens-with -- some.slpc`
+   says *Slipcase*, by the same code that says *Document Viewer* for a
+   `report.pdf`. Pass a bare payload name and not a path: `opens_with` rejects
+   anything carrying a separator, which is correct and reads as a failure if
+   you forget.
+
+### The package
+
+8. `cargo build --release && ./packaging/debian/build-deb.sh`. It names the file
+   it wrote, then prints what the executable links beside what the package
+   declares. The two lists barely overlap, which is the point.
+9. `dpkg-deb --contents`. Everything `root/root`, directories `0755`, the
+   executable `0755`, data files `0644`.
+10. `dpkg-deb --ctrl-tarfile … | tar t` holds `control` and `md5sums` and
+    nothing else — no maintainer scripts, because the three tool packages in
+    `Depends` own the triggers that rebuild the caches. Confirm those triggers
+    exist rather than assuming: `grep /usr/share/mime/packages
+    /var/lib/dpkg/triggers/File` names `shared-mime-info`, and the other two
+    directories name `desktop-file-utils` and `hicolor-icon-theme`.
+11. `md5sum -c` the extracted tree against the package's own `md5sums`, then
+    change a byte and watch it fail.
+
+### What the association run found
+
+Three defects. All three passed 59 tests, the whole conformance corpus, and a
+release build without a murmur.
+
+**Neither icon could be loaded by a file manager.** gdk-pixbuf sniffs for
+`<svg` within the first 256 bytes and the authorship comment put the opening
+tag at byte 502, so both files were refused as an unrecognised format. It had
+been checked at four sizes with `rsvg-convert`, which parses rather than sniffs
+and rendered them correctly throughout. The lesson is not about SVG: a check
+that exercises a different code path from the one that ships is not a check.
+
+**Containers still drew as plain archives once the icons loaded.** The mime
+package declared `package-x-generic` as the generic icon, and GTK4 searches
+theme-major — every name in Adwaita before any name in hicolor — so the generic
+won regardless of order. The tell was in a screenshot: files that did not match
+the glob drew identically to files that did.
+
+**The `.deb` shipped no `md5sums`**, so `dpkg -V` could say nothing about an
+installed copy. Found by looking inside the archive rather than by any test.
+
+### Not yet done by hand
+
+- **The package installed and removed.** Items 8 to 11 inspect the `.deb`;
+  nothing has yet run `apt install` on it. The `~/.local` install shadows a
+  system one, so uninstall that first or the test proves nothing.
+- **A machine that has never had it**, to see what `apt` actually pulls.
+- **A second desktop.** Everything above is GNOME on Wayland with Adwaita. The
+  icon defect was a property of which theme carried which name, so KDE or XFCE
+  could reach a different answer by the same mechanism.
+- **The seven defects the first walkthrough found** — layout geometry, font
+  coverage, frame timing, and controls drawn but inert — are recorded in
+  `git log` and still not reconstructed here.
 
 ---
 
