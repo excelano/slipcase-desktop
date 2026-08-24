@@ -222,6 +222,6 @@ Write-Output "check it with:"
 # of the class root only, and everything above is per-user. Measured, after
 # they were put here first and printed exactly the message a failed install
 # would have.
-Write-Output "  reg query `"HKCU\Software\Classes$extension`" /s"
+Write-Output "  reg query `"HKCU\Software\Classes\$extension`" /s"
 Write-Output "  cargo run --example opens-with -- some$extension      # Slipcase"
 Write-Output "and by double-clicking a $extension, which should open it rather than an empty window."
