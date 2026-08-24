@@ -1,9 +1,10 @@
-# Handoff: the two platforms this repository has never run on
+# Handoff: the platform this repository has still never run on
 
-Everything here was written, built, and tested on Linux. `DESIGN.md` §7 stage 4
-is file association per platform, and two thirds of it cannot be done on the
-machine the rest was done on. This file says what is already true, what is
-missing, and where the two briefs are.
+Everything here was written and first built on Linux. `DESIGN.md` §7 stage 4 is
+file association per platform, and two thirds of it could not be done on the
+machine the rest was done on. Windows has since been done on Windows; macOS
+remains. This file says what is already true, what is missing, and where the
+brief is.
 
 **Read `DESIGN.md` first, then `SPEC.md` in `excelano/slipcase` §4.** The design
 document is amended in place as building contradicts it, and every amendment
@@ -21,31 +22,52 @@ reports as `application/x.slipcase+zip` rather than `application/zip`, and
 filenames mapped to types. `DESIGN.md` §3 forbids that table, and it is the one
 rule in this area with no exceptions.
 
+## Windows is done
+
+Both tasks in `HANDOFF-windows.md`. `src/opens_with.rs` answers by reading the
+registry along the path the shell takes, rather than calling
+`AssocQueryString`, which is a raw call this crate cannot make; measured
+against that API across 260 extensions, the two never disagreed and the
+registry answered 18 times where the API declined. `packaging/windows` holds
+two PowerShell scripts, the icon, and the tool that builds it from the Linux
+SVG. Installing registers `.slpc` and `application/x.slipcase+zip`; Explorer
+draws the icon, calls the type `Slipcase Container`, and double-clicking opens
+a container with it loaded. Uninstalling was checked with a `UserChoice` in
+place — the key that outranks the rest and the one an uninstaller forgets — and
+leaves nothing.
+
+`DESIGN.md` §3 and §8 carry the amendments and the measurements behind them.
+
 ## What is missing
 
-`src/opens_with.rs` returns `None` on macOS. The card then says nothing about
-type, which the design permits where the platform will not answer but not as a
-way of never asking.
+**macOS, both halves.** `src/opens_with.rs` returns `None` there, so the card
+says nothing about type — which the design permits where the platform will not
+answer, but not as a way of never asking. There is no `packaging/macos` at all.
+`HANDOFF-macos.md` is the brief and it is untouched.
 
-Windows answers, as of `HANDOFF-windows.md` task 1. It reads the registry along
-the path the shell takes rather than calling `AssocQueryString`, which is a raw
-call this crate cannot make; DESIGN.md §3 carries the amendment and the
-measurement behind it. Task 2 there — packaging and file association — is not
-started.
+The `.icns` converter has still to be written.
+`packaging/windows/make-ico` is the one that exists, and a `.icns` one would be
+its counterpart: same SVG, same reason, different container format.
 
-Neither platform has any packaging at all.
+## Something this file used to be wrong about
 
-`CHECKLIST.md` is named by this file's conventions, by `CLAUDE.md`, and by both
-briefs, and has never been in this repository. Whoever writes the first one is
-starting it rather than adding to it.
+`CHECKLIST.md` was named by `CLAUDE.md` and by both briefs and had never been in
+this repository — `git log --diff-filter=A` finds no commit that added it. It is
+now at the root, started with the Windows walkthrough. The Linux section is a
+placeholder: that walkthrough happened and its seven defects are recorded in
+`git log` rather than in the file.
 
-## The briefs
+## The brief
 
-`HANDOFF-macos.md` and `HANDOFF-windows.md`. Each is written to be worked
-through by a Claude Code session on that platform: clone, read, build, test,
-commit, push. Take one and leave the other alone — they touch different
-`#[cfg]` arms of the same file and different directories under `packaging/`, so
-they do not conflict, but only if each stays inside its own.
+`HANDOFF-macos.md`, written to be worked through by a Claude Code session on
+that platform: clone, read, build, test, commit, push.
+
+`HANDOFF-windows.md` is kept beside it as the record of what was asked for
+there, and it is worth reading before starting the macOS one: the two were
+written together and pose the same problems, and the Windows answers to several
+of them — a safe API rather than the raw call the brief expected, an icon
+converter as its own package, a walkthrough that found what the tests could not
+— are the nearest thing to a precedent macOS has.
 
 ## Conventions
 

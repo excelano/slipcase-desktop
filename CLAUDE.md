@@ -5,18 +5,18 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 
 ---
 
-## If you are on macOS or Windows, you have a brief
+## If you are on macOS, you have a brief
 
-This application was written, built, and tested entirely on Linux. Two platforms
-have never drawn a frame of it, and each has a task waiting.
+This application was written and first built on Linux. Windows has since been
+done on Windows. macOS has never drawn a frame of it and has a task waiting.
 
 - **macOS** — read `HANDOFF-macos.md`, then `HANDOFF.md` for context.
-- **Windows** — read `HANDOFF-windows.md`, then `HANDOFF.md` for context.
-- **Linux** — nothing is waiting; `HANDOFF.md` says what the other two owe.
+- **Windows** — done, both tasks. `HANDOFF-windows.md` is now a record rather
+  than a brief, and `packaging/windows/README.md` says what was decided.
+- **Linux** — nothing is waiting; `HANDOFF.md` says what macOS still owes.
 
-Take your own platform's brief and leave the other alone. They touch different
-`#[cfg]` arms of `src/opens_with.rs` and different directories under
-`packaging/`, so they do not conflict, but only if each stays inside its own.
+Stay inside your own platform's `#[cfg]` arm of `src/opens_with.rs` and its own
+directory under `packaging/`.
 
 ---
 
@@ -43,13 +43,17 @@ of why everything is the way it is, and it is written to be read.
 
     cargo build                   # debug
     cargo build --release
-    cargo test                    # 59 tests
+    cargo test                    # 59 on Linux, 61 on Windows; three are per-platform
     cargo clippy --all-targets    # must be silent
     cargo check --target x86_64-pc-windows-msvc   # cross-check, succeeds on Linux
 
     cargo run --example opens-with -- report.pdf notes.txt data.bin
     ./packaging/linux/install.sh          # Linux desktop integration
     ./packaging/debian/build-deb.sh       # the .deb, after a release build
+
+    powershell -ExecutionPolicy Bypass -File packaging\windows\install.ps1
+    powershell -ExecutionPolicy Bypass -File packaging\windows\uninstall.ps1
+    cd packaging/windows/make-ico && cargo run --release   # rebuild the .ico
 
 **The conformance corpus is a command and never a test.** It needs a checkout of
 `excelano/slipcase` with its cases generated, which `cargo test` does not imply,
@@ -117,11 +121,12 @@ as a record.
 characters, prose body with the measurement and the alternatives rejected. Read
 `git log` before writing your first one.
 
-**Some things only a hand can test.** `CHECKLIST.md` in the walkthrough folder
-is the record. On Linux it found seven defects that the tests and the corpus
+**Some things only a hand can test.** `CHECKLIST.md` at the root is the record.
+On Linux the walkthrough found seven defects that the tests and the corpus
 could not reach — layout geometry, font coverage, frame timing, and controls
-that were drawn but did nothing. Add a section for anything you build that only
-a hand can check, and run it.
+that were drawn but did nothing; on Windows it found two more, a console window
+behind the application and a window with no icon. Add a section for anything
+you build that only a hand can check, and run it.
 
 ---
 

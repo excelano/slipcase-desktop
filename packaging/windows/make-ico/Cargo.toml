@@ -1,0 +1,29 @@
+# The tool that turns the icon SVG into the `.ico` Windows needs.
+#
+# Its own package rather than a member of the application's, so that nothing
+# here reaches the shipped binary's dependency tree: `cargo build` at the root
+# never sees it, and `cargo tree` for the application is unchanged by it. The
+# empty `[workspace]` table below is what keeps it standalone.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+[workspace]
+
+[package]
+name = "make-ico"
+description = "Rasterize the slipcase icon SVG into a Windows .ico"
+version = "0.1.0"
+edition = "2021"
+authors = ["David M. Anderson"]
+license = "MIT"
+publish = false
+
+[dependencies]
+# Pure-Rust SVG rendering. Default features off: they bring text shaping and a
+# system font database, and this drawing has no text in it. `cargo tree -i cc`
+# finds nothing here either, which is the rule DESIGN.md §2 states for the
+# application and which this holds itself to as well.
+resvg = { version = "0.48", default-features = false }
+# Assembling the rasterized sizes into one icon directory.
+ico = "0.5"
