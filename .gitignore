@@ -8,3 +8,4 @@ dist/
 # `make-ico` is its own package, so its build directory is its own too and the
 # root-anchored rule above does not reach it.
 /packaging/windows/make-ico/target/
+dist-sandboxed/

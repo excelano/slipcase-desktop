@@ -158,15 +158,33 @@ offers *Search App Store* by document type, and outside the Store that search
 returns nothing. What follows is what such a build would need, written down
 before it is attempted so the cost is known rather than discovered.
 
-**The sandbox is the gate and it is measured elsewhere.** Every Store binary is
-sandboxed, and `CHECKLIST.md` holds the three paths in this application that
-run at that wall — the in-place save, the handover through `opener`, which is
-`Command::new("open")` and so is denied outright, and the `com.apple.quarantine`
-write that extraction fails hard on. Nothing below is worth doing until those
-three have been run. None of them needs a distribution certificate: an Apple
-Development certificate signs a bundle with entitlements perfectly well for
-local testing, and the sandbox is inert until the entitlement is inside a
-signature.
+**The sandbox is the gate, and it has been run.** Every Store binary is
+sandboxed. Three paths in this application were measured against one on
+2026-08-25, and `CHECKLIST.md` holds the detail; two of the three fail and the
+one predicted to fail hardest does not.
+
+The handover survives. `opener` forks `/usr/bin/open` and this file used to say
+the sandbox would deny that outright; it does not. Exec is permitted, the child
+inherits the sandbox, and Launch Services is reachable over Mach IPC from
+inside it.
+
+The save does not. `Destination::in_place` creates a randomly-named sibling of
+the container, and the grant a person gives through the open panel covers the
+file rather than the directory holding it, so Save stops with *Operation not
+permitted* on the temporary file. `NSFileManager.replaceItemAt…` is the route
+out, and it needs no sibling.
+
+Carrying provenance does not either, and that is the expensive one. The
+platform marks whatever a sandboxed process writes, so `xattr::set` of
+`com.apple.quarantine` is then refused, and `src/lib.rs` fails the whole
+extraction when carrying fails. A container that arrived from elsewhere can
+therefore be neither extracted nor opened under a sandbox — the containers a
+Store build exists to serve. `DESIGN.md` §5 has to be reopened before this
+channel is taken.
+
+None of that needed a distribution certificate. An Apple Development
+certificate signs a bundle with entitlements perfectly well, and the sandbox is
+inert until the entitlement is inside a signature.
 
 **The account exists; nothing macOS does.** Team `9K6W5PMFYP` already ships two
 iOS applications, so App Store Connect, the agreements, and the tax and banking

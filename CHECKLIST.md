@@ -311,80 +311,86 @@ and Preview refused it. Preview was right. Payloads for this walkthrough are
 made with `cupsfilter` now, and the round trip is checked byte for byte before
 the container is used.
 
+### What the sandbox sitting found
+
+Run 2026-08-25 against `dist-sandboxed/Slipcase.app`: the release bundle signed
+with an Apple Development certificate and the two entitlements a Store build
+would carry. No distribution certificate was needed for any of it. Four
+results, one of which contradicts the item that asked for them.
+
+**Save fails, and on the sibling rather than the rename.** Opening
+`~/Documents/sandbox-save-test.slpc` through the application's own Open dialog,
+editing a key, and pressing Save gives *cannot write into
+/Users/anderix/Documents: Operation not permitted (os error 1)* at path
+`/Users/anderix/Documents/.tmpos50lA`. The grant covers the file a person chose
+and nothing else in that directory, exactly as the item predicted. The
+application handles it properly — a clean refusal naming the path, no crash and
+no half-written container.
+
+**The handover survives, and the prediction that it would not was wrong.** The
+item said `opener` is `Command::new("open")`, that the sandbox denies executing
+outside the bundle, and so Open would do nothing at all. Open opened the
+payload in TextEdit. There is no `process-exec` denial anywhere in the log: the
+sandbox permits exec, the child inherits the sandbox, and `open` reaches Launch
+Services over Mach IPC from inside it. `NSWorkspace::openURL:` is still the
+tidier route but it is no longer forced by the sandbox.
+
+**The sandbox writes `com.apple.quarantine` itself, wherever the file lands.**
+That payload came from a container carrying no quarantine attribute at all —
+only `com.apple.macl`, the sandbox's own record of the open-panel grant — and
+the extracted `notes.txt` in the container's temp directory carried
+`com.apple.quarantine: 0086;6a8dbd0d;slipcase-desktop;`. Extracting the same
+payload to `~/Documents`, a location chosen through the save panel, produced
+`0082;6a8dbf00;slipcase-desktop;`. Different flags, same agent, and
+`provenance::carry` returned `Silent` and wrote neither of them. The platform
+marks what a sandboxed process creates. So extraction under a sandbox cannot
+launder provenance whether or not `src/provenance.rs` exists — and it marks
+payloads from containers that had nothing to carry, which is a behaviour change
+nobody chose.
+
+**Carrying provenance is refused, and it takes Extract and Open down with it.**
+A container downloaded through Safari, carrying
+`0083;6a8dbb61;Safari;B8AC643B-…`, cannot be extracted: *i/o error: Operation
+not permitted (os error 1)*, with no path, which is what an `xattr::set`
+failure looks like when `src/provenance.rs` hands the raw error back. Pressing
+Open on that container reports the same line, leaves nothing in the container's
+temp directory, and never reaches Preview. Three measurements eliminate
+everything else: the card said the container arrived from elsewhere, so
+`xattr::get` on the source is permitted; extracting from the unquarantined
+container into a chosen folder succeeded, so creating the file is permitted;
+only the write of the attribute is left.
+
+**Why the write is refused is a hypothesis and not a measurement.** The likely
+reason is that the file already carries the mark the platform put there, so the
+write attempts to replace one quarantine value with another, which is how
+provenance forgery would work. Whether a sandboxed process may set that
+attribute on a file carrying none was not tested, and testing it needs code
+rather than a click.
+
+**What it costs, if the Store is wanted.** A container that arrived from
+elsewhere can be neither extracted nor opened under a sandbox, and those are
+precisely the containers the Store channel exists to serve. Two things have to
+change and neither is cosmetic. The save path needs
+`NSFileManager.replaceItemAt…`, which takes its replacement from the
+application's own container and swaps using the grant on the destination file;
+the item's claim that a denial on the sibling condemns that route was wrong,
+because it never creates a sibling. And §5's policy of failing extraction when
+provenance cannot be carried has to learn that a platform which has already
+marked the file has done the job itself. Both are decisions rather than
+repairs, so they belong with David.
+
+One incidental: the only sandbox violation the log attributes to this
+application is `hid-control`, winit asking WindowServer for raw input. It is
+harmless and it is not ours.
+
+Two things about running this at all. `log` is a zsh builtin, so a capture
+needs `/usr/bin/log` spelled out. And most of what the sandbox refuses here is
+never reported as a violation — neither the save nor the quarantine write
+produced a `deny(1)` line — so the application's own error text was the record
+and the log served mainly to rule things out.
+
 ### Not yet done by hand
 
-- **Does the App Sandbox permit what this application does?** This one decides
-  a channel, so it comes before everything else here. Every Mac App Store
-  binary is sandboxed, and three paths run at that wall rather than the one
-  this item used to name — the other two were found by reading the code while
-  planning the sitting, which is cheaper than finding them in it.
-
-  Sign a copy of the bundle with `com.apple.security.app-sandbox` and
-  `com.apple.security.files.user-selected.read-write`. The Apple Development
-  certificate already in this keychain is enough: the sandbox is inert until
-  the entitlement is inside a signature, and no distribution certificate is
-  needed to measure any of this. Run all three below in one sitting with
-  `log stream` filtered to sandbox denials, because a denial names the
-  operation refused and the operation is what decides the fix. Without the log
-  every failure looks the same from the window.
-
-  **The save path.** `slpc::Destination::in_place` calls
-  `NamedTempFile::new_in(dir)` — a randomly-named file created *beside* the
-  container — and then renames it over the original. A sandboxed application
-  holds a grant on the file a person chose through the open panel, not on the
-  directory containing it, and Apple's related-items rule covers siblings
-  sharing a base name with a declared extension rather than a random one. So
-  the expectation is that Save fails. **It is an expectation and not a
-  measurement**, and sandboxed applications safe-save constantly through
-  `NSFileCoordinator`, so the mechanism plainly exists and this reasoning may
-  simply be wrong. Open a container from the Documents folder through the
-  application's own Open dialog, edit a key, and press Save. Three outcomes,
-  and each points somewhere different:
-
-  - **It succeeds.** There is no divergence, the save path is the same on all
-    three platforms, and a Store build costs only entitlements and review.
-  - **It fails.** Then which operation the log names decides what to do. A
-    denial on creating the sibling means `NSFileManager.replaceItemAt…` faces
-    the same wall; a denial on the rename alone means only the replace is
-    gated. The choice is between that call, which keeps the atomic replace and
-    almost certainly needs a second module lifting `deny(unsafe_code)` —
-    David's decision, not a precedent — and writing a validated container into
-    the application's own container before overwriting the original in place,
-    which needs no unsafe and gives up the atomic rename that `Destination`
-    exists to provide.
-  - **It fails in some third way**, in which case say what it actually did
-    rather than fitting it to one of the two above.
-
-  **The handover, where the expectation is not a maybe.** `opener` is
-  `Command::new("open")` on macOS — `opener-0.8.5/src/macos.rs:6`, read rather
-  than assumed — and the App Sandbox denies executing anything outside the
-  bundle. That is the sandbox doing what it exists for rather than a
-  permission that might go either way, so press Open on a payload and expect
-  nothing to happen. The sanctioned route is `NSWorkspace::openURL:`, which
-  costs no new dependency and no unsafe: `objc2-app-kit` is already a macOS
-  dependency and `src/opens_with.rs` already calls
-  `NSWorkspace::sharedWorkspace()` as a safe call. Worth doing whatever the
-  Store decision turns out to be, because a `Command::new` handover is a
-  fragile thing to depend on in a signed application generally.
-
-  **Carrying provenance, where a refusal is loudest.** `src/provenance.rs`
-  writes `com.apple.quarantine` onto the extracted copy with `xattr::set`, and
-  `copy_out` in `src/lib.rs` deliberately fails the whole extraction when that
-  write fails rather than degrading — a payload whose provenance could not be
-  carried must not be left under the name a person is about to be handed. So a
-  sandbox that refuses that attribute does not weaken Extract, it stops it.
-  Whether a sandboxed process may write that particular attribute is not worth
-  guessing at: extract from a container that actually carries the mark, which
-  the provenance item below produces, and read the log.
-
-  Why it matters beyond tidiness: the App Store is how a person who has been
-  sent a container finds something to open it. Finder offers *Search App Store*
-  by document type, and outside the Store that search returns nothing. Windows
-  shows the same dialog for the Microsoft Store, which this release plan is
-  already buying, so declining it on macOS alone is an inconsistency rather
-  than a decision. The two channels are not exclusive: a Developer ID `.dmg`
-  and a Store build ship from one codebase, and `packaging/macos/README.md`
-  says what the Store one would need beyond the entitlement.
 - **Provenance, which has never run on this platform.** `src/provenance.rs`
   carries a container's `com.apple.quarantine` attribute onto the payload
   extracted from it, and the macOS arm compiles but has never executed.
@@ -398,6 +404,14 @@ the container is used.
   handed to Preview, in which case carrying it matters for the dangerous case
   and not the ordinary one. If a quarantined file there is treated as trusted,
   DESIGN.md §5's decision to report rather than gate has to be reopened.
+
+  The sandbox sitting produced weak evidence for that and not the measurement:
+  a `notes.txt` carrying `com.apple.quarantine` opened in TextEdit with no
+  prompt of any kind. The mark was the sandbox's own, flagged `0082` and naming
+  `slipcase-desktop` rather than the `0083` a Safari download carries, and
+  whether Gatekeeper reads those flags differently is exactly what is in
+  question — so this still wants running against the unsigned bundle and a
+  container a browser downloaded.
 
   **An executable payload cannot be the dangerous case, and finding that out
   cost nothing.** This item used to say to test one. `copy` in `src/lib.rs`
