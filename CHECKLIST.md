@@ -412,40 +412,78 @@ never reported as a violation — neither the save nor the quarantine write
 produced a `deny(1)` line — so the application's own error text was the record
 and the log served mainly to rule things out.
 
+### What the provenance sitting found
+
+Run 2026-08-25 against the unsigned bundle, then against the sandboxed one.
+`src/provenance.rs` had compiled on this platform since it was written and had
+never executed here. It does now, and the item it answers had been carrying a
+suspicion since Linux: that quarantine bites on executables and says nothing
+about a document, in which case carrying it matters for the dangerous case and
+not the ordinary one. That is right, and the sitting went further than
+confirming it.
+
+**A quarantined document is not gated at all.** `a-pdf.slpc`, downloaded through
+Safari and carrying `0083;…;Safari;…`, shows the card's line about arriving from
+elsewhere; pressing Open hands the payload to Preview, which displays it with no
+prompt of any kind. So the mark bought nothing visible there, and §5's decision
+to report rather than gate is the only reason a person is told anything.
+
+**A quarantined disk image is not blocked either, but it is examined.** Pressing
+Open on a container carrying a `.dmg` mounts it silently. The log shows
+`DiskImageMounter` running `QuarantineFileHandler applyMountPointsWithBSDName:`
+before attaching, so macOS consults the mark and propagates it to the mount
+rather than refusing.
+
+**The application inside it is refused, and that is where carrying earns its
+keep.** The first fixture was an empty disk image and proved nothing — there was
+nothing on it for macOS to gate, which is a lesson about fixtures as much as
+about quarantine. `an-application.slpc` carries a `.dmg` containing a
+three-line unsigned `Probe.app`. Downloaded through Safari, opened here, mounted:
+double-clicking the application gives *Apple could not verify "Probe" is free of
+malware that may harm your Mac or compromise your privacy.*
+
+**And the counterfactual, because a result that would have happened anyway
+proves nothing.** The same extracted image, copied byte for byte, with
+`com.apple.quarantine` removed and nothing else changed, mounts beside the
+first one and the same application runs: *The payload ran.* One extended
+attribute is the whole difference between an unsigned application from the
+internet executing and being stopped. `provenance::carry` is not hygiene. It is
+the only thing between a container and the laundering `DESIGN.md` §5 describes.
+
+**Both mark shapes gate, by different mechanisms, and that validates the change
+made earlier the same day.** §5 now accepts a mark the platform wrote instead of
+the container's own, which would be a hole if the platform's mark were weaker.
+It is not. Under the sandbox the extracted image carries
+`0086;…;slipcase-desktop;` rather than Safari's value, and the application on it
+is still refused — reported by Finder as *The application "Probe" can't be
+opened*, which reads like a launch failure and is not one. The kernel log says
+what happened:
+
+    (Quarantine) exec of …/Probe.app/Contents/MacOS/probe denied since it was
+    quarantined by slipcase-desktop; and created without user consent,
+    qtn-flags was 0x00000086
+
+Safari's `0083` goes through Gatekeeper's user-facing assessment, which explains
+itself and offers a way past. This application's `0086` is denied in the kernel
+with no such affordance, and the flag encodes *created without user consent*.
+Different wording, different path, same verdict, and if anything the stricter of
+the two. macOS also translocates the application to a randomised read-only path
+before refusing, which is its normal treatment for a quarantined application on
+a mounted image.
+
+**Not measured, and still only read from the code:** that an extracted payload
+lands 0644 whatever mode the member carried. `a-command.slpc` is in the fixtures
+for it and the sitting never got there, because the disk image turned out to be
+the better vehicle for the dangerous case and superseded it.
+
+**A correction to this file.** The item used to say that what macOS gates
+without needing an executable bit is a disk image or an installer package. That
+is half right in a way worth writing down: the image itself is not gated, it
+mounts. What is gated is what you then launch from it, and the mark reaches
+there by propagation rather than by being on the thing that gets refused.
+
 ### Not yet done by hand
 
-- **Provenance, which has never run on this platform.** `src/provenance.rs`
-  carries a container's `com.apple.quarantine` attribute onto the payload
-  extracted from it, and the macOS arm compiles but has never executed.
-  Download a container with a browser so it carries a real attribute, confirm
-  the card says it arrived from elsewhere, extract the payload somewhere
-  chosen, and read the attribute off the copy — `xattr -p
-  com.apple.quarantine`. Then the question that decides whether the Open button
-  should have been disabled instead: press Open, and **see what macOS actually
-  gates**. The suspicion is that quarantine bites on executables and
-  application bundles and says nothing at all about a quarantined document
-  handed to Preview, in which case carrying it matters for the dangerous case
-  and not the ordinary one. If a quarantined file there is treated as trusted,
-  DESIGN.md §5's decision to report rather than gate has to be reopened.
-
-  The sandbox sitting produced weak evidence for that and not the measurement:
-  a `notes.txt` carrying `com.apple.quarantine` opened in TextEdit with no
-  prompt of any kind. The mark was the sandbox's own, flagged `0082` and naming
-  `slipcase-desktop` rather than the `0083` a Safari download carries, and
-  whether Gatekeeper reads those flags differently is exactly what is in
-  question — so this still wants running against the unsigned bundle and a
-  container a browser downloaded.
-
-  **An executable payload cannot be the dangerous case, and finding that out
-  cost nothing.** This item used to say to test one. `copy` in `src/lib.rs`
-  creates the extracted file with `std::fs::File::create` and nothing chmods
-  it afterward, so the copy lands at 0644 whatever mode the member carried
-  inside the container, and `open` on a script or a Mach-O binary fails on the
-  permission bit before Gatekeeper is ever consulted. What macOS gates without
-  needing that bit is a disk image or an installer package, so the fixture is
-  `a-disk-image.slpc`. Confirm the 0644 first — `a-command.slpc` carries a
-  `run-me.command` stored `rwxr-xr-x`, so extracting it and reading the mode
-  measures the claim in this paragraph rather than trusting it.
 - **A high-density display.** Every size above was checked on a 2560x1440
   display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
   ones has been looked at on a display that would ask for one.
