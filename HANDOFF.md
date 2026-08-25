@@ -94,6 +94,33 @@ through objc2. Where they differ is worth as much. Windows needed its own icon
 converter and macOS needed none; Windows delivers a double-clicked document as
 `argv[1]` and macOS will not deliver it at all.
 
+## Continuous integration, one file per platform
+
+`.github/workflows/apple-silicon.yml` is the first, and it is named for what it
+is rather than `ci.yml` on purpose: Linux and Windows want their own files, and
+one file per platform means a session can add or change its own without touching
+anybody else's. It is the same rule as staying inside your own `#[cfg]` arm of
+`src/opens_with.rs` and your own directory under `packaging/`.
+
+macOS needed it first for a reason that is not general. Every machine this was
+built on is `x86_64`, a Store build has to be universal, and cross-compiling to
+`aarch64-apple-darwin` produces something an Intel Mac cannot run — so the arm64
+half was code nobody had executed. GitHub's macOS runners are Apple silicon from
+`macos-14` onwards, and that workflow checks `uname -m` rather than trusting the
+label, because the label is GitHub's to remap.
+
+Two things it does that a platform workflow should copy. It runs the conformance
+corpus, which is a command and never a test here because it needs another
+checkout with its cases generated — CI is a machine that can always have them,
+`excelano/slipcase` is public, and 77 fixtures are worth more than a build that
+only compiles. And it treats a clippy warning as an error, because `CLAUDE.md`
+says clippy must be silent and CI is where that stops being a habit and starts
+being enforced.
+
+What it deliberately does not claim is the window. Nothing headless reaches a
+double-clicked document, an icon, or a frame a person looks at. `CHECKLIST.md`
+stays the record for those on every platform.
+
 ## Conventions
 
 In `CLAUDE.md`, which a Claude Code session started in this directory loads by
