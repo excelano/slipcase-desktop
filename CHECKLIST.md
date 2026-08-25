@@ -67,6 +67,18 @@ machine-wide half of the class root only.
 
 ### Not yet done by hand
 
+- **Provenance, which has never run on this platform.** `src/provenance.rs`
+  carries a container's `Zone.Identifier` stream onto the payload extracted
+  from it, and the Windows arm compiles from Linux but has never executed.
+  Download a container with a browser so it carries a real stream, confirm the
+  card says it arrived from elsewhere, extract the payload to a chosen folder,
+  and read the stream off the copy — `Get-Content -Stream Zone.Identifier`.
+  Then the question that decides whether the Open button should have been
+  disabled instead: press Open, which extracts into the temp directory and
+  hands the payload over, **and see whether Windows shows the Open File
+  security warning for a zoned file there**. If a zoned file in the temp
+  directory is treated as trusted, the reporting on the card is not enough and
+  the decision recorded in DESIGN.md §5 has to be reopened.
 - **A high-density display.** Every size above was checked at 100%. The icon
   carries 20, 40, and 64 for the scaled sizes and none of them has been looked
   at on a display that would ask for one.
@@ -276,6 +288,21 @@ the container is used.
 
 ### Not yet done by hand
 
+- **Provenance, which has never run on this platform.** `src/provenance.rs`
+  carries a container's `com.apple.quarantine` attribute onto the payload
+  extracted from it, and the macOS arm compiles but has never executed.
+  Download a container with a browser so it carries a real attribute, confirm
+  the card says it arrived from elsewhere, extract the payload somewhere
+  chosen, and read the attribute off the copy — `xattr -p
+  com.apple.quarantine`. Then the question that decides whether the Open button
+  should have been disabled instead: press Open, and **see what macOS actually
+  gates**. The suspicion is that quarantine bites on executables and
+  application bundles and says nothing at all about a quarantined document
+  handed to Preview, in which case carrying it matters for the dangerous case
+  and not the ordinary one. Worth testing with both an ordinary payload and an
+  executable one, in the temp directory the Open button uses. If a quarantined
+  file there is treated as trusted, DESIGN.md §5's decision to report rather
+  than gate has to be reopened.
 - **A high-density display.** Every size above was checked on a 2560x1440
   display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
   ones has been looked at on a display that would ask for one.

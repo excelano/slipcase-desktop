@@ -614,6 +614,7 @@ impl App {
 fn card(
     ui: &mut egui::Ui,
     payload: &Payload,
+    from_elsewhere: bool,
     extraction: &Extraction,
     replacing: Option<&std::path::Path>,
     busy: bool,
@@ -635,6 +636,21 @@ fn card(
                 ui.label(
                     egui::RichText::new(format!("Cannot be opened here: {why}"))
                         .color(ui.visuals().error_fg_color),
+                );
+            }
+            // Said rather than acted on. DESIGN.md §5's amendment: the payload
+            // leaves carrying whatever the container carried, and what the
+            // platform then does about it is the platform's business. In the
+            // warning colour rather than the error one, because a container
+            // arriving from elsewhere is a thing to know and not a thing that
+            // went wrong — and not in weak grey, which the walkthrough already
+            // found nobody reads.
+            if from_elsewhere {
+                ui.label(
+                    egui::RichText::new(
+                        "This container arrived from elsewhere, and the payload will carry that.",
+                    )
+                    .color(ui.visuals().warn_fg_color),
                 );
             }
 
@@ -860,6 +876,7 @@ impl App {
                     asked = card(
                         ui,
                         payload,
+                        opened.from_elsewhere,
                         &self.extraction,
                         self.replacing.as_deref(),
                         self.picking.is_some(),
@@ -1072,6 +1089,34 @@ mod tests {
         assert!(card.can_be_decoded(), "the test built a plain container");
         card.unreadable = Some("the member is encrypted (SPEC 2.5)".to_owned());
 
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// A container the platform marked as having arrived from elsewhere says so
+    /// on the card, and one that was made here does not. The defect this
+    /// catches is the line going missing, or worse, appearing on every
+    /// container and so meaning nothing.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_container_from_elsewhere_says_so_and_a_local_one_does_not() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = a_container(dir.path());
+
+        let local = Opened::open(&path);
+        assert!(
+            !local.from_elsewhere,
+            "a container the test built is not from elsewhere",
+        );
+
+        xattr::set(&path, "user.xdg.origin.url", b"https://example.invalid/a.slpc")
+            .expect("marking the container as downloaded");
+        let downloaded = Opened::open(&path);
+        assert!(
+            downloaded.from_elsewhere,
+            "a container carrying an origin was not reported as from elsewhere",
+        );
+
+        let mut app = app(Some(downloaded));
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 

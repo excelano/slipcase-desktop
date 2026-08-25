@@ -200,6 +200,15 @@ pub struct Opened {
     /// has a payload the library never located, and every other row failed
     /// before there was a payload to name.
     pub payload: Option<Payload>,
+    /// Whether the platform records this container as having arrived from
+    /// elsewhere.
+    ///
+    /// The card says so rather than acting on it. A person deciding whether to
+    /// open a payload is better served knowing where the container came from
+    /// than being stopped, and what the platform does about the mark is the
+    /// platform's business — which is DESIGN.md §3's rule applied to
+    /// provenance instead of to type.
+    pub from_elsewhere: bool,
 }
 
 /// The payload, as the card states it.
@@ -563,12 +572,15 @@ impl Opened {
             _ => None,
         };
 
+        let from_elsewhere = crate::provenance::arrived_from_elsewhere(&path);
+
         Self {
             path,
             outcome,
             metadata,
             as_parsed,
             payload,
+            from_elsewhere,
         }
     }
 

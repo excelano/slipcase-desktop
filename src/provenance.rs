@@ -53,6 +53,18 @@ pub fn carry(from: &Path, to: &Path) -> io::Result<Mark> {
     platform::carry(from, to)
 }
 
+/// Whether the platform records this file as having arrived from elsewhere.
+///
+/// The card says so, because a person deciding whether to open a payload is
+/// better served by knowing where the container came from than by being stopped
+/// from opening it. What the platform will then do about the mark is the
+/// platform's business — DESIGN.md §3's rule, applied to provenance rather than
+/// to type — so this reports and does not gate.
+#[must_use]
+pub fn arrived_from_elsewhere(path: &Path) -> bool {
+    platform::arrived_from_elsewhere(path)
+}
+
 // ---------------------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
@@ -73,6 +85,10 @@ mod platform {
             }
             None => Ok(Mark::Silent),
         }
+    }
+
+    pub fn arrived_from_elsewhere(path: &Path) -> bool {
+        matches!(xattr::get(path, QUARANTINE), Ok(Some(_)))
     }
 }
 
@@ -102,6 +118,10 @@ mod platform {
         };
         std::fs::write(stream_of(to), zone)?;
         Ok(Mark::Carried)
+    }
+
+    pub fn arrived_from_elsewhere(path: &Path) -> bool {
+        std::fs::metadata(stream_of(path)).is_ok()
     }
 }
 
@@ -134,6 +154,12 @@ mod platform {
         }
         Ok(if carried { Mark::Noted } else { Mark::Silent })
     }
+
+    pub fn arrived_from_elsewhere(path: &Path) -> bool {
+        ORIGIN
+            .iter()
+            .any(|name| matches!(xattr::get(path, name), Ok(Some(_))))
+    }
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
@@ -142,6 +168,10 @@ mod platform {
 
     pub fn carry(_from: &Path, _to: &Path) -> io::Result<Mark> {
         Ok(Mark::Silent)
+    }
+
+    pub fn arrived_from_elsewhere(_path: &Path) -> bool {
+        false
     }
 }
 
