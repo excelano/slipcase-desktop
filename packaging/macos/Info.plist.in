@@ -17,6 +17,12 @@
   the binary, the Linux desktop entry, and this bundle all say
   `slipcase-desktop` and only the product name differs.
 
+  `LSApplicationCategoryType` is required by App Store Connect and is refused
+  at upload without one. Utilities is the honest fit: this opens a container,
+  shows what is in it, and hands the payload to whatever the system registered
+  for it. It is inert outside the Store, where it only tells Finder which
+  category the application belongs to.
+
   `LSMinimumSystemVersion` is 12.0 because `src/opens_with.rs` calls
   `-[NSWorkspace URLForApplicationToOpenContentType:]`, which is macOS 12 and
   later. It is a measured floor rather than a guess: see `packaging/macos/README.md`
@@ -55,6 +61,8 @@
 	<string>@VERSION@</string>
 	<key>CFBundleIconFile</key>
 	<string>slipcase-desktop</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>12.0</string>
 	<key>NSHighResolutionCapable</key>

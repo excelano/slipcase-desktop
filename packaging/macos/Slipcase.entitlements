@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What a Store build is signed with. The App Sandbox is mandatory on the Mac
+  App Store, and these two are the whole of what this application needs.
+
+  `files.user-selected.read-write` is the grant a person gives by choosing a
+  container in the open panel or a destination in the save panel. Nothing else
+  is asked for: no network, no camera, no address book, and in particular no
+  temporary exception. Two paths had to change to live inside this much and
+  both are recorded — `src/staging.rs` for the save, and DESIGN.md §5 for what
+  extraction does about provenance.
+
+  Note that the entitlement does nothing until it is inside a signature. An
+  unsigned bundle carrying this file is not sandboxed, which is why the
+  measurements in CHECKLIST.md were all made against a signed one, and why an
+  Apple Development certificate is enough to make them.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+</dict>
+</plist>

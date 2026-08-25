@@ -137,26 +137,47 @@ Event handlers, and it is reached here through an observer on
 A container opened this way also records its folder for the Open dialog, the
 same as one chosen in the dialog, because to a person it is the same act.
 
-## What is not done
+## Signing
 
-**Code signing and notarization are out of scope**, and here is the measurement
-so the decision has evidence behind it. `spctl -a -t exec` reports `rejected`,
-`source=no usable signature`. A bundle built here carries no
-`com.apple.quarantine` attribute, so `open` launches it with no prompt, which is
-what the build-and-test loop does. A bundle that reached a person by download
-would carry that attribute and Gatekeeper would refuse it; on a current macOS
-the only way past is System Settings → Privacy & Security → Open Anyway. Any
-distribution outside this machine therefore needs a Developer ID signature and
-notarization.
+`build-app.sh --sign IDENTITY` signs the finished bundle with
+`Slipcase.entitlements` beside it. It is the last thing the script does,
+because a signature covers what is in the bundle when it is made and anything
+added afterwards is how a bundle becomes one macOS calls damaged. The script
+then reads the entitlements back out of the signature and refuses a bundle
+whose signature does not carry the sandbox — a signature that quietly dropped
+the entitlements produces a bundle that launches, behaves exactly like an
+unsigned one, and makes every sandbox measurement taken against it meaningless.
+
+**Signing is not optional here, and not only for distribution.** The App
+Sandbox is inert until the entitlement is inside a signature, so an unsigned
+bundle carrying that file is simply not sandboxed. Every sandbox measurement in
+`CHECKLIST.md` was made against a signed bundle for that reason.
+
+**Which certificate does what.** An **Apple Development** identity, which this
+machine holds under team `9K6W5PMFYP`, signs a bundle that runs and sandboxes
+here — enough for everything measured so far, and it needs nothing from the
+developer portal. An **Apple Distribution** identity is what a Store upload must
+be signed with, and a **Mac Installer Distribution** identity signs the package
+that carries it. Neither is on this machine yet and both are created in the
+account that already ships two iOS applications. A **Developer ID Application**
+identity is a third thing again, for distributing outside the Store, and only
+that path involves notarization: a Store submission is reviewed rather than
+notarized.
+
+**What an unsigned bundle did, kept because it is why the above matters.**
+`spctl -a -t exec` reported `rejected`, `source=no usable signature`. A bundle
+built here carries no `com.apple.quarantine` attribute, so `open` launched it
+with no prompt, which is what made the unsigned build-and-test loop possible at
+all. A bundle that reached a person by download would carry that attribute and
+Gatekeeper would refuse it, with System Settings → Privacy & Security → Open
+Anyway the only way past.
 
 ## What a Store build would need
 
-Signing is out of scope above as a *decision about this machine*, not as a
-verdict on the channel. The Mac App Store is under consideration because it is
-how a person who has been sent a container finds something to open it: Finder
-offers *Search App Store* by document type, and outside the Store that search
-returns nothing. What follows is what such a build would need, written down
-before it is attempted so the cost is known rather than discovered.
+**The channel is chosen**, and the Mac App Store is it: it is how a person who has been sent a container finds something
+to open it, since Finder offers *Search App Store* by document type and outside
+the Store that search returns nothing. What follows is what a Store build costs,
+written down as it is paid rather than discovered afterwards.
 
 **The sandbox is the gate, and it has been run.** Every Store binary is
 sandboxed. Three paths in this application were measured against one on
@@ -200,19 +221,32 @@ entitlements and the profile, wrapped by `productbuild --component` into a
 package signed with the installer certificate, and uploaded with Transporter.
 The build stays a shell script, which is the point of it.
 
-**One property list key is missing.** App Store Connect requires
-`LSApplicationCategoryType` and `Info.plist.in` does not carry one;
-`public.app-category.utilities` is the honest fit. It is not added here,
-because a bundle should not claim a channel that has not been chosen.
+**The property list key is there now.** App Store Connect refuses an upload
+with no `LSApplicationCategoryType`, and `Info.plist.in` declares
+`public.app-category.utilities` — the honest fit for something that opens a
+container, shows what is in it, and hands the payload to whatever the system
+registered for it. It is inert outside the Store.
 
-**The architecture is a real problem.** This machine is `x86_64` and
-`aarch64-apple-darwin` is not installed. An Intel-only binary on the Store means
-every Apple silicon buyer runs under a translation layer Apple is winding down,
-so a Store build wants a universal binary: the second target, and a `lipo` step
-in `build-app.sh`. Nothing here compiles C, so the cross-build should be
-uneventful — but the arm64 slice cannot be *run* on this machine, and the one
-platform-specific module in the crate is the Objective-C one, which is exactly
-the code least safe to ship untested.
+**The architecture was a real problem and is now a build flag.** This machine is
+`x86_64`, and an Intel-only binary on the Store would mean every Apple silicon
+buyer running under a translation layer Apple is winding down. `rustup target
+add aarch64-apple-darwin` and `build-app.sh --universal` join the two slices
+with `lipo`; nothing here compiles C and the cross-build was uneventful.
+
+Two things that came out of doing it. The script checks that `lipo` actually
+produced both architectures, because a joined executable silently missing one
+is a Store upload rejected days later or, worse, accepted and unrunnable on
+half the machines that bought it. And it checks each slice's minimum against
+the `LSMinimumSystemVersion` the bundle declares: measured on the first
+universal build, the x86_64 slice said 10.12 and the arm64 slice said 11.0
+while the property list said 12.0, so the bundle promised a floor its executable
+did not keep. `MACOSX_DEPLOYMENT_TARGET=12.0` on both builds is what moves it,
+and the check is what catches forgetting.
+
+What remains true is that the arm64 slice cannot be **run** on this machine, and
+the one platform-specific module in the crate is the Objective-C one — exactly
+the code least safe to ship untested. Someone has to open a container on an
+Apple silicon Mac before this is submitted.
 
 **Two things already argue well at review.** `DESIGN.md` §3 refuses to open a
 payload automatically on a double-click, which is the behaviour an autorun

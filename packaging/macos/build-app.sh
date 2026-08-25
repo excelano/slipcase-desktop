@@ -8,9 +8,11 @@
 # and nothing can be registered or associated with it. `lsappinfo` reports
 # `bundleID=[ NULL ]` for one, which is the whole reason this script exists.
 #
-# Code signing and notarization are out of scope. `README.md` beside this file
-# records what an unsigned bundle does when it is double-clicked, so that
-# decision has a measurement behind it when somebody takes it.
+# It signs the bundle when it is given an identity, because the Mac App Store is
+# the chosen channel and an unsigned bundle is not a thing that can be tested:
+# the App Sandbox is inert until the entitlement is inside a signature, so an
+# unsigned bundle carrying `Slipcase.entitlements` is not sandboxed and proves
+# nothing. `README.md` beside this file says which certificate is which.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -20,13 +22,28 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "${here}/../.." && pwd)
 binary=""
 outdir="${root}/dist"
+universal=no
+identity=""
 
 usage() {
     cat <<'USAGE'
-usage: build-app.sh [--binary PATH] [--outdir DIR]
+usage: build-app.sh [--binary PATH] [--outdir DIR] [--universal] [--sign ID]
 
   --binary PATH  the executable to bundle (default: the release build)
   --outdir DIR   where to write Slipcase.app (default: ./dist)
+  --sign ID      sign the finished bundle with this identity and the sandbox
+                 entitlement beside this script. `security find-identity -v
+                 -p codesigning` lists what this machine holds. An Apple
+                 Development identity is enough to test the sandbox; a Store
+                 upload needs Apple Distribution.
+  --universal    join the two per-architecture release builds with lipo, for
+                 a Store build that has to run on Apple silicon and Intel:
+
+                   MACOSX_DEPLOYMENT_TARGET=12.0 \
+                     cargo build --release --target x86_64-apple-darwin
+                   MACOSX_DEPLOYMENT_TARGET=12.0 \
+                     cargo build --release --target aarch64-apple-darwin
+                   ./packaging/macos/build-app.sh --universal
 USAGE
 }
 
@@ -34,6 +51,8 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --binary) binary="${2:?--binary needs a path}"; shift 2 ;;
         --outdir) outdir="${2:?--outdir needs a directory}"; shift 2 ;;
+        --universal) universal=yes; shift ;;
+        --sign) identity="${2:?--sign needs an identity}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "build-app.sh: unknown argument $1" >&2; usage >&2; exit 2 ;;
     esac
@@ -41,9 +60,43 @@ done
 
 # Cargo is asked where its target directory is. `[build] target-dir` in a Cargo
 # configuration file moves it and no environment variable then says so.
+target_dir=$(cd "$root" && cargo metadata --format-version 1 --no-deps |
+    sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+
+# A Store build has to run on both architectures, and Rosetta is not a plan
+# Apple is keeping. `cargo build --release` writes to `release/`; asking for a
+# target explicitly writes to `<triple>/release/`, so the two slices are built
+# separately and joined here. `lipo` is the only step: nothing is compiled
+# twice by this script and nothing is compiled at all.
+if [ "$universal" = yes ]; then
+    [ -z "$binary" ] || {
+        echo "build-app.sh: --universal builds its own binary; drop --binary" >&2
+        exit 2
+    }
+    slices=""
+    for triple in x86_64-apple-darwin aarch64-apple-darwin; do
+        slice="${target_dir}/${triple}/release/slipcase-desktop"
+        [ -x "$slice" ] || {
+            echo "build-app.sh: no executable at $slice — run 'cargo build --release --target ${triple}' first" >&2
+            exit 1
+        }
+        slices="${slices} ${slice}"
+    done
+    binary="${target_dir}/release/slipcase-desktop-universal"
+    # shellcheck disable=SC2086
+    lipo -create ${slices} -output "$binary"
+    # A `lipo` that quietly produced one architecture would be a Store upload
+    # rejected days later, or worse, accepted and unrunnable on half the
+    # machines that bought it. Checked here instead.
+    for triple in x86_64 arm64; do
+        lipo -info "$binary" | grep -q "$triple" || {
+            echo "build-app.sh: the joined executable has no ${triple} slice" >&2
+            exit 1
+        }
+    done
+fi
+
 if [ -z "$binary" ]; then
-    target_dir=$(cd "$root" && cargo metadata --format-version 1 --no-deps |
-        sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
     binary="${target_dir}/release/slipcase-desktop"
 fi
 [ -x "$binary" ] || {
@@ -106,9 +159,67 @@ plutil -lint "${app}/Contents/Info.plist" >/dev/null
 
 install -m 0755 "$binary" "${app}/Contents/MacOS/slipcase-desktop"
 
+# A released bundle's executable has to agree with the floor its property list
+# declares, and Cargo's default does not: measured on the first universal build,
+# the x86_64 slice said 10.12 and the arm64 slice said 11.0 while the bundle
+# said 12.0. Finder would refuse to launch it below 12 and the binary would
+# claim to run there, which is a promise to a person that the bundle then
+# breaks. `MACOSX_DEPLOYMENT_TARGET` is what moves it, and this is the check
+# that catches forgetting to set it.
+#
+# Only for `--universal`, which is the release path. A plain `cargo build
+# --release` for the local test loop is left alone, because failing the everyday
+# bundle over a floor that only matters on somebody else's machine would be
+# theatre.
+if [ "$universal" = yes ]; then
+    floor=$(plutil -extract LSMinimumSystemVersion raw "${app}/Contents/Info.plist")
+    for arch in x86_64 arm64; do
+        # Two shapes: a modern build emits LC_BUILD_VERSION with `minos`, and an
+        # old enough deployment target emits LC_VERSION_MIN_MACOSX with
+        # `version`. Both are read, so this cannot pass by finding neither.
+        got=$(otool -arch "$arch" -l "${app}/Contents/MacOS/slipcase-desktop" |
+            awk '/LC_BUILD_VERSION|LC_VERSION_MIN_MACOSX/ {want=1; next}
+                 want && ($1 == "minos" || $1 == "version") {print $2; exit}')
+        [ "$got" = "$floor" ] || {
+            echo "build-app.sh: the ${arch} slice was built for ${got:-nothing} and Info.plist declares ${floor} — rebuild with MACOSX_DEPLOYMENT_TARGET=${floor}" >&2
+            exit 1
+        }
+    done
+fi
+
+# Last, so that nothing this script writes lands inside the bundle after it has
+# been sealed. A signature covers what is there when it is made, and adding a
+# file afterwards is how a bundle becomes one macOS reports as damaged.
+if [ -n "$identity" ]; then
+    codesign --force --timestamp=none \
+        --sign "$identity" \
+        --entitlements "${here}/Slipcase.entitlements" \
+        "$app"
+    # A signature that did not carry the entitlements is the failure that costs
+    # a day: the bundle launches, behaves exactly as an unsigned one does, and
+    # every sandbox measurement made against it is quietly meaningless.
+    #
+    # The dots in the key are escaped because `plutil -extract` reads an
+    # unescaped one as a key path separator, so the plain spelling looks for
+    # five nested dictionaries, fails, and reports a correctly signed bundle as
+    # unsigned. Found by this check refusing a bundle whose entitlements were
+    # in front of it.
+    granted=$(codesign -d --entitlements - --xml "$app" 2>/dev/null |
+        plutil -extract 'com\.apple\.security\.app-sandbox' raw - 2>/dev/null)
+    [ "$granted" = true ] || {
+        echo "build-app.sh: the signature carries no app-sandbox entitlement" >&2
+        exit 1
+    }
+    echo "signed ${app} with ${identity}"
+fi
+
 echo "built ${app} from ${binary}"
 echo
 echo "register it and check that it took:"
 echo "  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f ${app}"
-echo "  mdls -name kMDItemContentType SOME.slpc      # com.excelano.slipcase"
+# Not `mdls`, which reports the synthesised `dyn.…` type for a registered `.slpc`
+# and is not the authority here — `README.md` records the measurement and the
+# likeliest reason. Launch Services is what decides what opens a container, and
+# the example below asks it through this application's own code.
+echo "  cargo run --example opens-with -- SOME.slpc  # Slipcase"
 echo "  open SOME.slpc"
