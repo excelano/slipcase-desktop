@@ -81,7 +81,7 @@ pub fn carry(from: &Path, to: &Path) -> io::Result<Mark> {
         // costs nothing that matters. Asked of the file rather than of the
         // process, so this is one branch on all three platforms and not a
         // sandbox check.
-        Err(_) if platform::arrived_from_elsewhere(to) => Ok(Mark::AlreadyMarked),
+        Err(_) if platform::carries_a_mark(to) => Ok(Mark::AlreadyMarked),
         other => other,
     }
 }
@@ -93,6 +93,16 @@ pub fn carry(from: &Path, to: &Path) -> io::Result<Mark> {
 /// from opening it. What the platform will then do about the mark is the
 /// platform's business — DESIGN.md §3's rule, applied to provenance rather than
 /// to type — so this reports and does not gate.
+///
+/// **Not the same question as whether the file is gated**, and the two were one
+/// function until this application began writing marks of its own. Under the
+/// App Sandbox the platform marks whatever this process writes, so a container
+/// this application saved carries a mark that says only that it was saved here.
+/// [`carry`] wants the gating question and asks `carries_a_mark`; this one is
+/// about origin and disregards a mark whose agent is this application. Anything
+/// it cannot read as ours it reports, because over-reporting provenance costs a
+/// person one line of caution and under-reporting it is the defect this whole
+/// module exists to prevent.
 #[must_use]
 pub fn arrived_from_elsewhere(path: &Path) -> bool {
     platform::arrived_from_elsewhere(path)
@@ -120,8 +130,46 @@ mod platform {
         }
     }
 
+    /// Whether anything at all will consult a mark before opening this file.
+    pub fn carries_a_mark(path: &Path) -> bool {
+        value_of(path).is_some()
+    }
+
     pub fn arrived_from_elsewhere(path: &Path) -> bool {
-        matches!(xattr::get(path, QUARANTINE), Ok(Some(_)))
+        match value_of(path) {
+            Some(value) => !this_application_wrote(&value),
+            None => false,
+        }
+    }
+
+    fn value_of(path: &Path) -> Option<Vec<u8>> {
+        xattr::get(path, QUARANTINE).ok().flatten()
+    }
+
+    /// Whether the mark records this application writing the file rather than
+    /// the file arriving from anywhere.
+    ///
+    /// The value is `flags;timestamp;agent;event-uuid`, and the agent is the
+    /// only field read here — the rest stays the opaque thing the constant
+    /// above says it is. Measured under a sandbox on 2026-08-25, the agent of a
+    /// mark the platform wrote on this application's behalf is the executable's
+    /// own filename, so that is what it is compared against rather than a
+    /// string spelled out here: a binary renamed keeps agreeing with itself.
+    ///
+    /// Every uncertainty answers false, which reports the file as having
+    /// arrived from elsewhere. A value with no third field, an executable this
+    /// process cannot name: none of those are evidence that the mark is ours,
+    /// and the safe direction is to keep saying so.
+    fn this_application_wrote(value: &[u8]) -> bool {
+        use std::os::unix::ffi::OsStrExt;
+
+        let Some(agent) = value.split(|b| *b == b';').nth(2) else {
+            return false;
+        };
+        let Ok(us) = std::env::current_exe() else {
+            return false;
+        };
+        us.file_name().is_some_and(|name| name.as_bytes() == agent)
     }
 }
 
@@ -151,6 +199,13 @@ mod platform {
         };
         std::fs::write(stream_of(to), zone)?;
         Ok(Mark::Carried)
+    }
+
+    /// The same question here. Nothing on Windows marks what this
+    /// application writes, so a stream on a file means the file arrived
+    /// carrying one.
+    pub fn carries_a_mark(path: &Path) -> bool {
+        arrived_from_elsewhere(path)
     }
 
     pub fn arrived_from_elsewhere(path: &Path) -> bool {
@@ -188,6 +243,13 @@ mod platform {
         Ok(if carried { Mark::Noted } else { Mark::Silent })
     }
 
+    /// The same question here, and neither answer gates anything: these
+    /// attributes are a note, so nothing on this platform consults one before
+    /// opening a file and nothing writes one on this application's behalf.
+    pub fn carries_a_mark(path: &Path) -> bool {
+        arrived_from_elsewhere(path)
+    }
+
     pub fn arrived_from_elsewhere(path: &Path) -> bool {
         ORIGIN
             .iter()
@@ -201,6 +263,10 @@ mod platform {
 
     pub fn carry(_from: &Path, _to: &Path) -> io::Result<Mark> {
         Ok(Mark::Silent)
+    }
+
+    pub fn carries_a_mark(_path: &Path) -> bool {
+        false
     }
 
     pub fn arrived_from_elsewhere(_path: &Path) -> bool {
@@ -353,6 +419,91 @@ mod macos_tests {
         assert!(
             carry(&from, &to).is_err(),
             "an unmarked copy was accepted, which is the laundering this module exists to prevent"
+        );
+    }
+
+    /// The mark the platform writes on this application's behalf, whose agent
+    /// is the running executable's own filename. Built rather than spelled out,
+    /// because under `cargo test` the executable is the test binary.
+    fn our_own_mark() -> Vec<u8> {
+        use std::os::unix::ffi::OsStrExt;
+        let us = std::env::current_exe().expect("this process has a path");
+        let mut value = b"0082;6a8dc724;".to_vec();
+        value.extend_from_slice(us.file_name().expect("and a filename").as_bytes());
+        value.push(b';');
+        value
+    }
+
+    /// The defect this catches is the card telling a person that a container
+    /// they made here arrived from elsewhere. Under the App Sandbox the
+    /// platform marks whatever this process writes, so saving an edit marks the
+    /// container — measured 2026-08-25 — and a predicate that only asks whether
+    /// a mark exists then reports a local file as downloaded.
+    #[test]
+    fn a_mark_this_application_wrote_is_not_provenance() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let saved = dir.path().join("saved-here.slpc");
+        std::fs::write(&saved, b"container").expect("the container");
+        xattr::set(&saved, QUARANTINE, &our_own_mark()).expect("marking it as we would");
+
+        assert!(
+            !super::arrived_from_elsewhere(&saved),
+            "a container this application saved is being reported as downloaded"
+        );
+    }
+
+    /// The defect this catches is the test above going too far and silencing
+    /// real provenance. A mark naming any other agent is what the card exists
+    /// to report, and disregarding one would be the module lying in the
+    /// direction that costs something.
+    #[test]
+    fn a_mark_anything_else_wrote_still_is() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let downloaded = dir.path().join("downloaded.slpc");
+        std::fs::write(&downloaded, b"container").expect("the container");
+        xattr::set(&downloaded, QUARANTINE, FROM_SAFARI).expect("marking the source");
+
+        assert!(super::arrived_from_elsewhere(&downloaded));
+    }
+
+    /// A value this module cannot read as its own is reported rather than
+    /// disregarded. Catches a parser that treats a missing agent field, or any
+    /// other shape it did not expect, as evidence the mark is ours — the safe
+    /// direction is one line of unnecessary caution, and the other direction is
+    /// the laundering this module exists to prevent.
+    #[test]
+    fn a_mark_that_cannot_be_read_is_reported() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let odd = dir.path().join("odd.slpc");
+        std::fs::write(&odd, b"container").expect("the container");
+        xattr::set(&odd, QUARANTINE, b"0082").expect("marking it oddly");
+
+        assert!(super::arrived_from_elsewhere(&odd));
+    }
+
+    /// The defect this catches is the two questions being one function again.
+    /// `carry` needs to know whether the copy is gated, and a copy the platform
+    /// marked on this application's behalf is gated even though it did not
+    /// arrive from anywhere. Making `carry` ask about origin instead breaks
+    /// extraction under a sandbox, which is what the fallback was added to fix.
+    #[test]
+    fn a_copy_this_application_marked_still_counts_as_gated() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        xattr::set(&from, QUARANTINE, FROM_SAFARI).expect("marking the source");
+        xattr::set(&to, QUARANTINE, &our_own_mark()).expect("as the platform would");
+        unwritable(&to);
+
+        assert_eq!(
+            carry(&from, &to).expect("a marked copy is not a failure"),
+            Mark::AlreadyMarked
+        );
+        assert!(
+            !super::arrived_from_elsewhere(&to),
+            "and the same file does not claim to have come from anywhere"
         );
     }
 
