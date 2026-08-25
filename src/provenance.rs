@@ -9,6 +9,14 @@
 //! properties of the file rather than of its contents — so a copy written by
 //! this application carries neither unless this module puts them there.
 //!
+//! **Except under the macOS App Sandbox, where the platform marks the copy
+//! first.** Measured 2026-08-25: a payload extracted by a sandboxed build came
+//! out carrying `com.apple.quarantine` naming this application, from a
+//! container carrying none, and the write this module then attempted was
+//! refused — replacing one quarantine value with another is how forgery would
+//! work. So the premise above is false in that one configuration, and the rule
+//! below is written to survive it being false.
+//!
 //! Without it, extracting is laundering. A person downloads a container, opens
 //! it here, and the payload reaches its handler as something this machine
 //! created rather than as something that arrived from elsewhere; the warning
@@ -19,10 +27,19 @@
 //!
 //! **The policy lives here rather than in the caller.** [`carry`] fails only
 //! when the platform keeps a mark that gates opening, the source carries one,
-//! and it could not be written to the copy. Everything else — no mark, no such
-//! mark on this platform, a note nothing enforces — succeeds. So the rule for a
-//! caller about to hand a payload to the system is the whole of the rule: an
-//! error means do not open it.
+//! and the copy ends up carrying none. Everything else — no mark, no such mark
+//! on this platform, a note nothing enforces, a mark the platform put there
+//! itself — succeeds. So the rule for a caller about to hand a payload to the
+//! system is the whole of the rule: an error means do not open it.
+//!
+//! That is deliberately a test of the copy rather than of this module's own
+//! success. What the paragraph above calls laundering is a payload reaching its
+//! handler looking like something this machine made, and the warning that then
+//! never appears; it is not the absence of one particular value. A copy the
+//! platform marked is gated, so the harm does not arise, and the source's own
+//! value — which agent, which download — is detail this module loses rather
+//! than a control it gives up. Testing the file rather than the environment is
+//! also why nothing here asks whether it is sandboxed.
 
 use std::io;
 use std::path::Path;
@@ -37,6 +54,13 @@ pub enum Mark {
     /// provenance as a note rather than as a gate, so this is hygiene and not a
     /// control, and it is a separate answer so that nothing mistakes it for one.
     Noted,
+    /// The copy already said it arrived from elsewhere, and this module is not
+    /// what put it there. The platform marks what a sandboxed process writes
+    /// and then refuses to have that mark replaced, so the source's own value
+    /// is lost while the gate it exists for is in place. A separate answer from
+    /// [`Carried`](Mark::Carried) because the copy does not say what the source
+    /// said, only that it came from somewhere.
+    AlreadyMarked,
     /// The source said nothing about where it came from, or this platform keeps
     /// nothing that would say.
     Silent,
@@ -47,10 +71,19 @@ pub enum Mark {
 /// # Errors
 ///
 /// Returns the write error when this platform gates opening on a mark, `from`
-/// carries one, and it could not be put on `to`. A caller that is about to open
+/// carries one, and `to` ends up carrying none. A caller that is about to open
 /// `to` must not, because the copy would be trusted where the original was not.
 pub fn carry(from: &Path, to: &Path) -> io::Result<Mark> {
-    platform::carry(from, to)
+    match platform::carry(from, to) {
+        // A refused write is only a failure if the copy is unmarked after it.
+        // Under the App Sandbox it is not: the platform marked the copy on
+        // creation, which is both why the write was refused and why refusing it
+        // costs nothing that matters. Asked of the file rather than of the
+        // process, so this is one branch on all three platforms and not a
+        // sandbox check.
+        Err(_) if platform::arrived_from_elsewhere(to) => Ok(Mark::AlreadyMarked),
+        other => other,
+    }
 }
 
 /// Whether the platform records this file as having arrived from elsewhere.
@@ -256,6 +289,106 @@ mod tests {
         assert_eq!(
             xattr::get(&to, "user.xdg.origin.url").expect("reading"),
             Some(b"https://example.invalid/new".to_vec()),
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod macos_tests {
+    use super::{carry, Mark};
+
+    const QUARANTINE: &str = "com.apple.quarantine";
+    const FROM_SAFARI: &[u8] = b"0083;6a8dbb61;Safari;B8AC643B-5609-41D4-A666-ACC147704C79";
+    const FROM_US: &[u8] = b"0082;6a8dc724;slipcase-desktop;";
+
+    /// A file that will not accept an attribute, so that the write `carry`
+    /// attempts fails the way the App Sandbox makes it fail. A test cannot
+    /// enter a sandbox; what it can do is deny the same write for a reason of
+    /// its own and hold `carry` to the same rule.
+    fn unwritable(path: &std::path::Path) {
+        let mut mode = std::fs::metadata(path).expect("the file").permissions();
+        std::os::unix::fs::PermissionsExt::set_mode(&mut mode, 0o444);
+        std::fs::set_permissions(path, mode).expect("making it unwritable");
+    }
+
+    /// The defect this catches is Extract and Open failing outright under the
+    /// App Sandbox for every container that arrived from elsewhere — the
+    /// containers the whole module exists for. Measured 2026-08-25: the
+    /// platform marks what a sandboxed process writes and then refuses to have
+    /// that mark replaced, so `carry` failed, and `copy_out` turns a failure
+    /// here into a refusal to extract at all. A copy that is already marked is
+    /// gated, so nothing was laundered and there is nothing to refuse.
+    #[test]
+    fn a_copy_the_platform_marked_first_is_not_a_failure() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        xattr::set(&from, QUARANTINE, FROM_SAFARI).expect("marking the source");
+        xattr::set(&to, QUARANTINE, FROM_US).expect("marking the copy");
+        unwritable(&to);
+
+        assert_eq!(
+            carry(&from, &to).expect("a marked copy is not a failure"),
+            Mark::AlreadyMarked
+        );
+    }
+
+    /// The defect this catches is the fallback above swallowing a real one. A
+    /// copy that carries no mark at all after the write was refused is exactly
+    /// the laundering this module exists to prevent, and it must still be an
+    /// error — otherwise the payload is handed to its handler looking like
+    /// something this machine made.
+    #[test]
+    fn a_copy_with_no_mark_at_all_is_still_a_failure() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        xattr::set(&from, QUARANTINE, FROM_SAFARI).expect("marking the source");
+        unwritable(&to);
+
+        assert!(
+            carry(&from, &to).is_err(),
+            "an unmarked copy was accepted, which is the laundering this module exists to prevent"
+        );
+    }
+
+    /// A container that arrived from nowhere leaves the copy alone, rather than
+    /// inventing a mark or reporting one. The macOS counterpart of the Linux
+    /// test of the same name, and it catches an arm that treats "no mark on the
+    /// source" as something to carry.
+    #[test]
+    fn a_container_from_nowhere_marks_nothing() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("plain.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+
+        assert_eq!(carry(&from, &to).expect("carrying"), Mark::Silent);
+        assert!(xattr::get(&to, QUARANTINE).expect("reading").is_none());
+    }
+
+    /// The defect this catches is the whole point of the module on this
+    /// platform: a payload extracted from a downloaded container arriving with
+    /// no quarantine attribute, so that Gatekeeper is never consulted about it.
+    #[test]
+    fn a_downloaded_container_puts_its_quarantine_on_the_payload() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        xattr::set(&from, QUARANTINE, FROM_SAFARI).expect("marking the source");
+
+        assert_eq!(carry(&from, &to).expect("carrying"), Mark::Carried);
+        assert_eq!(
+            xattr::get(&to, QUARANTINE).expect("reading"),
+            Some(FROM_SAFARI.to_vec()),
+            "the copy does not carry the value the container carried"
         );
     }
 }

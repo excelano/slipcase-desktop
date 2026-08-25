@@ -393,7 +393,12 @@ file is written by a sandboxed process, the platform marks it, and
 `replaceItemAtURL:` carries that mark onto the original — the original's
 `com.apple.macl` and last-used date survive and the quarantine attribute does
 not. Whether a sandboxed process may remove the attribute it did not ask for is
-untested, and testing it needs code rather than a click.
+untested, and testing it needs code rather than a click. It is left standing as
+a known sandbox-only defect: `DESIGN.md` §5 was reopened on the extraction
+failure, which blocked the channel, and not on this, which misstates one line on
+the card. Deciding it means deciding whether to read the agent out of a value
+this application deliberately treats as opaque, and that deserves its own
+decision rather than being settled beside a bug fix.
 
 One incidental: the only sandbox violation the log attributes to this
 application is `hid-control`, winit asking WindowServer for raw input. It is
