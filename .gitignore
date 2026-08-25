@@ -10,3 +10,10 @@ dist-sandboxed/
 # `make-ico` is its own package, so its build directory is its own too and the
 # root-anchored rule above does not reach it.
 /packaging/windows/make-ico/target/
+
+# The Mac App Store submission walkthrough, which names the account, the team,
+# and the certificates. `packaging/macos/README.md` carries everything about the
+# bundle that belongs on a public record; this one is deliberately local, and
+# `git log` shows what taking an account identifier back out of a public
+# repository costs.
+/packaging/macos/SUBMITTING.local.md
