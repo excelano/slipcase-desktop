@@ -258,12 +258,17 @@ mod tests {
     /// `Destination::new`, which the macOS arm asks for instead, deliberately
     /// does not and hands back whatever the umask would have given a new file.
     /// So macOS depends on `replaceItemAtURL:` putting the original's metadata
-    /// back, and that was read out of Apple's documentation rather than
-    /// measured — the extended attributes were measured on 2026-08-25 and
-    /// recorded in `CHECKLIST.md`, and the mode bits were not.
+    /// back. That had been read out of Apple's documentation rather than
+    /// measured: the extended attributes were measured on 2026-08-25 and
+    /// recorded in `CHECKLIST.md`, and the mode bits were not. This test is
+    /// where they are, and the Apple silicon workflow is where it runs — a mode
+    /// bit needs no display, no session and no person, so the one platform
+    /// nobody here can execute answers it anyway. It passes: the replacement
+    /// keeps the original's permissions, as the documentation said it would.
     ///
     /// It bites on both routes. Swapping the non-macOS arm to
-    /// `Destination::new` leaves a `0600` container `0644` here, which is how it
+    /// `Destination::new` leaves a container the person made `0600` sitting at
+    /// `0664`, the umask's answer rather than the container's, which is how this
     /// was checked; on macOS the same failure is what a replacement taking its
     /// metadata from the staged file would produce.
     #[cfg(unix)]
