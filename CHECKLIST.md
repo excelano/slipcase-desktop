@@ -217,6 +217,14 @@ state, there being no conffiles to leave.
 
 ### Not yet done by hand
 
+- **Enter, from a double-click onwards.** The Open button asks for the keyboard
+  when a container is shown, so the whole interaction should be: double-click a
+  container in Files, press Enter, and the payload opens. Two tests cover the
+  logic and neither can see a focus ring. Check that the ring is actually
+  visible on the button, that Tab still moves away from it afterwards, and that
+  a container whose payload cannot be decoded shows no ring at all — the flag
+  is meant to stay unspent there rather than land on a disabled button.
+
 - **A machine that has never had it.** Item 12 was run here, where every
   dependency was already satisfied, so `apt` pulled nothing and the `Depends`
   list was never actually exercised. A minimal install would exercise it.

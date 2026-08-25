@@ -215,6 +215,12 @@ fn main() -> eframe::Result {
             #[cfg(not(target_os = "macos"))]
             let _ = cc;
 
+            // A container handed over on the command line, or double-clicked,
+            // gets the same focus a container opened through the dialog does.
+            // Read before the move, because the field initializers below run
+            // in the order they are written.
+            let focus_open = opened.is_some();
+
             Ok(Box::new(App {
                 opened,
                 scratch: None,
@@ -222,6 +228,7 @@ fn main() -> eframe::Result {
                 replacing: None,
                 save_said: None,
                 picking: None,
+                focus_open,
             }))
         }),
     )
@@ -248,6 +255,14 @@ struct App {
     save_said: Option<Said>,
     /// A file dialog open on another thread, and what its answer is for.
     picking: Option<Picking>,
+    /// Whether the Open button still has to be given keyboard focus.
+    ///
+    /// Set when a container is shown and cleared the moment the focus is
+    /// asked for, so that pressing Enter opens the payload and pressing Tab
+    /// afterwards still moves away. Requesting it every frame would pin focus
+    /// to the button and make the rest of the window unreachable from the
+    /// keyboard, which is worse than the extra press this saves.
+    focus_open: bool,
 }
 
 /// A dialog open on another thread.
@@ -362,6 +377,11 @@ impl App {
         }
         self.opened = Some(opened);
         self.extraction = Extraction::Idle;
+        // The common thing to do with a container just opened is to open what
+        // is in it, so Enter does that without a reach for the mouse. Only
+        // asked for here: a container already on screen has had its chance and
+        // the focus is now wherever the person put it.
+        self.focus_open = true;
         // A file chosen to replace the payload of the container being closed
         // is not a file to replace the payload of the next one.
         self.replacing = None;
@@ -618,6 +638,7 @@ fn card(
     extraction: &Extraction,
     replacing: Option<&std::path::Path>,
     busy: bool,
+    focus_open: &mut bool,
 ) -> Option<Ask> {
     let mut asked = None;
 
@@ -690,6 +711,15 @@ fn card(
                                 Some(why) if ask.decodes() => button.on_disabled_hover_text(why),
                                 _ => button,
                             };
+                            // Once, and only where it would do something: a
+                            // focus ring on a disabled button says press me
+                            // about a button that cannot be pressed, and a
+                            // payload this build cannot decode leaves Open
+                            // disabled.
+                            if *focus_open && ask == Ask::Open && button.enabled() {
+                                button.request_focus();
+                                *focus_open = false;
+                            }
                             if button.clicked() {
                                 asked = Some(ask);
                             }
@@ -880,6 +910,7 @@ impl App {
                         &self.extraction,
                         self.replacing.as_deref(),
                         self.picking.is_some(),
+                        &mut self.focus_open,
                     );
                 }
 
@@ -968,6 +999,7 @@ mod tests {
     }
 
     fn app(opened: Option<Opened>) -> App {
+        let focus_open = opened.is_some();
         App {
             opened,
             scratch: None,
@@ -975,6 +1007,7 @@ mod tests {
             replacing: None,
             save_said: None,
             picking: None,
+            focus_open,
         }
     }
 
@@ -1120,6 +1153,48 @@ mod tests {
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
+    /// Opening a container asks for focus on the Open button once, and stops
+    /// asking. The defect this catches is the request being made every frame,
+    /// which pins the focus to that button and leaves the tree, the Save, and
+    /// every other control unreachable from the keyboard — worse than the one
+    /// press it was meant to save.
+    #[test]
+    fn the_open_button_is_focused_once_and_not_every_frame() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+        assert!(app.focus_open, "a container just shown wants the focus");
+
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+        assert!(
+            !app.focus_open,
+            "the focus was asked for again on the next frame",
+        );
+    }
+
+    /// A payload this build cannot decode leaves Open disabled, and a focus
+    /// ring on a disabled button says press me about a button that cannot be
+    /// pressed. The flag stays up rather than being spent on it.
+    #[test]
+    fn a_payload_that_cannot_be_read_does_not_take_the_focus() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+
+        let card = app
+            .opened
+            .as_mut()
+            .expect("a container")
+            .payload
+            .as_mut()
+            .expect("a conformant container has a card");
+        card.unreadable = Some("the member is encrypted (SPEC 2.5)".to_owned());
+
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+        assert!(
+            app.focus_open,
+            "the focus was spent on a button that cannot be pressed",
+        );
+    }
+
     /// One that can be, is.
     #[test]
     fn a_replacement_that_can_be_one_waits_for_a_save() {
@@ -1173,6 +1248,7 @@ mod save_failure_tests {
             replacing: None,
             save_said: None,
             picking: None,
+            focus_open: true,
         };
 
         let document = app
