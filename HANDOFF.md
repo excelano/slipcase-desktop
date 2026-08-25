@@ -103,9 +103,9 @@ smoothing it away, and treats `git log` as a document.
 
 ## Before you start
 
-    cargo test                    # 59 on Linux, 61 on Windows, 63 on macOS;
-                                  # the difference is each platform's own tests
-                                  # inside its own arm of opens_with.rs
+    cargo test                    # the count differs per platform: each
+                                  # platform's own tests sit inside its own
+                                  # arm of opens_with.rs
     cargo clippy --all-targets    # no warnings
     cargo build --release
 

@@ -45,8 +45,8 @@ of why everything is the way it is, and it is written to be read.
 
     cargo build                   # debug
     cargo build --release
-    cargo test                    # 59 on Linux, 61 on Windows, 63 on macOS:
-                                  # each platform's arm carries its own tests
+    cargo test                    # the count differs per platform: each
+                                  # platform's arm carries its own tests
     cargo clippy --all-targets    # must be silent
     cargo check --target x86_64-pc-windows-msvc   # cross-check, from Linux or macOS
 
