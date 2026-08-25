@@ -528,9 +528,29 @@ there by propagation rather than by being on the thing that gets refused.
 
 ### Not yet done by hand
 
-- **A high-density display.** Every size above was checked on a 2560x1440
-  display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
-  ones has been looked at on a display that would ask for one.
+- **A high-density display, half done.** The `@2x` entries have now been
+  checked, by a better method than looking at them: each was re-rendered from
+  the SVG at its own pixel size and compared against what the `.icns` holds.
+  All five match byte for byte — 32, 64, 256, 512 and 1024 — so none of them is
+  an upscale and `build-app.sh`'s size check did its job. The two smallest were
+  then looked at as well, since this drawing failed at 48 pixels once on Linux:
+  the card-in-a-case is legible at 32 and clean at 64.
+
+  One thing found on the way that looks like a defect and is not.
+  `iconutil --convert iconset` hands back a 32-pixel `icon_16x16@2x.png`
+  identical to our render and a 32-pixel `icon_32x32.png` that differs. Reading
+  the `.icns` explains it: `ic04` and `ic05`, the 16 and 32 pixel 1x entries,
+  are stored as raw ARGB while every other entry is PNG, so extracting those two
+  re-encodes them. A format difference and not data loss. Written down because
+  the next person to hash those files will think they have found something.
+
+  What is still not done is the part that needs a display: the application's own
+  interface at 2x. Nothing has ever drawn a frame of it at that scale, and
+  `DESIGN.md` §6's layout numbers were all measured at 1x, including the tree
+  row that came to 916 pixels in a 900-pixel window and pushed a button off the
+  edge. This machine's panel is 2560x1440 at 1x; whether macOS offers it a HiDPI
+  scaled mode has not been checked, and failing that it waits for the Apple
+  silicon machine the arm64 walkthrough needs anyway.
 - **A signed bundle**, partly done. Signing with an Apple Development
   certificate answered the `mdls` question: the type is flagged `trusted`
   rather than `untrusted`, Spotlight reports `com.excelano.slipcase`, and the
