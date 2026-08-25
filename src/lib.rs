@@ -8,6 +8,7 @@
 
 pub mod opens_with;
 pub mod provenance;
+mod staging;
 pub mod tree;
 
 use std::io::{Read, Write};
@@ -646,7 +647,7 @@ impl Opened {
             return Ok(Saved::Unchanged);
         }
 
-        let mut destination = slpc::Destination::in_place(&self.path)?;
+        let mut destination = staging::Staged::over(&self.path)?;
         {
             let source = std::fs::File::open(&self.path)?;
             let mut repack = slpc::Repack::new(source);

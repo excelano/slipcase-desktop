@@ -379,6 +379,22 @@ provenance cannot be carried has to learn that a platform which has already
 marked the file has done the job itself. Both are decisions rather than
 repairs, so they belong with David.
 
+**The save path was changed the same day, and the change was run under the same
+sandbox.** `src/staging.rs` stages the rewrite in a scratch directory of the
+application's own and lands it with `-[NSFileManager replaceItemAtURL:…]`.
+Saving `~/Documents/sandbox-save-test.slpc` then wrote the edit, read back
+conformant, and said *Saved.*, with the comment on an untouched key surviving.
+
+That run showed one more thing, and a screenshot rather than a terminal caught
+it. The container had no `com.apple.quarantine` when it was opened and carried
+`0082;…;slipcase-desktop;` afterwards, so the card now says *This container
+arrived from elsewhere* about a file that never left the machine. The staged
+file is written by a sandboxed process, the platform marks it, and
+`replaceItemAtURL:` carries that mark onto the original — the original's
+`com.apple.macl` and last-used date survive and the quarantine attribute does
+not. Whether a sandboxed process may remove the attribute it did not ask for is
+untested, and testing it needs code rather than a click.
+
 One incidental: the only sandbox violation the log attributes to this
 application is `hid-control`, winit asking WindowServer for raw input. It is
 harmless and it is not ours.

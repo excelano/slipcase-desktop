@@ -67,7 +67,11 @@ objc2-uniform-type-identifiers = { version = "0.3", default-features = false, fe
 objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSWorkspace", "NSApplication", "NSResponder", "objc2-uniform-type-identifiers"] }
 # `NSBundle`, for what an application calls itself, and the strings and URLs
 # the other two speak in.
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "block2", "objc2-core-services"] }
+# `NSFileManager` is for the one call that can replace a file a sandboxed
+# application was given, rather than writing into a directory it was not;
+# `NSError` is what that call reports through. Both are features of a crate
+# already here, so neither adds anything to the tree.
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "NSFileManager", "NSError", "block2", "objc2-core-services"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Reading the window's icon out of the `.ico` the installer also registers.
