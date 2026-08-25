@@ -248,4 +248,50 @@ mod tests {
             "the original does not hold what was written"
         );
     }
+
+    /// The defect this catches is a container coming back readable by people it
+    /// was not readable by before.
+    ///
+    /// The two arms reach this property by different routes, which is why it is
+    /// worth asserting rather than assuming. `Destination::in_place` carries the
+    /// original's permissions onto the replacement and documents that it does;
+    /// `Destination::new`, which the macOS arm asks for instead, deliberately
+    /// does not and hands back whatever the umask would have given a new file.
+    /// So macOS depends on `replaceItemAtURL:` putting the original's metadata
+    /// back, and that was read out of Apple's documentation rather than
+    /// measured — the extended attributes were measured on 2026-08-25 and
+    /// recorded in `CHECKLIST.md`, and the mode bits were not.
+    ///
+    /// It bites on both routes. Swapping the non-macOS arm to
+    /// `Destination::new` leaves a `0600` container `0644` here, which is how it
+    /// was checked; on macOS the same failure is what a replacement taking its
+    /// metadata from the staged file would produce.
+    #[cfg(unix)]
+    #[test]
+    fn the_container_keeps_the_permissions_it_had() {
+        use std::io::Write;
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::TempDir::new().expect("a directory to work in");
+        let container = dir.path().join("private.slpc");
+        std::fs::write(&container, b"before").expect("writes the container");
+        // No umask hands out 0600 for a new file, so a replacement that took
+        // the umask's answer cannot pass this by coincidence.
+        std::fs::set_permissions(&container, std::fs::Permissions::from_mode(0o600))
+            .expect("makes the container private");
+
+        let mut staged = Staged::over(&container).expect("reserves a rewrite");
+        staged.writer().write_all(b"after").expect("writes");
+        staged.commit().expect("commits");
+
+        assert_eq!(
+            std::fs::metadata(&container)
+                .expect("reads the container back")
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600,
+            "the rewrite did not keep the container's own permissions"
+        );
+    }
 }
