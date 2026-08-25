@@ -321,8 +321,9 @@ results, one of which contradicts the item that asked for them.
 **Save fails, and on the sibling rather than the rename.** Opening
 `~/Documents/sandbox-save-test.slpc` through the application's own Open dialog,
 editing a key, and pressing Save gives *cannot write into
-/Users/anderix/Documents: Operation not permitted (os error 1)* at path
-`/Users/anderix/Documents/.tmpos50lA`. The grant covers the file a person chose
+~/Documents: Operation not permitted (os error 1)* at path
+`~/Documents/.tmpos50lA`, the home directory abridged here and spelled out in
+full by the application. The grant covers the file a person chose
 and nothing else in that directory, exactly as the item predicted. The
 application handles it properly — a clean refusal naming the path, no crash and
 no half-written container.

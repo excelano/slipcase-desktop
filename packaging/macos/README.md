@@ -154,8 +154,7 @@ bundle carrying that file is simply not sandboxed. Every sandbox measurement in
 `CHECKLIST.md` was made against a signed bundle for that reason.
 
 **Which certificate does what.** An **Apple Development** identity, which this
-machine holds under team `9K6W5PMFYP`, signs a bundle that runs and sandboxes
-here — enough for everything measured so far, and it needs nothing from the
+machine already holds, signs a bundle that runs and sandboxes here — enough for everything measured so far, and it needs nothing from the
 developer portal. An **Apple Distribution** identity is what a Store upload must
 be signed with, and a **Mac Installer Distribution** identity signs the package
 that carries it. Neither is on this machine yet and both are created in the
@@ -207,8 +206,8 @@ None of that needed a distribution certificate. An Apple Development
 certificate signs a bundle with entitlements perfectly well, and the sandbox is
 inert until the entitlement is inside a signature.
 
-**The account exists; nothing macOS does.** Team `9K6W5PMFYP` already ships two
-iOS applications, so App Store Connect, the agreements, and the tax and banking
+**The account exists; nothing macOS does.** It already ships two iOS
+applications, so App Store Connect, the agreements, and the tax and banking
 side are done. Absent on this machine are an Apple Distribution certificate, a
 Mac Installer Distribution certificate, a macOS App ID for
 `com.excelano.slipcase-desktop`, and a Mac App Store provisioning profile,
