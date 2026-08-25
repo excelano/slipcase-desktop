@@ -149,6 +149,61 @@ the only way past is System Settings → Privacy & Security → Open Anyway. Any
 distribution outside this machine therefore needs a Developer ID signature and
 notarization.
 
+## What a Store build would need
+
+Signing is out of scope above as a *decision about this machine*, not as a
+verdict on the channel. The Mac App Store is under consideration because it is
+how a person who has been sent a container finds something to open it: Finder
+offers *Search App Store* by document type, and outside the Store that search
+returns nothing. What follows is what such a build would need, written down
+before it is attempted so the cost is known rather than discovered.
+
+**The sandbox is the gate and it is measured elsewhere.** Every Store binary is
+sandboxed, and `CHECKLIST.md` holds the three paths in this application that
+run at that wall — the in-place save, the handover through `opener`, which is
+`Command::new("open")` and so is denied outright, and the `com.apple.quarantine`
+write that extraction fails hard on. Nothing below is worth doing until those
+three have been run. None of them needs a distribution certificate: an Apple
+Development certificate signs a bundle with entitlements perfectly well for
+local testing, and the sandbox is inert until the entitlement is inside a
+signature.
+
+**The account exists; nothing macOS does.** Team `9K6W5PMFYP` already ships two
+iOS applications, so App Store Connect, the agreements, and the tax and banking
+side are done. Absent on this machine are an Apple Distribution certificate, a
+Mac Installer Distribution certificate, a macOS App ID for
+`com.excelano.slipcase-desktop`, and a Mac App Store provisioning profile,
+which a Store bundle carries as `embedded.provisionprofile` and which must
+declare the same entitlements the signature does.
+
+**No Xcode project is needed and none should be added.** `build-app.sh`
+assembles the bundle; a Store submission is that bundle signed with the
+entitlements and the profile, wrapped by `productbuild --component` into a
+package signed with the installer certificate, and uploaded with Transporter.
+The build stays a shell script, which is the point of it.
+
+**One property list key is missing.** App Store Connect requires
+`LSApplicationCategoryType` and `Info.plist.in` does not carry one;
+`public.app-category.utilities` is the honest fit. It is not added here,
+because a bundle should not claim a channel that has not been chosen.
+
+**The architecture is a real problem.** This machine is `x86_64` and
+`aarch64-apple-darwin` is not installed. An Intel-only binary on the Store means
+every Apple silicon buyer runs under a translation layer Apple is winding down,
+so a Store build wants a universal binary: the second target, and a `lipo` step
+in `build-app.sh`. Nothing here compiles C, so the cross-build should be
+uneventful — but the arm64 slice cannot be *run* on this machine, and the one
+platform-specific module in the crate is the Objective-C one, which is exactly
+the code least safe to ship untested.
+
+**Two things already argue well at review.** `DESIGN.md` §3 refuses to open a
+payload automatically on a double-click, which is the behaviour an autorun
+archive would have and the behaviour review exists to catch, and `§5` carries
+the container's provenance onto the payload rather than laundering it.
+
+A Developer ID `.dmg` and a Store build ship from one codebase, so this is not
+a fork in the road.
+
 ## The icon
 
 One drawing, `packaging/linux/icons/slipcase-desktop.svg`, which
