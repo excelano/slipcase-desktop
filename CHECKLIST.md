@@ -563,3 +563,13 @@ there by propagation rather than by being on the thing that gets refused.
 - **A downloaded bundle**, carrying `com.apple.quarantine`, to see what
   Gatekeeper actually shows a person rather than what `spctl` reports.
 - **A second user account**, and an upgrade over an existing install.
+- **A container on a second volume**, which is the one thing `src/staging.rs`
+  has never been run against. `Landing::beside_nothing` stages the rewrite
+  wherever `tempfile::TempDir::new` puts it — the boot volume — and
+  `replaceItemAtURL:` then moves that file onto the container. Every
+  measurement so far had both ends on the same volume, and a cross-volume
+  replacement is a different path through that call. Open a container from an
+  external drive, a mounted disk image, and a network share; edit a key and
+  save. Under a sandbox the grant covers the container and not the directory
+  holding it, so run it against the signed bundle as well as the plain one, and
+  watch for a save that reports success while the original is untouched.

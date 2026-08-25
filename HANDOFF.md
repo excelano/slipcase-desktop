@@ -3,8 +3,10 @@
 Everything here was written and first built on Linux. `DESIGN.md` §7 stage 4 is
 file association per platform, and two thirds of it could not be done on the
 machine the rest was done on. Windows was then done on Windows and macOS on a
-Mac, so nothing is waiting on a platform. This file says what each found and
-where the detail is.
+Mac, so no platform is holding up a stage. This file says what each found and
+where the detail is, and *What is waiting on a platform* below is what has come
+back since — two things found from another machine that only the arm's owner
+can settle.
 
 **Read `DESIGN.md` first, then `SPEC.md` in `excelano/slipcase` §4.** The design
 document is amended in place as building contradicts it, and every amendment
@@ -68,12 +70,54 @@ declared one, most likely because an unsigned bundle's exported type is flagged
 `DESIGN.md` §2, §3, and §8 carry every amendment and the measurements behind
 them.
 
-## What is missing
+## What is waiting on a platform
 
-Nothing is waiting on a platform, and all three now open a double-clicked
-container. What is left is a signature: an unsigned bundle is refused by
-Gatekeeper on any machine that did not build it, which also looks like the
-reason Spotlight will not take the exported type.
+A signature is no longer the answer to this section. `build-app.sh --sign`
+signs the bundle with an Apple Development certificate and reads the
+entitlements back out of the signature, and that settled the Spotlight
+question: the exported type is flagged `trusted` rather than `untrusted`, and
+`mdls` reports `com.excelano.slipcase` rather than the synthesised type. Still
+unrun is a *distribution*-signed bundle carrying a provisioning profile, which
+is a different sandbox context from the development-signed one every
+measurement was taken against.
+
+Two things were found on Linux while reviewing the macOS work, and neither
+belongs to Linux. They are here because this file is the only way they reach
+the session that owns the arm.
+
+**Windows: `carries_a_mark` asks whether the stream exists, not whether it
+gates.** In `src/provenance.rs` both questions are answered by
+`std::fs::metadata(path:Zone.Identifier).is_ok()`. That was harmless until
+`carry` gained its `AlreadyMarked` fallback, which now uses the predicate to
+decide whether a payload whose zone write failed is safe to hand to the system.
+`std::fs::write` creates the stream before it writes into it, so a write that
+fails partway — a full disk being the realistic one — leaves a stream that
+exists and carries no `ZoneId` line, and a stream with no `ZoneId` is not a
+file the shell gates. `carry` would call that `AlreadyMarked` and the payload
+would open ungated. The Windows arm never needs the fallback at all, because
+nothing on Windows marks what this application writes, so the repair is to make
+the predicate say what it means rather than to widen the fallback. Read out of
+the code and not measured, which is not the same thing: reproduce it before
+fixing it, and remember that a test which passes against the defect it was
+written for is worse than no test.
+
+**macOS: replacing across volumes has never been run.** `Landing::beside_nothing`
+stages the rewrite on the boot volume and `replaceItemAtURL:` moves it onto the
+container, and every measurement so far had both ends on the same volume. An
+external drive, a mounted disk image, or a network share is a different path
+through that call. It needs a second volume rather than a test, so it is an
+item in `CHECKLIST.md` under macOS and the detail is there.
+
+One thing from the same review is settled rather than waiting, and it is worth
+knowing about because it cuts both ways. `Destination::in_place` carries the
+original's permissions onto the replacement and `Destination::new` deliberately
+does not, so when the macOS arm changed constructors the container's mode
+stopped coming from the library and started coming from Apple. That claim was
+documentation rather than measurement until
+`the_container_keeps_the_permissions_it_had` was written; it passes on the
+Apple silicon runner, so the replacement does keep them. The general lesson is
+the one worth carrying into the other arms: a platform-specific arm inherits
+none of the library's promises that its constructor did not ask for.
 
 ## Something this file used to be wrong about
 

@@ -9,7 +9,12 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 
 This application was written and first built on Linux. Windows was then done on
 Windows and macOS on a Mac, so both briefs beside `HANDOFF.md` are records
-rather than tasks and nothing is waiting on a platform.
+rather than tasks and no platform is holding up a stage.
+
+**Read *What is waiting on a platform* in `HANDOFF.md` before you start.**
+Reviewing one platform's work from another turns up things only the arm's owner
+can settle, and that section is where they are left. It names the platform each
+one belongs to; an empty section means nothing has come back.
 
 - **Linux** — `packaging/linux` and `packaging/debian`.
 - **Windows** — `packaging/windows/README.md` says what was decided.
