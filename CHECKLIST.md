@@ -313,8 +313,22 @@ the container is used.
 
 ### Not yet done by hand
 
-- **Does the App Sandbox permit the save path?** This one decides a channel, so
-  it comes before everything else here. `slpc::Destination::in_place` calls
+- **Does the App Sandbox permit what this application does?** This one decides
+  a channel, so it comes before everything else here. Every Mac App Store
+  binary is sandboxed, and three paths run at that wall rather than the one
+  this item used to name — the other two were found by reading the code while
+  planning the sitting, which is cheaper than finding them in it.
+
+  Sign a copy of the bundle with `com.apple.security.app-sandbox` and
+  `com.apple.security.files.user-selected.read-write`. The Apple Development
+  certificate already in this keychain is enough: the sandbox is inert until
+  the entitlement is inside a signature, and no distribution certificate is
+  needed to measure any of this. Run all three below in one sitting with
+  `log stream` filtered to sandbox denials, because a denial names the
+  operation refused and the operation is what decides the fix. Without the log
+  every failure looks the same from the window.
+
+  **The save path.** `slpc::Destination::in_place` calls
   `NamedTempFile::new_in(dir)` — a randomly-named file created *beside* the
   container — and then renames it over the original. A sandboxed application
   holds a grant on the file a person chose through the open panel, not on the
@@ -323,23 +337,45 @@ the container is used.
   the expectation is that Save fails. **It is an expectation and not a
   measurement**, and sandboxed applications safe-save constantly through
   `NSFileCoordinator`, so the mechanism plainly exists and this reasoning may
-  simply be wrong.
-
-  Build the bundle with the App Sandbox entitlement and
-  `com.apple.security.files.user-selected.read-write`, open a container from
-  the Documents folder through the application's own Open dialog, edit a key,
-  and press Save. Three outcomes, and each points somewhere different:
+  simply be wrong. Open a container from the Documents folder through the
+  application's own Open dialog, edit a key, and press Save. Three outcomes,
+  and each points somewhere different:
 
   - **It succeeds.** There is no divergence, the save path is the same on all
     three platforms, and a Store build costs only entitlements and review.
-  - **It fails.** Then the choice is between `NSFileManager.replaceItemAt…`,
-    which keeps the atomic replace and almost certainly needs a second module
-    lifting `deny(unsafe_code)` — David's decision, not a precedent — and
-    writing a validated container into the application's own container before
-    overwriting the original in place, which needs no unsafe and gives up the
-    atomic rename that `Destination` exists to provide.
+  - **It fails.** Then which operation the log names decides what to do. A
+    denial on creating the sibling means `NSFileManager.replaceItemAt…` faces
+    the same wall; a denial on the rename alone means only the replace is
+    gated. The choice is between that call, which keeps the atomic replace and
+    almost certainly needs a second module lifting `deny(unsafe_code)` —
+    David's decision, not a precedent — and writing a validated container into
+    the application's own container before overwriting the original in place,
+    which needs no unsafe and gives up the atomic rename that `Destination`
+    exists to provide.
   - **It fails in some third way**, in which case say what it actually did
     rather than fitting it to one of the two above.
+
+  **The handover, where the expectation is not a maybe.** `opener` is
+  `Command::new("open")` on macOS — `opener-0.8.5/src/macos.rs:6`, read rather
+  than assumed — and the App Sandbox denies executing anything outside the
+  bundle. That is the sandbox doing what it exists for rather than a
+  permission that might go either way, so press Open on a payload and expect
+  nothing to happen. The sanctioned route is `NSWorkspace::openURL:`, which
+  costs no new dependency and no unsafe: `objc2-app-kit` is already a macOS
+  dependency and `src/opens_with.rs` already calls
+  `NSWorkspace::sharedWorkspace()` as a safe call. Worth doing whatever the
+  Store decision turns out to be, because a `Command::new` handover is a
+  fragile thing to depend on in a signed application generally.
+
+  **Carrying provenance, where a refusal is loudest.** `src/provenance.rs`
+  writes `com.apple.quarantine` onto the extracted copy with `xattr::set`, and
+  `copy_out` in `src/lib.rs` deliberately fails the whole extraction when that
+  write fails rather than degrading — a payload whose provenance could not be
+  carried must not be left under the name a person is about to be handed. So a
+  sandbox that refuses that attribute does not weaken Extract, it stops it.
+  Whether a sandboxed process may write that particular attribute is not worth
+  guessing at: extract from a container that actually carries the mark, which
+  the provenance item below produces, and read the log.
 
   Why it matters beyond tidiness: the App Store is how a person who has been
   sent a container finds something to open it. Finder offers *Search App Store*
@@ -347,8 +383,8 @@ the container is used.
   shows the same dialog for the Microsoft Store, which this release plan is
   already buying, so declining it on macOS alone is an inconsistency rather
   than a decision. The two channels are not exclusive: a Developer ID `.dmg`
-  and a Store build ship from one codebase.
-
+  and a Store build ship from one codebase, and `packaging/macos/README.md`
+  says what the Store one would need beyond the entitlement.
 - **Provenance, which has never run on this platform.** `src/provenance.rs`
   carries a container's `com.apple.quarantine` attribute onto the payload
   extracted from it, and the macOS arm compiles but has never executed.
@@ -360,10 +396,19 @@ the container is used.
   gates**. The suspicion is that quarantine bites on executables and
   application bundles and says nothing at all about a quarantined document
   handed to Preview, in which case carrying it matters for the dangerous case
-  and not the ordinary one. Worth testing with both an ordinary payload and an
-  executable one, in the temp directory the Open button uses. If a quarantined
-  file there is treated as trusted, DESIGN.md §5's decision to report rather
-  than gate has to be reopened.
+  and not the ordinary one. If a quarantined file there is treated as trusted,
+  DESIGN.md §5's decision to report rather than gate has to be reopened.
+
+  **An executable payload cannot be the dangerous case, and finding that out
+  cost nothing.** This item used to say to test one. `copy` in `src/lib.rs`
+  creates the extracted file with `std::fs::File::create` and nothing chmods
+  it afterward, so the copy lands at 0644 whatever mode the member carried
+  inside the container, and `open` on a script or a Mach-O binary fails on the
+  permission bit before Gatekeeper is ever consulted. What macOS gates without
+  needing that bit is a disk image or an installer package, so the fixture is
+  `a-disk-image.slpc`. Confirm the 0644 first — `a-command.slpc` carries a
+  `run-me.command` stored `rwxr-xr-x`, so extracting it and reading the mode
+  measures the claim in this paragraph rather than trusting it.
 - **A high-density display.** Every size above was checked on a 2560x1440
   display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
   ones has been looked at on a display that would ask for one.
