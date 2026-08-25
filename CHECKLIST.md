@@ -147,7 +147,25 @@ does not notice: GNOME reads the mime database once per session.
     root directory. Then check the association again from `/usr`, and run
     `dpkg -V slipcase-desktop`, which is silent only if `md5sums` is both
     present and correct.
-13. **Remove it.** `sudo apt remove slipcase-desktop`. The type reverts to
+13. **Enter, from a double-click onwards.** Double-click a container in Files,
+    look for the focus ring on Open, and press Enter without touching the
+    mouse: the payload opens. Then Tab, which must move focus off Open rather
+    than sticking to it — a request made every frame pins the keyboard there
+    and leaves the tree and the Save unreachable. Then a container whose
+    payload cannot be decoded, which must show no ring at all, the flag being
+    meant to stay unspent rather than land on a disabled button. Two tests
+    cover the logic and neither can see a pixel, so the ring being legible
+    against the card is only checkable here.
+
+    **Use a container holding a real payload.** The conformance fixtures carry
+    47-byte placeholders named `report.pdf`, which are correct for testing
+    container mechanics and are not documents: handing one to Document Viewer
+    produces *PDF document is damaged*, which reads exactly like a defect in
+    the handover and is not one. It cost a round trip here. Build a container
+    around a file that actually opens before concluding anything about this
+    step.
+
+14. **Remove it.** `sudo apt remove slipcase-desktop`. The type reverts to
     `application/zip`, nothing matching `slipcase` is left under
     `/usr/share/{mime,applications,icons}`, the mime cache no longer contains
     the string, and `dpkg-query -W` finds no package — not even the `rc` state
@@ -206,6 +224,13 @@ the glob drew identically to files that did.
 **The `.deb` shipped no `md5sums`**, so `dpkg -V` could say nothing about an
 installed copy. Found by looking inside the archive rather than by any test.
 
+Enter from a double-click was walked through and works: the ring is visible on
+Open, Enter opens the payload without a reach for the mouse, Tab moves away
+afterwards, an encrypted payload leaves Open disabled and unringed, and a
+container marked as arriving from elsewhere says so on the card in a colour
+that reads. The only thing that went wrong was the test data, recorded in item
+13 so it does not cost anybody else the same round trip.
+
 The package itself found nothing. Installing pulled no dependency the machine
 did not already have, which is the first evidence that the hand-derived
 `Depends` is right rather than merely plausible — the linker names four
@@ -216,14 +241,6 @@ the installed tree. Removing it took the association with it and left no `rc`
 state, there being no conffiles to leave.
 
 ### Not yet done by hand
-
-- **Enter, from a double-click onwards.** The Open button asks for the keyboard
-  when a container is shown, so the whole interaction should be: double-click a
-  container in Files, press Enter, and the payload opens. Two tests cover the
-  logic and neither can see a focus ring. Check that the ring is actually
-  visible on the button, that Tab still moves away from it afterwards, and that
-  a container whose payload cannot be decoded shows no ring at all — the flag
-  is meant to stay unspent there rather than land on a disabled button.
 
 - **A machine that has never had it.** Item 12 was run here, where every
   dependency was already satisfied, so `apt` pulled nothing and the `Depends`
