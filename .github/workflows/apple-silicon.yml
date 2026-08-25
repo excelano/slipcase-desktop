@@ -1,0 +1,75 @@
+# Run the suite on Apple silicon, because nothing else here can.
+#
+# Every machine this application has been built and walked through on is
+# x86_64, and a Store build has to be universal. `cargo build --target
+# aarch64-apple-darwin` cross-compiles on an Intel Mac but cannot run what it
+# produces, so the arm64 half of a released bundle was, until this file, code
+# nobody had ever executed.
+#
+# What this reaches is worth being precise about. The tests are not a token
+# check: `opens_with` asks Launch Services, `provenance` reads and writes
+# `com.apple.quarantine`, and `staging` calls `-[NSFileManager
+# replaceItemAtURL:]`. All three are real platform calls, and the corpus drives
+# the save path 111 times through them.
+#
+# What it does not reach is the window. `src/opened_document.rs` receives a
+# double-clicked document through an Apple Event, and that needs AppKit, a
+# session, and a person. `CHECKLIST.md` is where that is recorded and a green
+# run here does not stand in for it.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+name: Apple silicon
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  arm64:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The architecture is the whole reason this workflow exists, and a label
+      # is a promise rather than a fact: `macos-13` is Intel and `macos-14`
+      # onwards is Apple silicon, which is a mapping GitHub can change. Checked,
+      # so that this fails loudly rather than quietly testing x86_64 twice.
+      - name: The runner is Apple silicon
+        run: |
+          arch=$(uname -m)
+          echo "runner reports ${arch}"
+          [ "$arch" = arm64 ] || {
+            echo "this workflow exists to test arm64 and the runner is ${arch}" >&2
+            exit 1
+          }
+
+      - name: What is installed
+        run: rustc -V && cargo -V && python3 -V
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Test
+        run: cargo test
+
+      # `CLAUDE.md` says clippy must be silent, so a warning is an error here.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      # The corpus is a command and never a test, because it needs a checkout of
+      # another repository with its cases generated and a test that skips
+      # quietly on a machine that was never going to have those things is worse
+      # than a command run on purpose. CI is a machine that can always have
+      # them, so it runs it on purpose. `generate.py` needs Python 3.11 for
+      # `tomllib`, which the runner has and the Intel Mac this was written on
+      # did not. It resolves its manifest and its output directory from its own
+      # location rather than the working directory, so it is run by path and
+      # needs no `cd` and no `--out`.
+      - name: The conformance corpus, all 77
+        run: |
+          git clone --depth 1 https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
+          python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"
+          cargo run --bin corpus -- "${RUNNER_TEMP}/slipcase/conformance"
