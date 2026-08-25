@@ -84,3 +84,6 @@ ico = "0.5.0"
 # were already in the tree under `eframe`, so it compiles one new crate.
 # DESIGN.md §3.
 windows-registry = "0.6.1"
+
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+xattr = { version = "1.6", default-features = false }

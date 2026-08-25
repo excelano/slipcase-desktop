@@ -7,6 +7,7 @@
 #![warn(missing_docs, clippy::pedantic)]
 
 pub mod opens_with;
+pub mod provenance;
 pub mod tree;
 
 use std::io::{Read, Write};
@@ -87,12 +88,13 @@ const CHUNK: usize = 64 * 1024;
 /// Returns whatever the library says about reading the container, and any error
 /// from writing the file.
 pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Extracted> {
+    let source = container;
     let mut container = slpc::Container::open(container)?;
     // `Container::open` has already put this name through
     // `slpc::check_payload_name`, which rejects every separator and every
     // traversal, so joining it onto a directory cannot leave that directory.
     let out = into.join(container.payload_name());
-    copy_out(&mut container, &out, watch)
+    copy_out(&mut container, source, &out, watch)
 }
 
 /// Copy a container's payload to a path somebody chose, watchably.
@@ -108,13 +110,15 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
 /// Returns whatever the library says about reading the container, and any error
 /// from writing the file.
 pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
+    let source = container;
     let mut container = slpc::Container::open(container)?;
-    copy_out(&mut container, out, watch)
+    copy_out(&mut container, source, out, watch)
 }
 
 /// The part both extractions share.
 fn copy_out(
     container: &mut slpc::Container<std::fs::File>,
+    source: &Path,
     out: &Path,
     watch: &Watch,
 ) -> slpc::Result<Extracted> {
@@ -122,7 +126,17 @@ fn copy_out(
     // nothing behind at all.
     let mut payload = container.payload()?;
 
-    let outcome = copy(&mut payload, out, watch);
+    let outcome = copy(&mut payload, out, watch).and_then(|copied| {
+        // Inside the cleanup below rather than after it, because a payload
+        // whose provenance could not be carried must not be left on disk under
+        // the name a person is about to be handed. `provenance::carry` fails
+        // only where the platform gates opening on a mark the container
+        // carried, so an error here is exactly the laundering case.
+        if matches!(copied, Extracted::Done(_)) {
+            crate::provenance::carry(source, out)?;
+        }
+        Ok(copied)
+    });
     if !matches!(outcome, Ok(Extracted::Done(_))) {
         // Including where the path was one somebody chose over a file they
         // already had. `File::create` truncated it before the first byte was
@@ -811,6 +825,36 @@ mod extraction_tests {
         // Into the directory it was given, under the name the container gave.
         assert_eq!(out, into.join("report.pdf"));
         assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
+    }
+
+    /// The defect this catches is extraction laundering provenance: a container
+    /// that arrived from somewhere, and a payload leaving it as though this
+    /// machine had made it. On Linux the mark gates nothing, so what is checked
+    /// here is that the carrying is wired into the extraction path at all —
+    /// the platforms where it does gate opening run the same code down the
+    /// same call.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn a_payload_leaves_a_downloaded_container_still_saying_so() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = dir.path().join("downloaded.slpc");
+
+        let metadata: DocumentMut = "title = \"downloaded\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        std::fs::write(&container, &bytes).expect("writes the container");
+        xattr::set(&container, "user.xdg.origin.url", b"https://example.invalid/a.slpc")
+            .expect("marking the container as downloaded");
+
+        let into = dir.path().join("out");
+        std::fs::create_dir(&into).expect("a directory to extract into");
+        let out = Opened::open(&container).extract_to(&into).expect("extracts");
+
+        assert_eq!(
+            xattr::get(&out, "user.xdg.origin.url").expect("reading the payload"),
+            Some(b"https://example.invalid/a.slpc".to_vec()),
+            "the payload left the container saying nothing about where it came from",
+        );
     }
 
     /// The watch counts every byte, and a payload that is not a whole number
