@@ -288,6 +288,42 @@ the container is used.
 
 ### Not yet done by hand
 
+- **Does the App Sandbox permit the save path?** This one decides a channel, so
+  it comes before everything else here. `slpc::Destination::in_place` calls
+  `NamedTempFile::new_in(dir)` — a randomly-named file created *beside* the
+  container — and then renames it over the original. A sandboxed application
+  holds a grant on the file a person chose through the open panel, not on the
+  directory containing it, and Apple's related-items rule covers siblings
+  sharing a base name with a declared extension rather than a random one. So
+  the expectation is that Save fails. **It is an expectation and not a
+  measurement**, and sandboxed applications safe-save constantly through
+  `NSFileCoordinator`, so the mechanism plainly exists and this reasoning may
+  simply be wrong.
+
+  Build the bundle with the App Sandbox entitlement and
+  `com.apple.security.files.user-selected.read-write`, open a container from
+  the Documents folder through the application's own Open dialog, edit a key,
+  and press Save. Three outcomes, and each points somewhere different:
+
+  - **It succeeds.** There is no divergence, the save path is the same on all
+    three platforms, and a Store build costs only entitlements and review.
+  - **It fails.** Then the choice is between `NSFileManager.replaceItemAt…`,
+    which keeps the atomic replace and almost certainly needs a second module
+    lifting `deny(unsafe_code)` — David's decision, not a precedent — and
+    writing a validated container into the application's own container before
+    overwriting the original in place, which needs no unsafe and gives up the
+    atomic rename that `Destination` exists to provide.
+  - **It fails in some third way**, in which case say what it actually did
+    rather than fitting it to one of the two above.
+
+  Why it matters beyond tidiness: the App Store is how a person who has been
+  sent a container finds something to open it. Finder offers *Search App Store*
+  by document type, and outside the Store that search returns nothing. Windows
+  shows the same dialog for the Microsoft Store, which this release plan is
+  already buying, so declining it on macOS alone is an inconsistency rather
+  than a decision. The two channels are not exclusive: a Developer ID `.dmg`
+  and a Store build ship from one codebase.
+
 - **Provenance, which has never run on this platform.** `src/provenance.rs`
   carries a container's `com.apple.quarantine` attribute onto the payload
   extracted from it, and the macOS arm compiles but has never executed.
