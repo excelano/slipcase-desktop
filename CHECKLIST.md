@@ -126,6 +126,20 @@ does not notice: GNOME reads the mime database once per session.
     directories name `desktop-file-utils` and `hicolor-icon-theme`.
 11. `md5sum -c` the extracted tree against the package's own `md5sums`, then
     change a byte and watch it fail.
+12. **Install it**, after `./packaging/linux/uninstall.sh` — the `~/.local`
+    copy shadows a system one and the test proves nothing while it is there.
+    `sudo apt install ./dist/slipcase-desktop_0.1.0_amd64.deb`. Watch for three
+    things: whether anything is pulled beyond the eleven declared dependencies,
+    whether triggers are processed for `hicolor-icon-theme`, `shared-mime-info`
+    and `desktop-file-utils`, and whether dpkg complains about the package's
+    root directory. Then check the association again from `/usr`, and run
+    `dpkg -V slipcase-desktop`, which is silent only if `md5sums` is both
+    present and correct.
+13. **Remove it.** `sudo apt remove slipcase-desktop`. The type reverts to
+    `application/zip`, nothing matching `slipcase` is left under
+    `/usr/share/{mime,applications,icons}`, the mime cache no longer contains
+    the string, and `dpkg-query -W` finds no package — not even the `rc` state
+    a package with conffiles would leave.
 
 ### What the first walkthrough found
 
@@ -180,12 +194,20 @@ the glob drew identically to files that did.
 **The `.deb` shipped no `md5sums`**, so `dpkg -V` could say nothing about an
 installed copy. Found by looking inside the archive rather than by any test.
 
+The package itself found nothing. Installing pulled no dependency the machine
+did not already have, which is the first evidence that the hand-derived
+`Depends` is right rather than merely plausible — the linker names four
+libraries and the list names eleven, and a wrong one would have shown here or
+at the first launch. All three trigger owners fired, so a package carrying no
+maintainer scripts still registered the type, and `dpkg -V` was silent against
+the installed tree. Removing it took the association with it and left no `rc`
+state, there being no conffiles to leave.
+
 ### Not yet done by hand
 
-- **The package installed and removed.** Items 8 to 11 inspect the `.deb`;
-  nothing has yet run `apt install` on it. The `~/.local` install shadows a
-  system one, so uninstall that first or the test proves nothing.
-- **A machine that has never had it**, to see what `apt` actually pulls.
+- **A machine that has never had it.** Item 12 was run here, where every
+  dependency was already satisfied, so `apt` pulled nothing and the `Depends`
+  list was never actually exercised. A minimal install would exercise it.
 - **A second desktop.** Everything above is GNOME on Wayland with Adwaita. The
   icon defect was a property of which theme carried which name, so KDE or XFCE
   could reach a different answer by the same mechanism.
