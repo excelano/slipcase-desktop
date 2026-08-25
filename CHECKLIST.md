@@ -471,10 +471,54 @@ the two. macOS also translocates the application to a randomised read-only path
 before refusing, which is its normal treatment for a quarantined application on
 a mounted image.
 
-**Not measured, and still only read from the code:** that an extracted payload
-lands 0644 whatever mode the member carried. `a-command.slpc` is in the fixtures
-for it and the sitting never got there, because the disk image turned out to be
-the better vehicle for the dangerous case and superseded it.
+**Measured afterwards: the mode claim is true and the reason for the refusal was
+not.** `a-command.slpc` stores `run-me.command` as `rwxr-xr-x`; extracting it
+puts `rw-r--r--` on disk, so `File::create` drops the executable bit exactly as
+the code said. What was wrong was the prediction that `open` would then fail on
+that bit before quarantine was consulted. It never got that far. The temp copy
+carries `com.apple.quarantine: 0086;…;slipcase-desktop;`, macOS consulted that
+first, and refused with *"run-me.command" is damaged and can't be opened. You
+should move it to the Bin.*, naming this application as the file's creator.
+
+**That container carried no quarantine of its own.** It was made on this machine
+and never downloaded. The mark came entirely from the sandbox marking what a
+sandboxed process writes, which means a Store build refuses to open a script
+payload out of a container a person made themselves.
+
+**Scope it before calling it a defect.** Three payloads extracted under the
+sandbox carry the identical `0082;…;slipcase-desktop;` mark: a PDF, which
+Preview opened without a word; a text file, which TextEdit opened without a
+word; and this script, which was refused. The mark is on everything; macOS
+consults it only when something is about to execute. That is what it does to
+every sandboxed application's output and to anything a browser downloads, and on
+the same day's evidence it is the behaviour to want — stripping this attribute
+is the difference between an unsigned application from the internet running and
+being stopped. A container is an archive, and macOS declining to run code
+straight out of an archive is the protection working.
+
+The cost is bounded and lands on one person: somebody who deliberately packages
+a script and wants to run it from the card. They can extract it and run it at
+the price of `chmod +x` and clearing the attribute, which is what Safari charges
+for a downloaded script today.
+
+**The unsandboxed build refuses it too, for the other reason.** Same container,
+same button, no signature and so no sandbox and no mark: *The file
+"run-me.command" could not be executed because you do not have appropriate
+access privileges.* That is the 0644 the extraction wrote, which is what the
+prediction said would stop it and which the sandboxed run never reached. So an
+executable payload does not run from the Open button on **either** build. The
+sandbox does not create that; it only changes which refusal a person sees, and
+which of the two messages is honest — the unsandboxed one describes what is
+actually wrong, and *damaged, move it to the Bin* does not.
+
+**One thing here is ours.** The card knows before anybody presses anything: a
+member's mode is in the container's central directory, so the application can
+say that a payload stored executable will not be executable once extracted.
+That is a fact read out of the container rather than a guess from its name, so
+`DESIGN.md` §3's rule against a filename table does not bite. Not fixed here —
+it is a change to what the card says and belongs with David — but it is no
+longer waiting on a measurement, because the pair above shows the behaviour is
+not sandbox-specific.
 
 **A correction to this file.** The item used to say that what macOS gates
 without needing an executable bit is a disk image or an installer package. That
