@@ -449,7 +449,13 @@ and the log served mainly to rule things out.
 - **A high-density display.** Every size above was checked on a 2560x1440
   display at 100%. The `.icns` carries entries to 1024 and none of the `@2x`
   ones has been looked at on a display that would ask for one.
-- **A signed bundle.** Everything above is an unsigned bundle that never left
+- **A signed bundle**, partly done. Signing with an Apple Development
+  certificate answered the `mdls` question: the type is flagged `trusted`
+  rather than `untrusted`, Spotlight reports `com.excelano.slipcase`, and the
+  Kind reads `Slipcase container`. What is still unrun is the walkthrough
+  against a *distribution*-signed bundle carrying a provisioning profile, which
+  is a different sandbox context from the development-signed one everything
+  else here was measured against. Everything above is an unsigned bundle that never left
   the machine that built it. `mdls` reporting the wrong type is suspected to be
   a consequence of that and is untested either way.
 - **A downloaded bundle**, carrying `com.apple.quarantine`, to see what

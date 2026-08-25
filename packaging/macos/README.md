@@ -87,15 +87,24 @@ claims a synthesised type. After it is registered it prints `Slipcase`, by the
 same code that prints `Preview` for the PDF: `display_name` reads
 `CFBundleDisplayName`, and this bundle's is `Slipcase`.
 
-**`mdls` disagrees and is not the authority here.** After registration,
+**Resolved: `mdls` agrees once the bundle is signed.** Measured 2026-08-25
+against a bundle signed with an Apple Development certificate: `lsregister
+-dump` flags the type `trusted` where it flagged it `untrusted` before, `mdls
+-name kMDItemContentType` reports `com.excelano.slipcase`, and `kMDItemKind`
+reports `Slipcase container`. The paragraph below was right about the cause and
+is kept because it is the measurement that made the suspicion worth having. A
+distribution certificate is not needed for this — any signature is.
+
+**`mdls` disagreed while the bundle was unsigned, and was not the authority
+then.** After registration,
 `mdls -name kMDItemContentType some.slpc` still reports the dynamic
 `dyn.ah62d4rv4ge81g5duqq`, on a file created after registration and after
 `mdimport` was run against it by hand. Launch Services resolves the extension to
 `com.excelano.slipcase` at the same moment, with `isDeclared` true and
 `isDynamic` false. The registration record carries an `untrusted` flag, which is
 what an unsigned bundle's exported type gets, and that is the likeliest reason
-Spotlight will not take it. Untested, because testing it needs a signature. If
-you sign the bundle, check `mdls` again and record what changed.
+Spotlight will not take it. That was untested when it was written, and the
+paragraph above is what checking it found.
 
 ## The double-click, and the three attempts it took
 
