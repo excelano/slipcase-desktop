@@ -31,12 +31,17 @@ the detail.
 
 ## Status
 
-Stages 1 through 3 of `DESIGN.md` §7 ship: opening a container and rendering
-every state the design names, editing the metadata and writing it back, and
-extracting and replacing the payload. Stage 4, file association, ships on Linux.
+All four stages of `DESIGN.md` §7 ship: opening a container and rendering every
+state the design names, editing the metadata and writing it back, extracting and
+replacing the payload, and file association.
 
-macOS and Windows have never been built or run. `HANDOFF.md` says what each owes
-and briefs the work.
+Association ships on all three platforms, each built and walked through by hand
+on the platform itself. `packaging/` holds what each decided, `HANDOFF.md`
+summarises what each found, and `CHECKLIST.md` records what only a hand could
+test — thirteen defects between them that the tests and the conformance corpus
+passed over. Two things measured on macOS are recorded unresolved: an unsigned
+bundle is refused by Gatekeeper, and Spotlight and Launch Services disagree
+about a registered type.
 
 `DESIGN.md` is what this is and the order it is being built in. It is amended in
 place where building it proved it wrong, and every amendment says what was

@@ -1,6 +1,6 @@
 # slipcase-desktop — Design Document
 
-**Status:** built through `§7` stage 3.
+**Status:** built through `§7` stage 4, on all three platforms.
 **Document version:** 2026-08-21
 **Amendments:** this document was written before anything was built, and building it contradicted parts of it. Every change since 2026-08-20 is marked **Amended** and states what was measured. A design that quietly rewrote itself to match the code would be worth nothing as a record.
 **Implements:** slipcase specification 1.0, through the `slpc` library rather than directly.
@@ -136,7 +136,7 @@ SPEC §2 and §3 define these conditions. The list is not exhaustive, and none o
 1. **Open and look.** Open a container from an argument and from a file dialog; render the metadata tree; render the payload card with a working Open button; render every state in `§6`. **Shipped.**
 2. **Editing the metadata**, and writing it back with `Repack` into a `Destination::in_place`. **Shipped.**
 3. **Extracting and replacing the payload**, as the two explicit actions `§5` describes. **Shipped.**
-4. **File association**, per platform, per `§8`. **Shipped on Linux.** macOS and Windows are briefed in `HANDOFF-macos.md` and `HANDOFF-windows.md` and have never been built.
+4. **File association**, per platform, per `§8`. **Shipped on all three.** Each was built and looked at on the platform itself rather than cross-compiled and assumed; `packaging/` holds what each decided and the amendments below say where the platforms disagreed. The one place this stage cost more than association was macOS, which does not deliver a double-clicked document as an argument at all — recorded twice below, once wrongly.
 
 Stage 1 is a whole program rather than a preview of one: it opens a container and shows what is in it.
 
