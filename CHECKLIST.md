@@ -425,6 +425,116 @@ process that did not just launch, so keystrokes go astray unless the window is
 clicked, and two warning dialogs stack at the same screen position, so a blind
 click at fixed coordinates can dismiss the wrong one.
 
+### What the stale UserChoice run found
+
+Run 2026-08-26, the one part of question 3 no script can reach. David made the
+choice by hand — *Open with → Choose another app → Always use this app* — which
+wrote `UserChoice` with `ProgId = Excelano.Slipcase` and a hash Windows computed.
+That key cannot be forged, which is why this waited for a person.
+
+The script install was then removed **by hand** rather than with
+`uninstall.ps1`, because the uninstaller removes the `UserChoice` and would have
+destroyed what was being tested. That is also the realistic way to arrive here:
+somebody deletes the folder, or moves it, and never runs the uninstaller.
+
+**The answer is that the manifest does not win, and the association is dead
+rather than merely wrong.** Three states, each opened through `ShellExecute`,
+which is what a double-click performs:
+
+| State | What a double-click does |
+| --- | --- |
+| `UserChoice` names a ProgID that exists, whose command names a deleted executable | **Refused: *Application not found*.** The package is ignored and no picker appears |
+| `UserChoice` names a ProgID that no longer exists at all | The package wins and launches from `WindowsApps` |
+| No `UserChoice` | The package wins |
+
+So the package must be installed onto a machine where `uninstall.ps1` has been
+run, or onto one that never had the scripts. The middle row is the trap: the
+person is left with an extension that opens nothing, an installed application
+that Windows will not reach, and no dialog offering a way out. Installing the
+package does not touch `UserChoice` — measured, before and after.
+
+**It also refines what this repository already recorded about a dead ProgID.**
+`packaging/windows/README.md` says that leaving a `UserChoice` behind while
+removing the class keys leaves the extension pointing at a ProgID that no longer
+exists, and that Windows does not fall back — it treats the extension as having
+none. That was measured with the scripts alone and it stands for a machine-wide
+association. A *packaged* association is reached in that state: the second row
+above is exactly that case, and the package opened the container. So the two
+findings are about different fallbacks and neither replaces the other.
+
+What that leaves for the packaging, when it is built: an MSIX cannot run code at
+install time, so the package cannot clear a `UserChoice` itself. Either the
+listing tells a person to run `uninstall.ps1` first, or the application clears a
+stale one at startup — which is a decision rather than a repair, because it
+means writing to the key that exists to record a person's own choice.
+
+### What the high-density run found
+
+Run 2026-08-26 at 125% and 200%, David changing the setting and this session
+photographing the result. The drawing holds up at every size it was looked at,
+and a justification written beside it does not.
+
+At 125% Explorer's Details view draws the icon's own 20-pixel entry: the case,
+the card and both lines all read, and the outline greys the way `packaging/windows/README.md`
+already records for the small sizes. Large icons come from the 128-pixel PNG and
+are clean. The Type column says *Slipcase Container* at scaled DPI as it does at
+100%. The task bar and the title bar read cleanly at 125% and at 200%.
+
+**The claim that failed is about which entry the window gets.** `src/main.rs`
+hands the 64-pixel entry to the window and said 64 was *a whole multiple of every
+size Windows draws it at*, on the reasoning that a high-density display doubles
+16 and 32 to 32 and 64. Windows does not only double. 125% asks for 20 and 40,
+150% for 24 and 48, 175% for 28 and 56, and 64 divides none of those:
+
+| Scaling | Title bar | Task bar |
+| --- | --- | --- |
+| 100% | 16 (64 ÷ 4) | 32 (64 ÷ 2) |
+| 125% | 20 (× 3.2) | 40 (× 1.6) |
+| 150% | 24 (× 2.67) | 48 (× 1.33) |
+| 175% | 28 (× 2.29) | 56 (× 1.14) |
+| 200% | 32 (64 ÷ 2) | 64 (64 ÷ 1) |
+
+So at the scaling most people who turn scaling on actually use, the window icon
+is resampled rather than downsampled evenly. It reads fine anyway, which is why
+this is a correction to a comment rather than a change to the code: 64 stays the
+choice because it is the largest entry no scaling has to enlarge. The comment and
+the README paragraph both say that now, and both say they were written before
+anybody had looked.
+
+One limit on the looking. Neighbouring task bar icons sit inside any crop wide
+enough to hold this one, so the sizes were judged from magnified captures rather
+than from a measured bounding box per size. *Legible and clean at every size
+looked at* is the claim, and it is not the same as *every size was measured*.
+
+### What the upgrade run found
+
+Run 2026-08-26. An upgrade over an existing install works, and an upgrade over a
+*running* install fails in the right direction and used to say so badly.
+
+Over a stale install, with nothing running: the executable and the icon are both
+replaced — checked by hash, after deliberately overwriting both with rubbish —
+and one install remains one install. One Add/Remove entry, one Start menu
+shortcut, one ProgID under `OpenWithProgids`, three files in the directory.
+Afterwards a double-click still launches the installed copy and the type query
+still answers `Slipcase`. A file left behind by an imagined older version stays
+where it is: this script writes its own files and does not clear the directory,
+which is deliberate and is also why `uninstall.ps1` leaves a directory holding
+anything it did not put there.
+
+Over a running install, Windows will not let the executable be replaced. The run
+stops at `Copy-Item` and — this is the part worth keeping — stops *before* the
+registry stage, so nothing is left half-registered and the previous install goes
+on working. Proved with a marker written into the class key beforehand: it was
+still there afterwards.
+
+**What it said about that was the defect.** The script stopped with a .NET
+`IOException` and a stack trace naming `Copy-Item`, which is true and tells
+nobody what to do. It names the running application and the path now, says to
+close it and run again, and says that nothing has been changed — which is a
+claim the marker above is what proves. Both paths were run again afterwards: the
+running one gives the sentence and changes nothing, and the closed one installs
+and rewrites the marker away.
+
 ### Not yet done by hand
 
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
@@ -435,11 +545,7 @@ click at fixed coordinates can dismiss the wrong one.
   a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
   `DESIGN.md` §8 carries the table. The hand item below is still open and is
   about the same stream.
-- **A high-density display.** Every size above was checked at 100%. The icon
-  carries 20, 40, and 64 for the scaled sizes and none of them has been looked
-  at on a display that would ask for one.
 - **A second user account**, to confirm a per-user install is invisible to one.
-- **An upgrade over an existing install**, rather than a first install.
 
 ---
 

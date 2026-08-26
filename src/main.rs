@@ -54,13 +54,19 @@ const APP_ID: &str = "slipcase-desktop";
 #[cfg(target_os = "windows")]
 const WINDOW_ICON: &[u8] = include_bytes!("../packaging/windows/slipcase.ico");
 
-/// The icon at the one size that divides evenly into every size Windows will
-/// draw it at.
+/// The icon at the largest size the drawing carries without being upscaled.
 ///
 /// A window gets one image and Windows scales it to 16 in the title bar and 32
-/// in the task bar, doubling both on a high-density display. 64 is a whole
-/// multiple of all four, so every one of them is an integer downsample of the
-/// same drawing rather than a resample of a resample.
+/// in the task bar, doubling both at 200%. 64 is a whole multiple of those
+/// four, so each is an integer downsample of the same drawing.
+///
+/// **It is not a whole multiple of what the intermediate scalings ask for**,
+/// which this comment claimed until somebody looked: 125% wants 20 and 40,
+/// 150% wants 24 and 48, and none of those divides 64. Those sizes are
+/// resampled rather than downsampled evenly. Looked at on 2026-08-26 at 125%
+/// and 200% — the title bar and the task bar read cleanly at both, so the
+/// resampling costs nothing a person would notice, and 64 stays the choice
+/// because it is the largest entry no scaling has to enlarge.
 #[cfg(target_os = "windows")]
 fn window_icon() -> Option<egui::IconData> {
     let directory = ico::IconDir::read(std::io::Cursor::new(WINDOW_ICON)).ok()?;

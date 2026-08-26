@@ -113,11 +113,30 @@ Copy-Item -LiteralPath (Join-Path $here 'uninstall.ps1') `
 
 $installedExe = Join-Path $Prefix $exeName
 if ($foundBinary) {
-    Copy-Item -LiteralPath $foundBinary -Destination $installedExe -Force
+    # An upgrade over a running copy is the one failure here a person meets in
+    # the ordinary course of things, and Windows will not let a running
+    # executable be overwritten. Left to itself the script stops with a .NET
+    # IOException and a stack trace naming Copy-Item, which is true and tells
+    # nobody what to do. Walked on 2026-08-26; the run stopped before the
+    # registry stage, so nothing was left half-registered, and that part is
+    # worth keeping exactly as it is.
+    try {
+        Copy-Item -LiteralPath $foundBinary -Destination $installedExe -Force
+    } catch [System.IO.IOException] {
+        $running = Get-Process -Name ([System.IO.Path]::GetFileNameWithoutExtension($exeName)) `
+                               -ErrorAction SilentlyContinue |
+                   Where-Object { $_.Path -eq $installedExe }
+        if ($running) {
+            throw "install.ps1: Slipcase is running from $installedExe, so it cannot be replaced. " +
+                  "Close it and run this again. Nothing has been changed."
+        }
+        throw
+    }
     Write-Output "installed $installedExe from $foundBinary"
 } elseif (-not (Test-Path -LiteralPath $installedExe)) {
     Write-Warning "no executable installed; the association will point at $installedExe, which is not there yet"
 }
+
 
 # --- the registry -----------------------------------------------------------
 

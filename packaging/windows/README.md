@@ -193,8 +193,16 @@ taskbar grouping work.
 takes a window's icon from a resource in the executable, and building one needs
 `rc.exe` or `windres` — a build step `DESIGN.md` §2 keeps out. So `main.rs`
 carries `slipcase.ico` through `include_bytes!` and hands the 64-pixel entry to
-the window at startup: 64 is a whole multiple of every size Windows draws it
-at, so each is an integer downsample rather than a resample of a resample.
+the window at startup: 64 is a whole multiple of the sizes a display at 100% or
+200% asks for — 16 and 32 in the title bar, 32 and 64 in the task bar — so each
+of those is an integer downsample rather than a resample of a resample.
+
+**Amended: not of every size, and this was written before anybody had looked.**
+125% asks for 20 and 40 and 150% for 24 and 48, and 64 divides none of them, so
+those are resampled. Looked at on 2026-08-26 at 125% and 200%: both read
+cleanly, so the cost is nothing a person notices and 64 stays the choice,
+because it is the largest entry no scaling has to enlarge. `CHECKLIST.md` holds
+the run.
 
 This is why `slipcase.ico` is a committed artifact in a repository that
 otherwise holds only sources: the executable references it at compile time, and
