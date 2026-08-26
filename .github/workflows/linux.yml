@@ -113,19 +113,37 @@ jobs:
           dpkg-deb -e "$deb" "${tree}/DEBIAN"
           ( cd "$tree" && md5sum -c DEBIAN/md5sums --quiet )
 
-      # A report and not a gate, and the difference is deliberate. Running
-      # lintian at all has been an open item since the package was built, so
-      # nobody has read its output and nothing here knows which tags are real
-      # findings and which are Debian conventions this package has chosen not
-      # to follow. Making it fail the build before anyone has triaged it would
-      # be asserting an answer nobody has. The first run is the measurement;
-      # once the tags are in `CHECKLIST.md` with a decision beside each, this
-      # step gets a `--fail-on` and becomes a check.
-      - name: What lintian says, unexamined
+      # A gate now, which it was not when this file was written. The first run
+      # was the measurement and it produced two tags, `no-changelog` and
+      # `no-manual-page`; both were decisions rather than defects, so failing on
+      # them before anybody had taken those decisions would have been asserting
+      # an answer nobody had. `CHECKLIST.md` records what was decided and why,
+      # and the package now ships both documents.
+      #
+      # `error,warning` rather than `error` alone. The two tags were one of
+      # each, so gating on errors would have left the second standing as a
+      # report forever — which is the state this step existed to get out of.
+      # `info` and `pedantic` are deliberately not included: they are Debian's
+      # suggestions rather than its rules, and a build should not fail on a
+      # suggestion nobody has read yet. If one of them ever matters it goes
+      # through the same triage these two did.
+      #
+      # `--tag-display-limit 0` rather than `--no-tag-display-limit`, which is
+      # what this said first: lintian 2.122 prints *a future release will drop
+      # --no-tag-display-limit* and takes it anyway, so the step would have gone
+      # on passing until the runner's lintian moved and then failed for a reason
+      # that has nothing to do with the package.
+      #
+      # There are no overrides, and that is worth keeping true. An override is
+      # a permanent statement that a rule does not apply here, and neither tag
+      # needed one: a changelog is what an apt repository's installers read to
+      # see what changed, and the manual page is the only place the one
+      # positional argument is written down, there being no `--help`.
+      - name: What lintian says
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq lintian
-          lintian --info --no-tag-display-limit dist/*.deb || true
+          lintian --info --tag-display-limit 0 --fail-on error,warning dist/*.deb
 
       # The only step that asks the platform anything, and the one that had
       # never run when this file was written. `CHECKLIST.md` items 1 and 2 are

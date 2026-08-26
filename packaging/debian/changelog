@@ -1,0 +1,10 @@
+slipcase-desktop (0.1.0) unstable; urgency=medium
+
+  * First release. Opens a .slpc container, shows its metadata as an editable
+    tree, and hands the payload to whatever the desktop has registered for it.
+  * Containers are read and written entirely through the slpc library. This
+    application parses none of its own.
+  * Installs a media type, a desktop entry, and scalable icons for both the
+    application and the container, so a container opens on a double-click.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 26 Aug 2026 12:00:00 +0000

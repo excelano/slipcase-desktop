@@ -360,10 +360,20 @@ the suite and the corpus it does two things the macOS file does not. It builds
 the `.deb` and runs the mechanical parts of the Linux walkthrough over it —
 ownership, modes, and every hash in `md5sums` agreeing — because that package
 shipped without `md5sums` once and a release build passed over it. And it runs
-lintian as a *report* rather than a gate, which is deliberate: nobody has read
-its output yet, so nothing knows which tags are findings and which are
-conventions this package has declined, and failing a build on an answer nobody
-has triaged would be asserting one. Triaging them is an open item.
+lintian, which was a *report* rather than a gate until its tags had been read,
+because failing a build on an answer nobody had triaged would be asserting one.
+
+**Both tags are now decided and the step gates on `error,warning`.** The
+package ships a hand-written changelog, because an apt repository is the one
+place an installer can find out what changed and `git log` — the record of why
+the code is the way it is — is a different document from the record of what
+changed for whoever installed it; `build-deb.sh` refuses to build a package
+whose changelog names a version other than `Cargo.toml`'s, which is the one
+thing generating it from the log would have bought. And it ships
+`slipcase-desktop(1)`, because `src/main.rs:181` reads one positional argument
+and there is no `--help`, so the page is the only place that argument is
+written down. `CHECKLIST.md` carries both decisions, the alternatives rejected,
+and the two `info` tags left below the gate on purpose.
 
 Two things it is honest about that a copy of it should stay honest about. The
 build installs no development packages, because it needs none — `ldd` names

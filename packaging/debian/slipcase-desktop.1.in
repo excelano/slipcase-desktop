@@ -1,0 +1,74 @@
+.\" Manual page for slipcase-desktop.
+.\"
+.\" It exists because the binary takes an argument and has no --help to
+.\" describe it: src/main.rs reads args_os().nth(1) and nothing else, so this
+.\" is the only place that argument is written down. lintian tagged its
+.\" absence and CHECKLIST.md carries the decision to write it rather than
+.\" override the tag.
+.\"
+.\" @VERSION@ is substituted by packaging/debian/build-deb.sh, the same way
+.\" control.in is, so the version in the header cannot drift from the package.
+.\" The date is the date this page was last revised and not the build date,
+.\" which is the convention and is also what makes the page reproducible.
+.\"
+.\" Author: David M. Anderson
+.\" Built with AI assistance (Claude, Anthropic)
+.TH SLIPCASE\-DESKTOP 1 "2026\-08\-26" "slipcase\-desktop @VERSION@" "User Commands"
+.SH NAME
+slipcase\-desktop \- viewer and metadata editor for slipcase containers
+.SH SYNOPSIS
+.B slipcase\-desktop
+.RI [ container ]
+.SH DESCRIPTION
+.B Slipcase
+opens a slipcase container, shows its metadata as an editable tree, and hands
+the payload to whatever application the desktop has registered for it.
+Containers are read and written entirely through the slpc library; this
+application parses none of its own.
+.PP
+It is a windowed application, normally started by opening a container from a
+file manager rather than from a shell. The package registers the media type,
+the desktop entry, and the icons that make that work, so a container opens on
+a double\-click.
+.SH OPTIONS
+There are none.
+.B slipcase\-desktop
+is a window rather than a command\-line interface, and it takes one optional
+positional argument and nothing else. For a command\-line interface to the
+container format, see
+.BR slipcase (1).
+.SH ARGUMENTS
+.TP
+.I container
+The container to open. With no argument the window opens empty and offers to
+choose one.
+.PP
+A container that cannot be read is reported in the window rather than on the
+standard error, because the argument usually arrives from a file manager where
+nobody is watching a terminal.
+.SH EXIT STATUS
+Returns success when the window has been closed. A non\-zero status means the
+window could not be created at all \(em no display, or no usable graphics
+driver \(em rather than anything about a container.
+.SH FILES
+.TP
+.I /usr/share/mime/packages/application\-x.slipcase+zip.xml
+The media type, which is what makes a file manager offer this application for
+a container. Matched by filename: the format reserves no magic bytes, so a
+container is identified by its name.
+.TP
+.I /usr/share/applications/slipcase\-desktop.desktop
+The desktop entry.
+.SH NOTES
+What the payload card says a payload would open with is whatever the desktop
+answered, and where the desktop will not answer the card says nothing rather
+than guessing. This application keeps no table mapping filenames to types.
+.SH SEE ALSO
+.BR slipcase (1),
+.BR xdg\-mime (1),
+.BR update\-desktop\-database (1)
+.PP
+The container format is specified in SPEC.md in the slipcase repository, and
+the design of this application in DESIGN.md in its own.
+.SH AUTHOR
+David M. Anderson

@@ -796,29 +796,68 @@ state, there being no conffiles to leave.
   icon defect was a property of which theme carried which name, so KDE or XFCE
   could reach a different answer by the same mechanism.
 
-### What lintian says, and what to do about it
+### What lintian says, and what was decided
 
-Run for the first time by `linux.yml`, which runs it on every push as a report
-rather than a gate. Two tags, and both are decisions rather than defects, which
-is why that step still does not fail on them.
+Run for the first time by `linux.yml`, which produced two tags. Both were
+decisions rather than defects, which is why the step was a report and not a
+gate until they were taken. **Both are now answered and the step gates on
+`error,warning`.**
 
-- `E: no-changelog usr/share/doc/slipcase-desktop/changelog.gz (native
-  package)`. Debian policy wants a changelog in every binary package and this
-  one ships none. It is an error rather than a warning because a person
-  installing from an apt repository has no other way to find out what changed
-  between two versions, and this package is going into one. `git log` is the
-  record here and is written to be read, so the question is whether
-  `build-deb.sh` should generate the changelog from it or whether a hand-written
-  one is a separate document.
-- `W: no-manual-page [usr/bin/slipcase-desktop]`. There is no `slipcase-desktop(1)`.
-  It is a desktop application that takes one optional argument and is normally
-  started by double-clicking a container, so a manual page would be four lines,
-  and the tag is a convention about `/usr/bin` rather than a gap a person would
-  notice.
+`E: no-changelog usr/share/doc/slipcase-desktop/changelog.gz (native package)`.
+Debian policy wants a changelog in every binary package and this one shipped
+none. It is an error rather than a warning because somebody installing from an
+apt repository has no other way to find out what changed between two versions,
+and DESIGN.md §8 sends this package through one.
 
-Once each has an answer, `linux.yml`'s lintian step gets a `--fail-on` and
-stops being a report. Leaving it a report with the tags untriaged is what that
-step's comment refuses to do.
+**Decided: hand-written, and `build-deb.sh` refuses to build a package whose
+changelog names a different version.** Generating it from `git log` was the
+alternative and it was rejected on three counts. The script would need a git
+checkout, which `--binary` exists so that a build does not need. There are no
+release tags, so with nothing to divide the history into versions every release
+would re-list every commit. And a commit subject here is written for whoever
+maintains this — *Address a directory so a payload named CON is a file* — rather
+than for whoever is deciding whether to upgrade. `git log` stays the record of
+why the code is the way it is; the changelog is the record of what changed for a
+person who installed it, and they are not the same document.
+
+The one thing generation would have bought is that it cannot go stale. The
+version check buys the same thing: bump `Cargo.toml` without touching the
+changelog and the build stops with *the changelog's newest entry is 0.1.0, and
+Cargo.toml says 0.2.0*. Watched to fail on 2026-08-26, and watched to pass again
+with the two in agreement.
+
+`W: no-manual-page [usr/bin/slipcase-desktop]`. There was no
+`slipcase-desktop(1)`.
+
+**Decided: write it, rather than override the tag.** The argument for an
+override was that this is a windowed application normally started by
+double-clicking a container, so the tag is a convention about `/usr/bin` rather
+than a gap anybody would notice. What settled it the other way is that
+`src/main.rs:181` reads `args_os().nth(1)` and there is no `--help` anywhere, so
+the page is the only place that one argument is written down. An override would
+have cost about what the page cost and left the argument undocumented. The
+page is `packaging/debian/slipcase-desktop.1.in`, templated on `@VERSION@` the
+way `control.in` is so the header cannot drift from the package carrying it, and
+it points at `slipcase(1)` for the command-line interface that this is not.
+
+Both documents are gzipped with `-9n`, so neither carries a name or a timestamp
+of its own and two builds of the same source produce the same bytes.
+
+**Checked that the gate bites**, on 2026-08-26 against lintian 2.122.0. A
+package built with both documents left out reproduces exactly the two tags above
+and exits 2; the package as it ships is silent and exits 0.
+
+Two tags sit below the gate, untriaged, which is what `info` means here rather
+than a claim that they do not matter.
+
+- `I: binary-has-unneeded-section .comment`. `strip --strip-unneeded` does not
+  remove `.comment`, and `-R .comment` would. It costs a few hundred bytes.
+- `I: hardening-no-fortify-functions`. `FORTIFY_SOURCE` is a glibc facility a
+  Rust binary does not call into, so this is lintian asking a C question of
+  something that is not C.
+
+Neither has been decided, and the step gates on `error,warning` rather than
+`info` so that neither is decided by accident.
 
 ---
 

@@ -47,6 +47,18 @@ fi
 
 version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "${root}/Cargo.toml" | head -1)
 [ -n "$version" ] || { echo "build-deb.sh: no version in Cargo.toml" >&2; exit 1; }
+# The changelog names the version being built, or the package ships release
+# notes for something else. This check is what lets the changelog be
+# hand-written: the one thing generating it from `git log` would buy is that it
+# cannot go stale, and a file refused unless it matches cannot either.
+changelog_version=$(sed -n '1s/^[^(]*(\([^)]*\)).*/\1/p' "${here}/changelog")
+[ "$changelog_version" = "$version" ] || {
+    echo "build-deb.sh: the changelog's newest entry is ${changelog_version:-unreadable}," \
+         "and Cargo.toml says ${version}" >&2
+    echo "build-deb.sh: add an entry to packaging/debian/changelog before building" >&2
+    exit 1
+}
+
 arch=$(dpkg-architecture -qDEB_HOST_ARCH)
 name="slipcase-desktop_${version}_${arch}"
 
@@ -64,6 +76,7 @@ mkdir -p \
     "${stage}/usr/share/applications" \
     "${stage}/usr/share/icons/hicolor/scalable/apps" \
     "${stage}/usr/share/icons/hicolor/scalable/mimetypes" \
+    "${stage}/usr/share/man/man1" \
     "${stage}/usr/share/doc/slipcase-desktop"
 
 install -m 0755 "$binary" "${stage}/usr/bin/slipcase-desktop"
@@ -76,6 +89,35 @@ install -m 0644 "${here}/../linux/icons/slipcase-desktop.svg" \
 install -m 0644 "${here}/../linux/icons/application-x.slipcase+zip.svg" \
     "${stage}/usr/share/icons/hicolor/scalable/mimetypes/application-x.slipcase+zip.svg"
 install -m 0644 "${root}/LICENSE" "${stage}/usr/share/doc/slipcase-desktop/copyright"
+
+# Debian policy wants a changelog in every binary package, and lintian makes
+# its absence an error rather than a warning: somebody installing from an apt
+# repository has no other way to see what changed between two versions, and
+# DESIGN.md §8 sends this package through one.
+#
+# Hand-written rather than derived from `git log`, which was the alternative
+# considered. Deriving it would need a git checkout, which `--binary` exists so
+# that a build does not need; there are no release tags to divide the history
+# into versions, so every release would re-list every commit; and a commit
+# subject here is written for whoever maintains this rather than for whoever is
+# deciding whether to upgrade. `git log` stays the record of why the code is
+# the way it is. The changelog is the record of what changed for a person who
+# installed it, and they are not the same document.
+#
+# `-n` so the compressed copy carries no name or timestamp of its own. That is
+# what lintian's `package-contains-timestamped-gzip` is about, and it is also
+# what makes two builds of the same source produce the same bytes.
+gzip -9nc "${here}/changelog" \
+    > "${stage}/usr/share/doc/slipcase-desktop/changelog.gz"
+chmod 0644 "${stage}/usr/share/doc/slipcase-desktop/changelog.gz"
+
+# `slipcase-desktop` reads one optional positional argument and has no
+# `--help`, so this page is the only place that argument is written down.
+# `@VERSION@` is substituted the same way `control.in`'s is, so the version in
+# the page header cannot drift from the version of the package carrying it.
+sed "s/@VERSION@/${version}/" "${here}/slipcase-desktop.1.in" \
+    | gzip -9nc > "${stage}/usr/share/man/man1/slipcase-desktop.1.gz"
+chmod 0644 "${stage}/usr/share/man/man1/slipcase-desktop.1.gz"
 
 # Stripped here rather than by the build profile, so a developer's release
 # binary keeps its symbols and only the packaged copy loses them.
