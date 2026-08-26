@@ -104,6 +104,19 @@ the code and not measured, which is not the same thing: reproduce it before
 fixing it, and remember that a test which passes against the defect it was
 written for is worse than no test.
 
+**Windows: the channel is chosen and nothing has been measured inside it.** The
+Microsoft Store, in MSIX, decided for the reason macOS chose the Mac App Store
+and recorded in `packaging/windows/README.md` with the paragraph it amends left
+standing. What is not known is whether this application works inside an MSIX
+container at all, and the three questions that decide it are in `CHECKLIST.md`
+under Windows: whether `opens_with` still sees the registry other applications
+wrote, whether the Open button still reaches the shell, and whether a declared
+association beats a stale `UserChoice`. They are named after the macOS sandbox
+question deliberately. That was taken for a formality and cost a new module, a
+rewritten save path, and a reopened section of `DESIGN.md`, and the two arms
+reviewed from another machine have now both turned up something their own tests
+could not reach.
+
 **macOS: replacing across volumes was never run, and it did not work.**
 Answered the day it was raised, and it was a defect rather than a doubt. The
 rewrite waited wherever `TMPDIR` pointed, which is the boot volume, and

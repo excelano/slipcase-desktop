@@ -35,6 +35,30 @@ way `packaging/debian` exists because the Excelano apt repository does. There
 is no such channel for Windows yet, and building a package with nowhere to send
 it would be guessing at what that channel will want.
 
+**Amended: there is a channel now, and it is the Microsoft Store.** The
+paragraph above is left standing because its reasoning was right and it is what
+chose the two scripts; what changed is the premise. The Store was taken for the
+reason macOS took the Mac App Store: a person who has been sent a container
+double-clicks it, Windows offers to search the Store by file type, and outside
+the Store that search returns nothing. `packaging/macos/README.md` has the same
+argument written out at length.
+
+That decides the format against MSI rather than for it. The Store takes MSIX,
+WiX builds MSI, and the two are not steps on one path — so WiX stays rejected,
+by the paragraph above and now also by the channel. The two scripts stay as
+well. They are the per-user, no-toolchain, no-account route, and a Store
+listing is not a reason to take that away from somebody who would rather not
+have one.
+
+Three things have to be measured before any of it is built, and none of them is
+paperwork. macOS is the reason to say that plainly: the App Sandbox was assumed
+to be a formality there, and it turned out to need a new module, a rewritten
+save path, and a reopened section of `DESIGN.md`. MSIX is a container too. The
+questions are in `CHECKLIST.md` under Windows; the short version is that this
+application reads the registry to answer what would open a payload, hands files
+to the shell, and registers a file type — and MSIX has its own opinion about
+all three.
+
 **Per-user, under `HKCU` and `%LOCALAPPDATA%`**, which is the counterpart of the
 Linux script's default of `~/.local`. There is no all-users variant: the
 machine-wide half of every key here needs elevation, and a script that

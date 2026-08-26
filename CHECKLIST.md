@@ -65,8 +65,60 @@ by telling the reader to check with `assoc` and `ftype`, and both report no
 association at all after a successful per-user install. They read the
 machine-wide half of the class root only.
 
+### Before an MSIX is built, three questions
+
+The channel is the Microsoft Store and the format is MSIX, which
+`packaging/windows/README.md` records with the reasoning. None of what follows
+is paperwork, and macOS is why that is worth saying: the App Sandbox was taken
+for a formality there and cost a new module, a rewritten save path, and a
+reopened section of `DESIGN.md`. MSIX is a container too, and this application
+does three things a container has opinions about.
+
+Run these against a package built from the current binary, not against the
+executable. The point is what the container changes, so a measurement taken
+outside one measures nothing. A self-signed certificate and a sideloaded
+package are enough; a Store account is not needed to answer any of this, in the
+same way an Apple Development certificate was enough to answer the sandbox.
+
+1. **Does `opens_with` still get real answers?** `src/opens_with.rs` walks the
+   registry along the path the shell takes, to say what would open a payload.
+   MSIX virtualises a package's registry writes into a per-package hive; what
+   it does to *reads* of the keys other applications wrote is the question, and
+   the card is wrong rather than empty if a packaged build sees a private view.
+   Put a container holding a `.pdf` and one holding a `.txt` on disk, open each
+   from the packaged build, and check the card names the same applications the
+   unpackaged build names on the same machine.
+2. **Does the Open button still hand a payload over?** `opener::open` reaches
+   the shell, and on macOS the equivalent claim — that a sandbox would refuse
+   the handover — was asserted and then measured to be wrong, so assert nothing
+   here either way. Press Open on a container from inside the package and see
+   whether the payload reaches its application. If it does not, the failure
+   mode matters as much as the fact: a refusal that reports itself is a
+   different problem from one that silently does nothing.
+3. **Does a declared association beat a stale `UserChoice`?** MSIX declares
+   file types in `AppxManifest.xml` rather than by writing the keys
+   `install.ps1` writes, and `UserChoice` is the key that outranks everything
+   and the one an uninstaller forgets — the script walkthrough already found
+   that. Install the scripts, associate `.slpc`, uninstall them, then install
+   the package and double-click a container. Whether the manifest wins, the
+   stale key wins, or Windows shows the *how do you want to open this* dialog
+   is the answer, and it decides whether the package needs to clean up after
+   the scripts.
+
+Two things that are known and need no run. MSIX must be signed for the shell to
+accept it, so signing stops being optional on this platform the way it did on
+macOS. And the two PowerShell scripts stay whatever these three find: they are
+the per-user route for somebody who wants no Store account, and a listing is no
+reason to withdraw it.
+
 ### Not yet done by hand
 
+- **`carries_a_mark` answers the wrong question**, which is a defect rather
+  than a walkthrough and is written out in full in `HANDOFF.md`. Reproduce it
+  before fixing it: the predicate asks whether the `Zone.Identifier` stream
+  exists, and a stream that exists carrying no `ZoneId` line is a file the
+  shell does not gate. It is reachable through a `std::fs::write` that fails
+  partway. Fix it beside the item below, since both are about the same stream.
 - **Provenance, which has never run on this platform.** `src/provenance.rs`
   carries a container's `Zone.Identifier` stream onto the payload extracted
   from it, and the Windows arm compiles from Linux but has never executed.
