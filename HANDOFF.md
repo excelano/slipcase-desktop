@@ -83,6 +83,13 @@ card — and the failure line was under the bar in *both* themes. `src/main.rs`
 picks per theme now and a test holds both to 4.5:1. Nothing about that is
 Windows's: it is egui's defaults used unchanged, so Linux and macOS had it too.
 
+Reviewed on Linux the same day, where the dark-mode figures turned out to have
+been measured against the wrong grey and every one of them was low. The repair
+stands and no conclusion moves — the corrected numbers fail the same bar — but
+`CHECKLIST.md` says which were wrong and why the cross-check that was supposed
+to catch it did not: it only ever ran in the theme somebody was already looking
+at. The figures now come out of the test rather than sitting beside it.
+
 ## macOS is done
 
 Both tasks in `HANDOFF-macos.md`. `opens_with` answers through Launch Services:

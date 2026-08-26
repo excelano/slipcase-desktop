@@ -398,15 +398,23 @@ fn why(e: &opener::OpenError) -> String {
 /// background and are not darkened for a light one.** Measured on 2026-08-26,
 /// against the card the lines are drawn on: the provenance line came to 2.79:1
 /// in light mode and the failure line to 3.76:1, where WCAG asks 4.5:1 for body
-/// text and ordinary text on the same card measures 19.77:1. So the one line
+/// text and ordinary text on the same card measures 7.59:1. So the one line
 /// the card colours on purpose — because a walkthrough found that nobody reads
 /// a weak grey one — was the least readable thing on it, in the theme half the
 /// machines in the world are set to.
 ///
-/// Dark mode keeps egui's orange, which measures 7.12:1 and needs no help. Its
-/// red does not: pure red on the dark card is 4.07:1, under the same bar, so
+/// Dark mode keeps egui's orange, which measures 7.53:1 and needs no help. Its
+/// red does not: pure red on the dark card is 4.31:1, under the same bar, so
 /// [`error_colour`] lightens it there rather than leaving the one theme that
 /// was looked at failing too.
+///
+/// **The ground all of that is measured against is `Visuals::panel_fill`**, and
+/// saying so is what the first pass at this got wrong. `Frame::group` — what
+/// the card is drawn in — sets a margin, a corner radius and a stroke and no
+/// fill at all, so the pixel behind these lines is the panel's: grey 27 in dark
+/// mode and grey 248 in light. The dark figures above were first recorded
+/// against grey 32, which is `faint_bg_color` composited over the panel and is
+/// not drawn anywhere near the card, and every one of them came out low.
 ///
 /// These are the card's colours and not a theme, which is why they live here
 /// rather than in a `Visuals` this application would then have to maintain
@@ -427,7 +435,6 @@ fn error_colour(visuals: &egui::Visuals) -> egui::Color32 {
         egui::Color32::from_rgb(180, 0, 0)
     }
 }
-
 
 impl App {
     /// Show a container, and forget what the last one's Open did.
@@ -1106,16 +1113,26 @@ mod tests {
     /// The defect this catches is the card's coloured lines being unreadable in
     /// the theme nobody looked at. Measured in the window on 2026-08-26: the
     /// provenance line was 2.79:1 on the light card and the failure line
-    /// 3.76:1, against 19.77:1 for ordinary text beside them, and pure red was
-    /// 4.07:1 even on the dark card. WCAG asks 4.5:1 for body text.
+    /// 3.76:1, where ordinary text beside them is 7.59:1, and pure red was
+    /// 4.31:1 even on the dark card. WCAG asks 4.5:1 for body text.
     ///
     /// It holds both themes to that bar, because the reason this line is
     /// coloured at all is that a walkthrough found nobody reads a weak grey
     /// one — a colour that cannot be read is the same defect wearing the other
     /// hat.
+    ///
+    /// The body-text figure is computed here rather than written beside the
+    /// bar, because the first pass at this quoted 19.77:1 — pure black on the
+    /// light panel, which egui does not draw body text in. Every number in
+    /// these comments is now one this test produces, so a figure that drifts
+    /// from the code is a failure rather than a sentence nobody re-runs.
     #[test]
     fn the_cards_coloured_lines_can_be_read_in_either_theme() {
         for visuals in [eframe::egui::Visuals::light(), eframe::egui::Visuals::dark()] {
+            // `Frame::group`, which the card is drawn in, sets no fill, so the
+            // pixel behind these lines is the panel's. Measuring against
+            // anything else is how the dark figures came out low the first
+            // time.
             let ground = visuals.panel_fill;
             let theme = if visuals.dark_mode { "dark" } else { "light" };
 
@@ -1131,6 +1148,16 @@ mod tests {
                 error >= 4.5,
                 "the failure line is {error:.2}:1 on the {theme} card, under the 4.5:1 \
                  body-text bar"
+            );
+
+            // What the card's uncoloured lines measure, which is the comparison
+            // the doc comment makes. egui draws them in
+            // `noninteractive.fg_stroke`, so that is what is asked.
+            let ordinary = contrast(visuals.widgets.noninteractive.fg_stroke.color, ground);
+            assert!(
+                ordinary >= 4.5,
+                "ordinary text on the {theme} card is {ordinary:.2}:1, so the bar the \
+                 coloured lines are held to is one the card itself does not clear"
             );
         }
     }

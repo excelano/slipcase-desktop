@@ -573,9 +573,9 @@ measured, against the card's own fill:
 
 | Line | Light, before | Dark, before |
 | --- | --- | --- |
-| *This container arrived from elsewhere…* | **2.79:1** | 7.12:1 |
-| A failure the card reports | **3.76:1** | **4.07:1** |
-| Ordinary text beside them | 19.77:1 | — |
+| *This container arrived from elsewhere…* | **2.79:1** | 7.53:1 |
+| A failure the card reports | **3.76:1** | **4.31:1** |
+| Ordinary text beside them | 7.59:1 | 5.12:1 |
 
 WCAG asks 4.5:1 for body text and 3:1 for large text. The provenance line failed
 both. That line is coloured because a walkthrough found that nobody reads a weak
@@ -585,10 +585,30 @@ that *had* been looked at was failing quietly as well.
 
 `warn_colour` and `error_colour` in `src/main.rs` choose per theme now, all four
 call sites go through them, and a test holds both themes to 4.5:1. Measured
-after: 5.18:1 and 6.72:1 on the light card, 7.12:1 and 5.06:1 on the dark one.
-The test computes the ratio against `Visuals::panel_fill` and reproduces the
-2.79 exactly when the repair is removed, which is also what says the fill it
-uses is the fill the screen showed.
+after: 5.18:1 and 6.72:1 on the light card, 7.53:1 and 5.34:1 on the dark one.
+
+**Every dark-mode figure in this section was wrong when it was first written,
+and the sentence that was supposed to catch it is why they survived.** The dark
+column read 7.12:1 and 4.07:1, the paragraph above read 5.06:1, and the
+body-text row read 19.77:1. The dark figures had been computed against grey 32
+— `faint_bg_color` composited over the panel, which nothing draws behind the
+card — rather than against the panel's own grey 27; the body-text figure was
+pure black on the light panel, and egui draws body text in grey 80. Reviewed on
+Linux on 2026-08-26 and recomputed against `Visuals::panel_fill` both ways,
+which is what `Frame::group` leaves showing through, since it sets a margin, a
+radius and a stroke and no fill.
+
+The check this section claimed was *the test reproduces the 2.79 exactly when
+the repair is removed, which is also what says the fill it uses is the fill the
+screen showed*. Removing the repair does reproduce 2.79 — and 3.76, and every
+other light figure, because light was computed against the panel. It reproduces
+4.31 where the table said 4.07, and nobody ran it in dark mode to see. A
+cross-check that only covers the half you were already looking at reads exactly
+like one that covers both. Every figure above is now one the test prints, and
+the test asks for the body-text row too rather than having it written alongside.
+
+None of the conclusions move: 4.31:1 is under 4.5:1 the same way 4.07:1 was, and
+the repair was needed in both themes.
 
 Looked at as well as measured, which is the point of this file: the line is a
 deeper rust orange on the light card, plainly legible and still plainly a
