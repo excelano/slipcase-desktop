@@ -121,18 +121,50 @@ the reproduction constructs the state the failure leaves rather than causing
 the failure. The macOS arm did own a second volume for its own question, so a
 session that has one may be able to do better.
 
-**Windows: the channel is chosen and nothing has been measured inside it.** The
-Microsoft Store, in MSIX, decided for the reason macOS chose the Mac App Store
-and recorded in `packaging/windows/README.md` with the paragraph it amends left
-standing. What is not known is whether this application works inside an MSIX
-container at all, and the three questions that decide it are in `CHECKLIST.md`
-under Windows: whether `opens_with` still sees the registry other applications
-wrote, whether the Open button still reaches the shell, and whether a declared
-association beats a stale `UserChoice`. They are named after the macOS sandbox
-question deliberately. That was taken for a formality and cost a new module, a
-rewritten save path, and a reopened section of `DESIGN.md`, and the two arms
-reviewed from another machine have now both turned up something their own tests
-could not reach.
+**Windows: the channel is chosen, and the container has now been measured.**
+The Microsoft Store, in MSIX, decided for the reason macOS chose the Mac App
+Store and recorded in `packaging/windows/README.md` with the paragraph it
+amends left standing. The three questions were named after the macOS sandbox
+question deliberately, because that was taken for a formality and cost a new
+module, a rewritten save path, and a reopened section of `DESIGN.md`.
+
+They were run on 2026-08-26 against a signed package built from the release
+binary, and MSIX turned out to be the cheaper container. `opens_with` gets the
+same answers inside as outside — twenty payload types, no row different —
+because a package's registry virtualisation covers its writes and not its
+reads, which was established by watching a write from inside the container fail
+to appear outside it before anything else measured inside it was believed.
+`opener::open` reaches the shell from inside and the handler starts. And the
+association declared in `AppxManifest.xml` needs no registry key from anybody:
+a double-clicked container launches the packaged binary. Nothing in
+`src/` has to change, which is not what the macOS answer looked like.
+
+What it did find is at the edges. With the package and the two scripts both
+registered, Windows chooses neither and shows its *how do you want to open this
+file* picker, so a package installed over a live script installation turns a
+working association into a prompt — the package has to clean up after the
+scripts, or say that they must be uninstalled first. `AssocQueryString` reports
+`ERROR_NO_APPLICATION_ASSOCIATED` for a packaged handler's executable and
+command line while still returning its friendly names, which is the same trap
+as `assoc` and `ftype` and will make any executable-path check call a correct
+package no association at all. And `opener::open` returns `Ok` for a payload
+nothing is registered for, on both builds, so that return value is not evidence
+anything opened.
+
+One part is left and is left deliberately. Whether a declared association beats
+a *stale* `UserChoice` cannot be measured by a script: the key is
+hash-validated and denies the user write access, so a default is something a
+person chooses and cannot be forged into place. It is in `CHECKLIST.md` with
+the sequence, including the one step that matters — remove the script install
+by hand rather than with `uninstall.ps1`, which removes the `UserChoice` and
+would destroy what is being tested.
+
+Getting any package installed costs exactly one administrator action, which is
+worth knowing before the next session plans around it. `makeappx`,
+`New-SelfSignedCertificate`, `signtool` and `Add-AppxPackage` all run as an
+ordinary user; the signing certificate has to reach `LocalMachine\TrustedPeople`
+and the per-user store is not read for it, and Developer Mode is the same
+elevation by another door.
 
 **macOS: replacing across volumes was never run, and it did not work.**
 Answered the day it was raised, and it was a defect rather than a doubt. The

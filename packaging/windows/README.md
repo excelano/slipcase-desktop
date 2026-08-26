@@ -59,6 +59,42 @@ application reads the registry to answer what would open a payload, hands files
 to the shell, and registers a file type — and MSIX has its own opinion about
 all three.
 
+**Measured: MSIX changes none of the three, and the package still has to clean
+up after these scripts.** The paragraph above is left standing because it was
+right to ask. Run 2026-08-26 against a signed package built from the release
+binary and installed; `CHECKLIST.md` holds the run and the numbers.
+
+`opens_with` gets the same answers inside the container as outside — twenty
+payload types, no row different — because MSIX virtualises what a package
+writes and not what it reads, which was confirmed by watching a registry write
+from inside the container fail to appear outside it. `opener::open` reaches the
+shell from inside and the handler starts. And the association declared in
+`AppxManifest.xml` works on its own: a double-clicked container launches the
+packaged binary with no registry key written by anybody.
+
+What is not free is the overlap. With the package and these scripts both
+registered, Windows chooses neither and puts up its *how do you want to open
+this file* picker, so installing the package over a live script installation
+turns a working association into a prompt. Whether a `UserChoice` a person
+actually chose then outranks the manifest is the one part still unmeasured, and
+it stays unmeasured on purpose: that key is hash-validated and write-denied, so
+it cannot be forged and a person has to make the choice.
+
+One thing to carry into any check of a packaged install: `AssocQueryString`
+answers `ERROR_NO_APPLICATION_ASSOCIATED` for the executable and the command
+line of a packaged handler while still returning its friendly names, because
+there is no command line — activation goes through the app model. That is the
+same trap as `assoc` and `ftype` above, and it means a script that verifies an
+install by looking for an executable path will report a correct package as no
+association at all.
+
+Getting a package installed at all costs exactly one administrator action:
+`makeappx`, `New-SelfSignedCertificate`, `signtool` and `Add-AppxPackage` all
+run as an ordinary user, but the signing certificate has to reach
+`LocalMachine\TrustedPeople`, and the per-user store is not read for this —
+importing there leaves deployment failing `0x800B0109` just the same. The
+Developer Mode route is the other way in and needs the same elevation.
+
 **Per-user, under `HKCU` and `%LOCALAPPDATA%`**, which is the counterpart of the
 Linux script's default of `~/.local`. There is no all-users variant: the
 machine-wide half of every key here needs elevation, and a script that

@@ -58,11 +58,32 @@ if (-not $KeepFiles) {
         $path = Join-Path $Prefix $name
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Force -Confirm:$false }
     }
-    # This script is running from inside the directory it is emptying, so it
-    # cannot delete itself here. It is left, and the directory with it, and the
-    # next install overwrites both; a directory holding one script is not worth
-    # a scheduled deletion to be rid of.
-    Write-Output "left $(Join-Path $Prefix 'uninstall.ps1') behind: it is the script now running"
+    # Add/Remove Programs points at the copy inside the directory, so the usual
+    # run is a script emptying the directory it is itself in, and a running
+    # script cannot delete itself. Run from a checkout it is not that file, and
+    # then the copy is an ordinary file that can go with the rest.
+    #
+    # Both branches were one line until 2026-08-26, when a run from the
+    # checkout left the copy behind and said it was the script now running.
+    # That was untrue and it left a directory this script says it removes, so
+    # the two cases are told apart rather than assumed to be the same one.
+    $copy = Join-Path $Prefix 'uninstall.ps1'
+    $self = $MyInvocation.MyCommand.Path
+    if (Test-Path -LiteralPath $copy) {
+        $same = $self -and
+            ([System.IO.Path]::GetFullPath($self) -ieq [System.IO.Path]::GetFullPath($copy))
+        if ($same) {
+            Write-Output "left ${copy} behind: it is the script now running"
+        } else {
+            Remove-Item -LiteralPath $copy -Force -Confirm:$false
+        }
+    }
+    # And the directory, where emptying it emptied it. Left alone if anything
+    # else is in there, because this script installed none of it.
+    if ((Test-Path -LiteralPath $Prefix) -and
+        -not (Get-ChildItem -LiteralPath $Prefix -Force)) {
+        Remove-Item -LiteralPath $Prefix -Force -Confirm:$false
+    }
 }
 
 Add-Type -Namespace SlipcaseUninstall -Name Shell -MemberDefinition @'

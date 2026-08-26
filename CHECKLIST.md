@@ -111,6 +111,104 @@ macOS. And the two PowerShell scripts stay whatever these three find: they are
 the per-user route for somebody who wants no Store account, and a listing is no
 reason to withdraw it.
 
+### What the MSIX sitting found
+
+Run 2026-08-26 against a package built from the release binary, signed with a
+self-signed certificate, and installed. Two of the three questions are answered
+and the third is answered in every part a script can reach; what is left of it
+is one click, below.
+
+**Getting a package installed at all costs one administrator action, and only
+one.** Three routes were measured and two are dead without elevation.
+Registering an unsigned loose layout fails `0x80073CFF`, which wants Developer
+Mode. Installing the signed package fails `0x800B0109` until its certificate is
+trusted, and importing that certificate into `CurrentUser\TrustedPeople` does
+not do it — deployment still refuses, so the per-user store is not the one it
+reads. `LocalMachine\TrustedPeople` is, and writing there is `E_ACCESSDENIED`
+without administrator. Everything else — `makeappx`, `New-SelfSignedCertificate`,
+`signtool`, and `Add-AppxPackage` itself — needs none. Both SDK tools are stock
+on this machine at `10.0.26100.0`.
+
+**The process really was inside the container**, which is worth establishing
+before anything measured inside it means anything. `reg add` run through
+`Invoke-CommandInDesktopPackage` reported success and the key was not there
+afterwards from outside, so the package's registry virtualisation was in force.
+A file written to an ordinary path by the same route did land where it was
+asked to, so the virtualisation is not general.
+
+**1. `opens_with` gets the same answers inside as outside.** The `opens-with`
+example ships inside the package with an execution alias, so the query runs
+with package identity and keeps its standard output; the same binary outside
+the package is the control. Twenty payload names — `.pdf`, `.txt`, `.html`,
+`.zip`, `.png`, `.jpg`, `.docx`, `.xlsx`, `.csv`, `.rtf`, `.xml`, `.json`,
+`.md`, `.ps1`, `.bat`, `.exe`, `.mp3`, `.mp4`, `.slpc`, and one extension
+nothing is registered for. **Zero rows differed.** Six named an application
+(Microsoft Edge for `.pdf`, `.html` and `.xml`, Windows Explorer for `.zip`,
+Notepad for `.md` and `.ps1`) and the rest declined, identically both ways. So
+MSIX virtualises what a package writes and not what it reads, and the card is
+not going to be wrong inside a package. One row is not a control: `.slpc`
+answered `Slipcase` from the package's own declared association, because the
+package was already installed when the outside run was taken.
+
+**2. The Open button still hands a payload over.** Measured through
+`opener::open` at the version `src/main.rs` uses, in a binary built for nothing
+else, run inside the container by the route above. It returned success and the
+handler appeared — `msedge` went from eight processes to nine. The claim that a
+container would refuse the handover is wrong here in the same way it was wrong
+on macOS, and it was measured rather than asserted for that reason.
+
+The failure mode was measured too, because the question asks for it. A payload
+whose extension nothing is registered for also returns success, inside and
+outside alike, and Windows puts up its *how do you want to open this file*
+picker. That is not an MSIX behaviour and not a difference — but it does mean
+`opener::open` returning `Ok` is not evidence that anything opened, on either
+build, which is worth knowing before that return value is ever trusted.
+
+**3. A declared association works, and it does not clear up after the
+scripts.** Three states were put to the shell by launching a `.slpc` and
+reading which executable started.
+
+| Registered | What a double-click does |
+| --- | --- |
+| The package alone | Launches `…\WindowsApps\Excelano.Slipcase_…\slipcase-desktop.exe` |
+| The package and the scripts together | Neither. Windows shows the *how do you want to open this file* picker |
+| The scripts alone | The earlier walkthrough's answer, unchanged |
+
+So the manifest does not need the keys `install.ps1` writes, and does not beat
+them either: with both present Windows declines to choose. A package installed
+over a live script installation degrades a working association into a prompt,
+which answers the question the checklist actually asked — the package does have
+to clean up after the scripts, or say plainly that they must be uninstalled
+first.
+
+**And a packaged handler has no executable to find.** `AssocQueryString` for
+`.slpc` returns the friendly names — `Slipcase` and `Slipcase Container` — and
+`ERROR_NO_APPLICATION_ASSOCIATED` for `ASSOCSTR_EXECUTABLE` and
+`ASSOCSTR_COMMAND`, because a packaged application is activated through the app
+model and there is no command line to report. It declines the same way for the
+scripts' own ProgID, which is the 18-in-260 disagreement `src/opens_with.rs`
+was written around, arriving from the other direction. Anything checking an
+install by looking for an executable path will call a correctly registered
+package no association at all, exactly as `assoc` and `ftype` do.
+
+**And one defect fell out of the setup rather than the questions.** Getting
+between the three states above meant running `uninstall.ps1` repeatedly, from
+the checkout rather than from the install directory. It printed *left
+…\uninstall.ps1 behind: it is the script now running* and left the file and its
+directory there — and the running script was the checkout's copy, so the
+sentence was untrue and the file was an ordinary one it could have removed. The
+usual run really is the self-deleting case, because Add/Remove Programs points
+at the installed copy, so the branch existed for a good reason and covered both
+cases with one. It tells them apart now, by full path. Both were then run: from
+the checkout the directory goes entirely, and from the install directory the
+message is printed and is true.
+
+**What one click still owes.** Whether a declared association beats a *stale*
+`UserChoice` is not answered, and no script can answer it: `UserChoice` carries
+a hash Windows validates and its key denies the user write access, which is
+deliberate and is why choosing a default is a thing a person does. It is in
+*Not yet done by hand* below with the sequence.
+
 ### Not yet done by hand
 
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
@@ -133,6 +231,19 @@ reason to withdraw it.
   security warning for a zoned file there**. If a zoned file in the temp
   directory is treated as trusted, the reporting on the card is not enough and
   the decision recorded in DESIGN.md §5 has to be reopened.
+- **Whether a declared association beats a stale `UserChoice`**, which is the
+  one part of question 3 above that no script can reach. `UserChoice` carries a
+  hash Windows validates and its key denies the user write access, so a choice
+  is a thing a person makes and cannot be forged into place — which is the
+  point of it. The sequence, from a clean machine: install the scripts,
+  double-click a `.slpc` and choose Slipcase with *always use this app* so a
+  `UserChoice` exists, then delete `%LOCALAPPDATA%\Programs\Slipcase` by hand
+  rather than running `uninstall.ps1`, which removes the `UserChoice` and would
+  destroy the very thing being tested. Then install the package and
+  double-click a container. Whether the manifest wins, the stale key wins, or
+  the picker appears is the answer, and the third state is now the interesting
+  one: the picker is what the package and the scripts already produce between
+  them when neither has been chosen.
 - **A high-density display.** Every size above was checked at 100%. The icon
   carries 20, 40, and 64 for the scaled sizes and none of them has been looked
   at on a display that would ask for one.
