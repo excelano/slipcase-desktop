@@ -199,10 +199,16 @@ build installs no development packages, because it needs none — `ldd` names
 libc, libgcc and libm and nothing else. And the tests do not reach `xdg-mime`:
 run with the tool off `PATH` they all still pass, since the Linux arm returns
 `None` where it is absent and the tests accept that. So that file does not
-repeat the macOS one's claim that its tests exercise the platform. The
-association step is what asks the platform anything, and whether `xdg-mime`
-answers at all with no desktop session is the part of that file nobody has
-measured.
+repeat the macOS one's claim that its tests exercise the platform.
+
+Its first run measured the last of those. `xdg-mime` is no use on a machine
+with no desktop session: with no session to defer to it falls back to `file`,
+which reads magic bytes, and `SPEC.md` §4 reserves none — so a correctly
+registered container came back `application/zip`, which is what a ZIP looks
+like to anything reading its contents rather than its name. The step asks GLib
+instead, which is the path a GTK file manager takes and the one whose answer
+items 1 and 2 are actually about. Worth knowing before a Windows or minimal-
+machine session reaches for `xdg-mime` to prove something.
 
 ## Conventions
 

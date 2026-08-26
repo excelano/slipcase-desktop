@@ -22,7 +22,9 @@
 # test binaries with `xdg-mime` off `PATH`: all of them still pass, because
 # `opens_with::linux::run` returns `None` where the tool is absent and the
 # tests accept that answer. The association step below is what asks the
-# platform anything, and it is the part of this file that has never run.
+# platform anything, and its first run found that `xdg-mime` itself is no use
+# here — the comment on that step says why, and it is worth reading before
+# copying this file for another platform.
 #
 # Nothing headless reaches a window. The icon at any size, a double-clicked
 # container loading, and the Enter walkthrough all need eyes and a session,
@@ -125,29 +127,50 @@ jobs:
           sudo apt-get install -y -qq lintian
           lintian --info --no-tag-display-limit dist/*.deb || true
 
-      # The only step that asks the platform anything, and the only one here
-      # that has never run. `CHECKLIST.md` items 1 and 2 are two shell
-      # questions with no eyes in them, so they belong on a machine rather than
-      # in a walkthrough — if a headless runner can answer them at all. Whether
-      # `xdg-mime` resolves a default application with no desktop session is
-      # unmeasured, and a red run here is that measurement rather than a
-      # regression.
+      # The only step that asks the platform anything, and the one that had
+      # never run when this file was written. `CHECKLIST.md` items 1 and 2 are
+      # two questions with no eyes in them, so they belong on a machine.
+      #
+      # They are not asked through `xdg-mime`, and the first run of this file is
+      # why. With no desktop session `xdg-mime` cannot identify a session to
+      # defer to and falls back to `file`, which reads magic bytes and knows
+      # nothing of the shared-mime-info database — and `SPEC.md` §4 reserves no
+      # magic, so a container is identified by its name alone. `file` sees a ZIP
+      # and says so: the step reported `application/zip` against a correctly
+      # registered type. That is a fact about `xdg-mime` without a session
+      # rather than about the registration, confirmed by asking both tools the
+      # same question on a machine that has one.
+      #
+      # `gio` is the right tool here and not merely a working one. It asks GLib
+      # for the content type, which is the same path a GTK file manager takes,
+      # so what it reports is what a person would have seen in Files — which is
+      # what items 1 and 2 are about. It needs no session either.
       - name: The type and the handler are ours
         run: |
           sudo apt-get install -y -qq \
-              shared-mime-info desktop-file-utils hicolor-icon-theme xdg-utils
+              shared-mime-info desktop-file-utils hicolor-icon-theme \
+              libglib2.0-bin
           ./packaging/linux/install.sh
 
           container=$(find "${RUNNER_TEMP}/slipcase/conformance/cases" \
-              -name '*.slpc' | head -1)
+              -name '*.slpc' -print -quit)
           cp "$container" "${RUNNER_TEMP}/sample.slpc"
 
-          type=$(xdg-mime query filetype "${RUNNER_TEMP}/sample.slpc")
-          echo "filetype: ${type}"
+          type=$(gio info -a standard::content-type "${RUNNER_TEMP}/sample.slpc" |
+              sed -n 's/.*standard::content-type: //p')
+          echo "content type: ${type}"
           [ "$type" = "application/x.slipcase+zip" ] ||
               { echo "the type is not ours" >&2; exit 1; }
 
-          handler=$(xdg-mime query default application/x.slipcase+zip)
+          handler=$(gio mime application/x.slipcase+zip |
+              sed -n 's/^Default application for .*: //p')
           echo "default: ${handler}"
           [ "$handler" = "slipcase-desktop.desktop" ] ||
               { echo "the handler is not ours" >&2; exit 1; }
+
+          # The magic answer, recorded rather than asserted. It is what `file`
+          # says and what any tool reaching for magic alone will say, and it is
+          # why the glob is the only identification available. If this ever
+          # stops being `application/zip` the format has grown a signature and
+          # `SPEC.md` §4 has changed.
+          echo "what magic alone says: $(file --mime-type -b "${RUNNER_TEMP}/sample.slpc")"
