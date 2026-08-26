@@ -1,0 +1,153 @@
+# Run the suite, the corpus, and the package on Linux.
+#
+# `apple-silicon.yml` came first and exists for a reason that does not
+# generalise: the arm64 half of a universal bundle was code nobody had
+# executed. Linux has no such gap — this is the machine everything was written
+# on — so what this file is for is the ordinary thing. It keeps the suite, the
+# clippy rule, and the 77 conformance cases from depending on somebody
+# remembering, and it puts the `.deb` under the mechanical parts of
+# `CHECKLIST.md` on every push rather than once before a release.
+#
+# What it reaches and what it does not, stated because a green tick invites
+# more faith than it has earned.
+#
+# The build needs no development packages. `ldd` on the binary names libc,
+# libgcc and libm and nothing else: everything a window needs is opened at run
+# time rather than linked, which is what `DESIGN.md` §2's rule against
+# compiling C buys. So there is no `apt-get` before the build and that is
+# measured rather than hoped for.
+#
+# The tests do not reach `xdg-mime`, and this file should not repeat the macOS
+# workflow's claim that they exercise the platform. Measured by running the
+# test binaries with `xdg-mime` off `PATH`: all of them still pass, because
+# `opens_with::linux::run` returns `None` where the tool is absent and the
+# tests accept that answer. The association step below is what asks the
+# platform anything, and it is the part of this file that has never run.
+#
+# Nothing headless reaches a window. The icon at any size, a double-clicked
+# container loading, and the Enter walkthrough all need eyes and a session,
+# and `CHECKLIST.md` stays the record for those.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+name: Linux
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      # v5 rather than the v4 `apple-silicon.yml` pins: v4 targets Node 20,
+      # which GitHub has deprecated and is already forcing onto Node 24. That
+      # file is the macOS session's to change, one file per platform.
+      - uses: actions/checkout@v5
+
+      - name: What is installed
+        run: rustc -V && cargo -V && python3 -V && dpkg-deb --version | head -1
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Test
+        run: cargo test
+
+      # `CLAUDE.md` says clippy must be silent, so a warning is an error here.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      # `CLAUDE.md` lists this as a command run from Linux, and it is: it needs
+      # the target's standard library and no linker. It is here because the
+      # thing it protects against is a change made on this platform breaking an
+      # arm nobody on this platform can build.
+      - name: The Windows arm still compiles
+        run: |
+          rustup target add x86_64-pc-windows-msvc
+          cargo check --all-targets --target x86_64-pc-windows-msvc
+
+      # A command and never a test, because it needs another checkout with its
+      # cases generated and a test that skips quietly on a machine that was
+      # never going to have them is worse than a command run on purpose. CI is
+      # a machine that can always have them. The checkout is kept for the
+      # association step below, which wants a real container to ask about.
+      - name: The conformance corpus, all 77
+        run: |
+          git clone --depth 1 https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
+          python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"
+          cargo run --bin corpus -- "${RUNNER_TEMP}/slipcase/conformance"
+
+      - name: Build the package
+        run: |
+          cargo build --release
+          ./packaging/debian/build-deb.sh
+
+      # `CHECKLIST.md` items 9 to 11, which need no eyes. Everything `root/root`
+      # and nothing carrying a mode a package should not ship; `md5sums`
+      # present, which is what `dpkg -V` reads and what lintian tags
+      # `no-md5sums-control-file` when it is missing; and every recorded hash
+      # agreeing with the file it names. The `.deb` shipped without `md5sums`
+      # once and a release build passed over it.
+      - name: The package holds up
+        run: |
+          deb=$(ls dist/*.deb)
+          echo "checking ${deb}"
+
+          strange=$(dpkg-deb --contents "$deb" | awk '$2 != "root/root"')
+          [ -z "$strange" ] || { echo "not root/root:"; echo "$strange"; exit 1; }
+
+          strange=$(dpkg-deb --contents "$deb" |
+              awk '$1 !~ /^drwxr-xr-x/ && $1 !~ /^-rw-r--r--/ && $1 !~ /^-rwxr-xr-x/')
+          [ -z "$strange" ] || { echo "unexpected modes:"; echo "$strange"; exit 1; }
+
+          dpkg-deb --ctrl-tarfile "$deb" | tar t | grep -qx './md5sums' ||
+              { echo "the package ships no md5sums" >&2; exit 1; }
+
+          tree="${RUNNER_TEMP}/tree"
+          dpkg-deb -x "$deb" "$tree"
+          dpkg-deb -e "$deb" "${tree}/DEBIAN"
+          ( cd "$tree" && md5sum -c DEBIAN/md5sums --quiet )
+
+      # A report and not a gate, and the difference is deliberate. Running
+      # lintian at all has been an open item since the package was built, so
+      # nobody has read its output and nothing here knows which tags are real
+      # findings and which are Debian conventions this package has chosen not
+      # to follow. Making it fail the build before anyone has triaged it would
+      # be asserting an answer nobody has. The first run is the measurement;
+      # once the tags are in `CHECKLIST.md` with a decision beside each, this
+      # step gets a `--fail-on` and becomes a check.
+      - name: What lintian says, unexamined
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lintian
+          lintian --info --no-tag-display-limit dist/*.deb || true
+
+      # The only step that asks the platform anything, and the only one here
+      # that has never run. `CHECKLIST.md` items 1 and 2 are two shell
+      # questions with no eyes in them, so they belong on a machine rather than
+      # in a walkthrough — if a headless runner can answer them at all. Whether
+      # `xdg-mime` resolves a default application with no desktop session is
+      # unmeasured, and a red run here is that measurement rather than a
+      # regression.
+      - name: The type and the handler are ours
+        run: |
+          sudo apt-get install -y -qq \
+              shared-mime-info desktop-file-utils hicolor-icon-theme xdg-utils
+          ./packaging/linux/install.sh
+
+          container=$(find "${RUNNER_TEMP}/slipcase/conformance/cases" \
+              -name '*.slpc' | head -1)
+          cp "$container" "${RUNNER_TEMP}/sample.slpc"
+
+          type=$(xdg-mime query filetype "${RUNNER_TEMP}/sample.slpc")
+          echo "filetype: ${type}"
+          [ "$type" = "application/x.slipcase+zip" ] ||
+              { echo "the type is not ours" >&2; exit 1; }
+
+          handler=$(xdg-mime query default application/x.slipcase+zip)
+          echo "default: ${handler}"
+          [ "$handler" = "slipcase-desktop.desktop" ] ||
+              { echo "the handler is not ours" >&2; exit 1; }

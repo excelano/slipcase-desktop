@@ -183,6 +183,27 @@ What it deliberately does not claim is the window. Nothing headless reaches a
 double-clicked document, an icon, or a frame a person looks at. `CHECKLIST.md`
 stays the record for those on every platform.
 
+`.github/workflows/linux.yml` is the second, and it exists for the ordinary
+reason rather than a gap: Linux is the machine everything was written on. Past
+the suite and the corpus it does two things the macOS file does not. It builds
+the `.deb` and runs the mechanical parts of the Linux walkthrough over it —
+ownership, modes, and every hash in `md5sums` agreeing — because that package
+shipped without `md5sums` once and a release build passed over it. And it runs
+lintian as a *report* rather than a gate, which is deliberate: nobody has read
+its output yet, so nothing knows which tags are findings and which are
+conventions this package has declined, and failing a build on an answer nobody
+has triaged would be asserting one. Triaging them is an open item.
+
+Two things it is honest about that a copy of it should stay honest about. The
+build installs no development packages, because it needs none — `ldd` names
+libc, libgcc and libm and nothing else. And the tests do not reach `xdg-mime`:
+run with the tool off `PATH` they all still pass, since the Linux arm returns
+`None` where it is absent and the tests accept that. So that file does not
+repeat the macOS one's claim that its tests exercise the platform. The
+association step is what asks the platform anything, and whether `xdg-mime`
+answers at all with no desktop session is the part of that file nobody has
+measured.
+
 ## Conventions
 
 In `CLAUDE.md`, which a Claude Code session started in this directory loads by
