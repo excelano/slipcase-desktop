@@ -84,25 +84,42 @@ measurement was taken against.
 
 Two things were found on Linux while reviewing the macOS work, and neither
 belongs to Linux. They are here because this file is the only way they reach
-the session that owns the arm. The macOS one has since been settled and is left
-below with its answer, because what the review cost and what it caught are both
+the session that owns the arm. Both have since been settled and are left below
+with their answers, because what the review cost and what it caught are both
 worth knowing before the next one.
 
-**Windows: `carries_a_mark` asks whether the stream exists, not whether it
-gates.** In `src/provenance.rs` both questions are answered by
+**Windows: `carries_a_mark` asked whether the stream exists, not whether it
+gates.** Settled on 2026-08-26, and it was a defect rather than a doubt. In
+`src/provenance.rs` both questions were answered by
 `std::fs::metadata(path:Zone.Identifier).is_ok()`. That was harmless until
-`carry` gained its `AlreadyMarked` fallback, which now uses the predicate to
-decide whether a payload whose zone write failed is safe to hand to the system.
+`carry` gained its `AlreadyMarked` fallback, which uses the predicate to decide
+whether a payload whose zone write failed is safe to hand to the system.
 `std::fs::write` creates the stream before it writes into it, so a write that
 fails partway — a full disk being the realistic one — leaves a stream that
 exists and carries no `ZoneId` line, and a stream with no `ZoneId` is not a
-file the shell gates. `carry` would call that `AlreadyMarked` and the payload
-would open ungated. The Windows arm never needs the fallback at all, because
-nothing on Windows marks what this application writes, so the repair is to make
-the predicate say what it means rather than to widen the fallback. Read out of
-the code and not measured, which is not the same thing: reproduce it before
-fixing it, and remember that a test which passes against the defect it was
-written for is worse than no test.
+file the shell gates. `carry` called that `AlreadyMarked` and the payload
+opened ungated.
+
+Reproduced before it was fixed, which is what the note asking for it was for.
+The read only attribute denies the stream write the way the macOS tests use a
+mode of `0o444` to stand in for a sandbox, and against the old predicate the
+test failed exactly as the paragraph above said it would. The repair is the one
+that was asked for — the predicate says what it means — and what the shell
+means was measured rather than reasoned about: a script run under
+`-ExecutionPolicy RemoteSigned` resolves its zone through the same stream, and
+it stops for a `ZoneId` of 3 or above inside a `[ZoneTransfer]` section and for
+nothing else. Zones 0, 1 and 2, an empty value, and a `ZoneId` under any other
+section or under none all ran. `DESIGN.md` §8 carries the table and the one
+place the predicate is deliberately stricter than the platform. Six tests own
+the Windows arm now, where it had none, and three deliberate breaks were run
+against them.
+
+One thing it did not settle. The premise that a full disk is what leaves the
+stream half written is still read out of `std::fs::write` rather than measured:
+this machine has no second volume to fill and no administrator to make one, so
+the reproduction constructs the state the failure leaves rather than causing
+the failure. The macOS arm did own a second volume for its own question, so a
+session that has one may be able to do better.
 
 **Windows: the channel is chosen and nothing has been measured inside it.** The
 Microsoft Store, in MSIX, decided for the reason macOS chose the Mac App Store

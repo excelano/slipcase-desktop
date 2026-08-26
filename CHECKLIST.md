@@ -113,12 +113,14 @@ reason to withdraw it.
 
 ### Not yet done by hand
 
-- **`carries_a_mark` answers the wrong question**, which is a defect rather
-  than a walkthrough and is written out in full in `HANDOFF.md`. Reproduce it
-  before fixing it: the predicate asks whether the `Zone.Identifier` stream
-  exists, and a stream that exists carrying no `ZoneId` line is a file the
-  shell does not gate. It is reachable through a `std::fs::write` that fails
-  partway. Fix it beside the item below, since both are about the same stream.
+- **`carries_a_mark` answered the wrong question**, and no longer does. Settled
+  on 2026-08-26 rather than walked, because it was a defect rather than a
+  walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,
+  and a stream that exists carrying no `ZoneId` line is a file the shell does
+  not gate. Reproduced first by denying the stream write, then repaired against
+  a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
+  `DESIGN.md` §8 carries the table. The hand item below is still open and is
+  about the same stream.
 - **Provenance, which has never run on this platform.** `src/provenance.rs`
   carries a container's `Zone.Identifier` stream onto the payload extracted
   from it, and the Windows arm compiles from Linux but has never executed.

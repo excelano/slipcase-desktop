@@ -183,6 +183,16 @@ mod platform {
     /// to the path, so `std::fs` reaches it and nothing here is FFI.
     const ZONE: &str = ":Zone.Identifier";
 
+    /// The section the shell reads and the key inside it, both folded to lower
+    /// case because both are matched without regard to case.
+    const SECTION: &[u8] = b"[zonetransfer]";
+    const ZONE_ID: &[u8] = b"zoneid";
+
+    /// The lowest zone the shell stops for. 3 is the internet and 4 is the
+    /// untrusted zone; 0, 1 and 2 are this machine, the local network, and a
+    /// site somebody trusted, and nothing stops for those.
+    const GATED_FROM: u32 = 3;
+
     fn stream_of(path: &Path) -> OsString {
         let mut named = path.as_os_str().to_os_string();
         named.push(ZONE);
@@ -201,13 +211,73 @@ mod platform {
         Ok(Mark::Carried)
     }
 
-    /// The same question here. Nothing on Windows marks what this
-    /// application writes, so a stream on a file means the file arrived
-    /// carrying one.
+    /// Whether the shell will stop before opening this file.
+    ///
+    /// **Not whether the stream exists**, which is what this asked until
+    /// 2026-08-26 and is a different question on this platform than on the
+    /// other two. A quarantine attribute is written whole or not at all;
+    /// `std::fs::write` creates this stream and then writes into it, so a write
+    /// that fails partway — a full disk being the realistic one — leaves a
+    /// stream that exists and carries no `ZoneId`. [`super::carry`] reads a
+    /// true answer here as licence to hand the payload over, so a stream the
+    /// shell does not act on must not be one.
+    ///
+    /// Measured 2026-08-26 by running a script under `-ExecutionPolicy
+    /// RemoteSigned`, which resolves a zone through this stream. Refused: a
+    /// `ZoneId` of 3, 4 or 99, in either case, with spaces around the `=`, with
+    /// `\n` alone for a line ending, with no trailing line ending, and after
+    /// other keys. Ran, and so gates nothing: 0, 1, 2, -3, an empty value, and
+    /// a `ZoneId` under another section or under none — the header carries
+    /// weight. Where two `ZoneId` lines disagreed the last one decided, so this
+    /// keeps the last rather than the first.
+    ///
+    /// One measured case is deliberately not reproduced. A value that is not a
+    /// number at all still gates — `junk3` was refused — and this reads it as
+    /// no gate. Being wrong that way costs a refusal to extract; being wrong
+    /// the other way hands over a payload nothing will stop for, which is the
+    /// laundering this module exists to prevent.
     pub fn carries_a_mark(path: &Path) -> bool {
-        arrived_from_elsewhere(path)
+        let stream = std::fs::read(stream_of(path)).unwrap_or_default();
+        zone_id(&stream).is_some_and(|zone| zone >= GATED_FROM)
     }
 
+    /// The zone the shell would read out of this stream, where it would read
+    /// one at all.
+    fn zone_id(stream: &[u8]) -> Option<u32> {
+        let mut reading = false;
+        let mut zone = None;
+        for line in stream.split(|b| matches!(b, b'\r' | b'\n')) {
+            let line = line.trim_ascii();
+            if line.starts_with(b"[") {
+                reading = line.eq_ignore_ascii_case(SECTION);
+                continue;
+            }
+            if !reading {
+                continue;
+            }
+            let mut halves = line.splitn(2, |b| *b == b'=');
+            let (Some(key), Some(value)) = (halves.next(), halves.next()) else {
+                continue;
+            };
+            if key.trim_ascii().eq_ignore_ascii_case(ZONE_ID) {
+                // Assigned rather than returned, so that a later line in the
+                // section replaces this one the way the shell lets it.
+                zone = std::str::from_utf8(value.trim_ascii())
+                    .ok()
+                    .and_then(|value| value.parse().ok());
+            }
+        }
+        zone
+    }
+
+    /// A different question from the one above, and the difference is the whole
+    /// reason they are two functions. The card asks where a container came
+    /// from; a stream nothing gates on was still written by something, and
+    /// nothing on Windows writes one on this application's behalf. So anything
+    /// at all here is reported, including the residue [`carries_a_mark`]
+    /// refuses to treat as a gate: over-reporting provenance costs a person one
+    /// line of caution, and under-reporting it is the defect the module exists
+    /// to prevent.
     pub fn arrived_from_elsewhere(path: &Path) -> bool {
         std::fs::metadata(stream_of(path)).is_ok()
     }
@@ -540,6 +610,187 @@ mod macos_tests {
             xattr::get(&to, QUARANTINE).expect("reading"),
             Some(FROM_SAFARI.to_vec()),
             "the copy does not carry the value the container carried"
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod windows_tests {
+    use super::{carry, Mark};
+    use std::path::Path;
+
+    /// What a browser leaves on a container it downloaded. `ZoneId=3` is the
+    /// internet zone, and it is the line the shell reads; the rest is detail
+    /// this module copies without reading.
+    const FROM_THE_INTERNET: &[u8] =
+        b"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=https://example.invalid/a.slpc\r\n";
+
+    /// What a write that failed partway leaves behind. `std::fs::write` creates
+    /// the stream and then writes into it, so a failure between the two — a
+    /// full disk being the realistic one — leaves a stream that exists and says
+    /// nothing the shell acts on.
+    const A_WRITE_THAT_FAILED_PARTWAY: &[u8] = b"[ZoneTransfer]\r\n";
+
+    /// The stream is addressed by appending its name to the path, which is why
+    /// nothing in this module is FFI. Spelled out again here rather than
+    /// reached for in `platform`, so that a test does not pass by agreeing with
+    /// the code about where to look.
+    fn stream_of(path: &Path) -> std::ffi::OsString {
+        let mut named = path.as_os_str().to_os_string();
+        named.push(":Zone.Identifier");
+        named
+    }
+
+    fn mark(path: &Path, zone: &[u8]) {
+        std::fs::write(stream_of(path), zone).expect("marking");
+    }
+
+    fn zone_on(path: &Path) -> Option<Vec<u8>> {
+        std::fs::read(stream_of(path)).ok()
+    }
+
+    /// A file whose streams cannot be written. The macOS arm denies the write
+    /// with a mode of `0o444` to stand in for a sandbox refusing it; the read
+    /// only attribute is this platform's counterpart, and it denies the write
+    /// without denying the read the predicate needs.
+    fn unwritable(path: &Path) {
+        let mut mode = std::fs::metadata(path).expect("the file").permissions();
+        mode.set_readonly(true);
+        std::fs::set_permissions(path, mode).expect("making it unwritable");
+    }
+
+    /// Put back, so that the temporary directory can be removed. Called before
+    /// the assertion rather than after it, because a read only file survives
+    /// the cleanup a failing test never reaches.
+    //
+    // Clippy objects because on Unix this sets a mode of `0o666`, which is not
+    // what a caller usually means. This arm is Windows only, where the flag is
+    // the read only file attribute and setting it false is the whole of what
+    // putting the file back means.
+    #[allow(clippy::permissions_set_readonly_false)]
+    fn writable(path: &Path) {
+        let mut mode = std::fs::metadata(path).expect("the file").permissions();
+        mode.set_readonly(false);
+        std::fs::set_permissions(path, mode).expect("putting it back");
+    }
+
+    /// The defect this catches is a payload extracted from a downloaded
+    /// container reaching its handler with nothing on it the shell would stop
+    /// for. `carries_a_mark` asked whether the stream existed, and the residue
+    /// of a write that failed partway is a stream that exists carrying no
+    /// `ZoneId` — so `carry` called the copy already marked, returned success,
+    /// and the payload opened ungated.
+    #[test]
+    fn a_stream_that_does_not_gate_is_not_an_excuse_for_a_failed_write() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        mark(&from, FROM_THE_INTERNET);
+        mark(&to, A_WRITE_THAT_FAILED_PARTWAY);
+        unwritable(&to);
+
+        let outcome = carry(&from, &to);
+        writable(&to);
+        assert!(
+            outcome.is_err(),
+            "a copy the shell will not gate was accepted as already marked, \
+             which is the laundering this module exists to prevent"
+        );
+    }
+
+    /// The defect this catches is the repair above going too far and turning
+    /// the fallback off. A copy that already carries a zone the shell gates is
+    /// gated whoever wrote it, so nothing was laundered and there is nothing to
+    /// refuse — the same rule the macOS arm applies to a mark the sandbox
+    /// wrote.
+    #[test]
+    fn a_copy_the_shell_would_gate_is_not_a_failure() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        mark(&from, FROM_THE_INTERNET);
+        mark(&to, b"[ZoneTransfer]\r\nZoneId=4\r\n");
+        unwritable(&to);
+
+        let outcome = carry(&from, &to);
+        writable(&to);
+        assert_eq!(
+            outcome.expect("a gated copy is not a failure"),
+            Mark::AlreadyMarked
+        );
+    }
+
+    /// The boundary is the measured one rather than the likely one. Measured
+    /// 2026-08-26 by running a script under `-ExecutionPolicy RemoteSigned`,
+    /// which resolves a zone through this stream: 0, 1 and 2 ran and 3 and 4
+    /// were refused. A predicate that took any `ZoneId` at all for a gate would
+    /// hand over a payload nothing would stop and call it stopped for.
+    #[test]
+    fn only_the_zones_the_shell_gates_count_as_a_mark() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        for (zone, gates) in [(0, false), (1, false), (2, false), (3, true), (4, true)] {
+            let file = dir.path().join(format!("zone-{zone}.pdf"));
+            std::fs::write(&file, b"payload").expect("the payload");
+            mark(&file, format!("[ZoneTransfer]\r\nZoneId={zone}\r\n").as_bytes());
+            assert_eq!(
+                super::platform::carries_a_mark(&file),
+                gates,
+                "zone {zone} was not read as the measurement says the shell reads it"
+            );
+        }
+    }
+
+    /// The defect this catches is the two questions becoming one function
+    /// again, in the other direction. The card asks where a container came
+    /// from, and a stream this module cannot read as a zone is still evidence
+    /// that something wrote one — over-reporting costs a person one line of
+    /// caution, and under-reporting is what the module exists to prevent.
+    #[test]
+    fn a_stream_that_gates_nothing_is_still_reported_on_the_card() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let odd = dir.path().join("odd.slpc");
+        std::fs::write(&odd, b"container").expect("the container");
+        mark(&odd, A_WRITE_THAT_FAILED_PARTWAY);
+
+        assert!(super::arrived_from_elsewhere(&odd));
+    }
+
+    /// A container that arrived from nowhere leaves the copy alone, rather than
+    /// inventing a stream or reporting one. The Windows counterpart of the
+    /// Linux and macOS tests of the same name.
+    #[test]
+    fn a_container_from_nowhere_marks_nothing() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("plain.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+
+        assert_eq!(carry(&from, &to).expect("carrying"), Mark::Silent);
+        assert!(zone_on(&to).is_none());
+    }
+
+    /// The defect this catches is the whole point of the module on this
+    /// platform: a payload extracted from a downloaded container arriving with
+    /// no zone stream, so that the shell never asks about it.
+    #[test]
+    fn a_downloaded_container_puts_its_zone_on_the_payload() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let from = dir.path().join("downloaded.slpc");
+        let to = dir.path().join("report.pdf");
+        std::fs::write(&from, b"container").expect("the container");
+        std::fs::write(&to, b"payload").expect("the payload");
+        mark(&from, FROM_THE_INTERNET);
+
+        assert_eq!(carry(&from, &to).expect("carrying"), Mark::Carried);
+        assert_eq!(
+            zone_on(&to).as_deref(),
+            Some(FROM_THE_INTERNET),
+            "the copy does not carry the zone the container carried"
         );
     }
 }
