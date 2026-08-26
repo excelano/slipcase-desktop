@@ -272,6 +272,17 @@ an error the application already has a sentence for, rather than the silence or
 the hang it used to be. A payload named `CON` extracts and will not open, which
 is the truth about that container on this platform.
 
+**Amended: it returned that sentence and did not show it.** Watched in the
+window on 2026-08-26, where the paragraph above turned out to be a claim about a
+return value rather than about anything a person reads. `opener::OpenError`
+keeps its `Display` to a category and puts the platform's words in `source()`,
+so the card said *the system would not open it: IO error* — for this and for a
+security warning somebody cancelled alike. `why` in `src/main.rs` prefers the
+source now, and the card says *The specified device name is invalid. (os error
+1200)* and *The operation was canceled by the user. (os error 1223)*. A sentence
+this application composes is this application's to get right, and this one was
+written down as fact here before anybody had read it on a screen.
+
 **It costs one thing, and that had to be paid for separately.** The path handed
 back is now the verbatim one, because it is what addresses the file, and
 *Extracted to* would otherwise show a person a spelling they have never seen

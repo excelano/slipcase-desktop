@@ -361,16 +361,72 @@ sentence in the warning colour on this platform, or pressed Open on a downloaded
 container and read the warning Windows puts up. That is below in *Not yet done
 by hand*, and it is now a much smaller item than it was.
 
+### What the window walkthrough found
+
+Run 2026-08-26 against a release build, with four containers built for it: one
+made here, one carrying a zone stream, one whose payload is named `CON`, and one
+carrying a zone stream whose payload is `setup.cmd`. It found one defect, in a
+sentence this application writes.
+
+**The card is right about provenance, both ways.** A container carrying a zone
+stream draws *This container arrived from elsewhere, and the payload will carry
+that.* in the warning colour, above the buttons. The container built here draws
+nothing there, so the line means something rather than appearing on everything.
+
+**The Open button hands the payload over, and the payload carries the mark.**
+Pressing Open on the downloaded container extracted `report.pdf` into a
+temporary directory and Edge opened it. Read off the copy afterwards, it carried
+all 109 bytes of the container's stream — the card's *the payload will carry
+that* is literally true and not a figure of speech.
+
+**A zoned payload in the temporary directory raises the security warning, in the
+window.** Pressing Open on the container holding `setup.cmd` put up *Open File —
+Security Warning*, naming the file in the temporary directory, *Unknown
+Publisher*, *Windows Command Script*, with Run and Cancel. That is what `§5`
+needed and it now has it from both directions: measured below the window on the
+same day, and watched here. Two things worth knowing. The dialog is a window of
+this application's own process, which is why `opener::open` blocks on it rather
+than returning. And the window stays alive while it blocks — the card shows the
+progress bar at 100% with a Cancel button — so a person who leaves the warning
+sitting there does not see a frozen application.
+
+**A payload named `CON` extracts and will not open, and both halves are now
+visible.** The card shows `CON`, 32 bytes. Pressing Open wrote a real file — the
+directory listing has to be taken through the verbatim form to see it, which is
+the whole reason `destination` exists — and the handover failed rather than
+hanging. The path in the message carries no `\\?\` prefix, so `shown` is doing
+its job in the running application and not only in a test.
+
+**The defect: the sentence said `IO error` and nothing else.** Both refusals
+above first reported *the system would not open it: IO error*, which tells a
+person nothing about what happened or what to do. `opener::OpenError` keeps its
+`Display` to a category and puts the platform's words in `source()`, so
+formatting the error threw away the only part worth reading. This is a sentence
+the application writes rather than one the platform hands over, so it is this
+application's to get right, and `DESIGN.md` §8 had already claimed the person
+would see the platform's wording — which was untrue until now. Repaired, and
+both cases were run again:
+
+| Pressing Open on | What the person reads now |
+| --- | --- |
+| A payload named `CON` | *…\CON was extracted, and the system would not open it: The specified device name is invalid. (os error 1200)* |
+| A zoned `setup.cmd`, warning cancelled | *…\setup.cmd was extracted, and the system would not open it: The operation was canceled by the user. (os error 1223)* |
+
+**And the card stays quiet where the platform is quiet.** Neither `setup.cmd`
+nor `CON` drew an *Opens with* line, because nothing is registered for either.
+That is `§3`'s rule working in the window: where the platform will not answer,
+the card says nothing rather than guessing.
+
+The walkthrough was driven by photographing the window rather than by watching
+it, which is worth recording because it is not the same thing. Everything above
+was read off a capture of the application's own window rectangle. Two things
+that cost time and are not defects: Windows refuses a foreground change to a
+process that did not just launch, so keystrokes go astray unless the window is
+clicked, and two warning dialogs stack at the same screen position, so a blind
+click at fixed coordinates can dismiss the wrong one.
+
 ### Not yet done by hand
 
-- **What the window does with a `CON` payload now that it extracts.** The hang
-  is gone and the corpus passes, so what is left is what a person sees:
-  extraction should write a real file, the Open button should fail with *the
-  specified device name is invalid* rather than silently doing nothing, and
-  *Extracted to* should name the file without the `\\?\` prefix. All three are
-  measured below the window rather than through it, which is not the same
-  thing. Build a container with a payload named `CON`, open it, press Open, and
-  read the sentence.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,
@@ -379,14 +435,6 @@ by hand*, and it is now a much smaller item than it was.
   a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
   `DESIGN.md` §8 carries the table. The hand item below is still open and is
   about the same stream.
-- **The card and the Open button, with a downloaded container, in the window.**
-  The walkthrough above ran everything the window calls and nothing the window
-  does, so what is left is small and is the half only an eye settles. Open a
-  container carrying a zone stream and read the card: the sentence about
-  arriving from elsewhere should be there, in the warning colour, and should be
-  absent for a container built here. Then press Open on a payload of a type the
-  shell treats as risky and confirm the security warning is what appears — the
-  measurement below the window says it will, and nobody has watched it.
 - **A high-density display.** Every size above was checked at 100%. The icon
   carries 20, 40, and 64 for the scaled sizes and none of them has been looked
   at on a display that would ask for one.

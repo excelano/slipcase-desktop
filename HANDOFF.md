@@ -51,6 +51,19 @@ gap nobody had listed: the card's provenance line had no test on this platform,
 because the one that covers it is `#[cfg(target_os = "linux")]`. There is a
 Windows counterpart now. `CHECKLIST.md` holds the run.
 
+**The window was walked the same day**, which is the last thing in this arm
+that only an eye settles. The card draws the provenance line for a container
+carrying a zone stream and not for one built here; Open hands the payload
+over and the copy carries the whole stream; a zoned `.cmd` in the temporary
+directory raises the security warning, so `§5` is now measured from both
+sides; and a payload named `CON` extracts as a real file and refuses to open
+instead of hanging. It found one defect, in a sentence this application
+writes rather than one the platform hands over: `opener::OpenError` keeps its
+`Display` to a category, so every refused handover read *the system would not
+open it: IO error*. It reads the platform's own words now. `DESIGN.md` §8 is
+amended, because it had recorded the platform's wording as what a person sees
+before anybody had looked.
+
 ## macOS is done
 
 Both tasks in `HANDOFF-macos.md`. `opens_with` answers through Launch Services:

@@ -363,6 +363,30 @@ struct Job {
     outcome: mpsc::Receiver<Extraction>,
 }
 
+/// What to tell a person about a handover the platform refused.
+///
+/// **`opener::OpenError` prints `IO error` and nothing else** for the variant
+/// carrying an `io::Error`, deliberately: the crate puts the detail in
+/// `source()` and keeps `Display` to a category. Formatting the error itself
+/// therefore produced *the system would not open it: IO error*, which tells a
+/// person nothing about what to do next — and this is a sentence the
+/// application wrote rather than one the platform handed over, so it is this
+/// application's to get right. Found by pressing Open during the window
+/// walkthrough on 2026-08-26, against a payload the shell will not open and a
+/// security warning somebody cancelled; below the window both had said exactly
+/// what was wrong.
+///
+/// The source is preferred over the error's own wording wherever there is one,
+/// because that is where every variant this can produce keeps the platform's
+/// sentence.
+fn why(e: &opener::OpenError) -> String {
+    match std::error::Error::source(e) {
+        Some(platform) => platform.to_string(),
+        None => e.to_string(),
+    }
+}
+
+
 impl App {
     /// Show a container, and forget what the last one's Open did.
     ///
@@ -505,8 +529,9 @@ impl App {
                         // Extraction worked and the handover did not, which is a
                         // different sentence: the payload is on disk either way.
                         Err(e) => Extraction::Failed(format!(
-                            "{} was extracted, and the system would not open it: {e}",
-                            slipcase_desktop::shown(&path)
+                            "{} was extracted, and the system would not open it: {}",
+                            slipcase_desktop::shown(&path),
+                            why(&e)
                         )),
                     },
                 },
@@ -948,7 +973,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{App, Ask, Extraction};
+    use super::{why, App, Ask, Extraction};
     use slipcase_desktop::{Opened, Payload};
     use slpc::toml_edit::DocumentMut;
 
@@ -996,6 +1021,25 @@ mod tests {
                 assert!(!ask.offered(&payload, true));
             }
         }
+    }
+
+    /// The defect this catches is the sentence a person reads after pressing
+    /// Open saying *IO error* and nothing else. `opener::OpenError` keeps its
+    /// `Display` to a category and puts the platform's own words in `source()`,
+    /// so formatting the error threw away the only part worth reading. Found
+    /// in the window on 2026-08-26, where a payload the shell will not open
+    /// and a cancelled security warning produced the same empty sentence.
+    #[test]
+    fn a_refused_handover_repeats_what_the_platform_said() {
+        let platform = std::io::Error::other("the specified device name is invalid");
+        let refused = opener::OpenError::Io(platform);
+
+        assert_eq!(why(&refused), "the specified device name is invalid");
+        assert_ne!(
+            why(&refused),
+            refused.to_string(),
+            "the error's own wording is the category, not the reason",
+        );
     }
 
     fn app(opened: Option<Opened>) -> App {
