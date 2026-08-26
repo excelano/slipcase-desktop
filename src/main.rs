@@ -392,6 +392,42 @@ fn why(e: &opener::OpenError) -> String {
     }
 }
 
+/// The colour a warning is said in, dark enough to read on a light background.
+///
+/// **egui's own `warn_fg_color` and `error_fg_color` are chosen against a dark
+/// background and are not darkened for a light one.** Measured on 2026-08-26,
+/// against the card the lines are drawn on: the provenance line came to 2.79:1
+/// in light mode and the failure line to 3.76:1, where WCAG asks 4.5:1 for body
+/// text and ordinary text on the same card measures 19.77:1. So the one line
+/// the card colours on purpose — because a walkthrough found that nobody reads
+/// a weak grey one — was the least readable thing on it, in the theme half the
+/// machines in the world are set to.
+///
+/// Dark mode keeps egui's orange, which measures 7.12:1 and needs no help. Its
+/// red does not: pure red on the dark card is 4.07:1, under the same bar, so
+/// [`error_colour`] lightens it there rather than leaving the one theme that
+/// was looked at failing too.
+///
+/// These are the card's colours and not a theme, which is why they live here
+/// rather than in a `Visuals` this application would then have to maintain
+/// whole.
+fn warn_colour(visuals: &egui::Visuals) -> egui::Color32 {
+    if visuals.dark_mode {
+        visuals.warn_fg_color
+    } else {
+        egui::Color32::from_rgb(180, 70, 0)
+    }
+}
+
+/// The colour a refusal is said in. [`warn_colour`] says why both exist.
+fn error_colour(visuals: &egui::Visuals) -> egui::Color32 {
+    if visuals.dark_mode {
+        egui::Color32::from_rgb(255, 80, 80)
+    } else {
+        egui::Color32::from_rgb(180, 0, 0)
+    }
+}
+
 
 impl App {
     /// Show a container, and forget what the last one's Open did.
@@ -687,7 +723,7 @@ fn card(
             if let Some(why) = &payload.unreadable {
                 ui.label(
                     egui::RichText::new(format!("Cannot be opened here: {why}"))
-                        .color(ui.visuals().error_fg_color),
+                        .color(error_colour(ui.visuals())),
                 );
             }
             // Said rather than acted on. DESIGN.md §5's amendment: the payload
@@ -702,7 +738,7 @@ fn card(
                     egui::RichText::new(
                         "This container arrived from elsewhere, and the payload will carry that.",
                     )
-                    .color(ui.visuals().warn_fg_color),
+                    .color(warn_colour(ui.visuals())),
                 );
             }
 
@@ -789,7 +825,7 @@ fn card(
                     // An extraction that failed and one that landed are not
                     // two shades of the same thing, and italics alone left
                     // them looking like it.
-                    ui.label(egui::RichText::new(why).color(ui.visuals().error_fg_color));
+                    ui.label(egui::RichText::new(why).color(error_colour(ui.visuals())));
                 }
             }
         });
@@ -899,7 +935,7 @@ impl App {
                     if let Some(said) = said {
                         let text = egui::RichText::new(&said.text);
                         ui.label(if said.wrong {
-                            text.color(ui.visuals().error_fg_color)
+                            text.color(error_colour(ui.visuals()))
                         } else {
                             text.weak()
                         });
@@ -1046,6 +1082,57 @@ mod tests {
             refused.to_string(),
             "the error's own wording is the category, not the reason",
         );
+    }
+
+    /// WCAG relative luminance, which is what a contrast ratio is built out of.
+    fn luminance(colour: eframe::egui::Color32) -> f32 {
+        let channel = |v: u8| {
+            let v = f32::from(v) / 255.0;
+            if v <= 0.039_28 {
+                v / 12.92
+            } else {
+                ((v + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * channel(colour.r()) + 0.7152 * channel(colour.g()) + 0.0722 * channel(colour.b())
+    }
+
+    fn contrast(text: eframe::egui::Color32, ground: eframe::egui::Color32) -> f32 {
+        let (a, b) = (luminance(text), luminance(ground));
+        let (lighter, darker) = if a > b { (a, b) } else { (b, a) };
+        (lighter + 0.05) / (darker + 0.05)
+    }
+
+    /// The defect this catches is the card's coloured lines being unreadable in
+    /// the theme nobody looked at. Measured in the window on 2026-08-26: the
+    /// provenance line was 2.79:1 on the light card and the failure line
+    /// 3.76:1, against 19.77:1 for ordinary text beside them, and pure red was
+    /// 4.07:1 even on the dark card. WCAG asks 4.5:1 for body text.
+    ///
+    /// It holds both themes to that bar, because the reason this line is
+    /// coloured at all is that a walkthrough found nobody reads a weak grey
+    /// one — a colour that cannot be read is the same defect wearing the other
+    /// hat.
+    #[test]
+    fn the_cards_coloured_lines_can_be_read_in_either_theme() {
+        for visuals in [eframe::egui::Visuals::light(), eframe::egui::Visuals::dark()] {
+            let ground = visuals.panel_fill;
+            let theme = if visuals.dark_mode { "dark" } else { "light" };
+
+            let warn = contrast(super::warn_colour(&visuals), ground);
+            assert!(
+                warn >= 4.5,
+                "the provenance line is {warn:.2}:1 on the {theme} card, under the 4.5:1 \
+                 body-text bar; it is the one line the card colours on purpose"
+            );
+
+            let error = contrast(super::error_colour(&visuals), ground);
+            assert!(
+                error >= 4.5,
+                "the failure line is {error:.2}:1 on the {theme} card, under the 4.5:1 \
+                 body-text bar"
+            );
+        }
     }
 
     fn app(opened: Option<Opened>) -> App {

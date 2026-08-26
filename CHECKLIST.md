@@ -535,6 +535,66 @@ claim the marker above is what proves. Both paths were run again afterwards: the
 running one gives the sentence and changes nothing, and the closed one installs
 and rewrites the marker away.
 
+### What the second account found
+
+Run 2026-08-26 with a standard local account, `slipcasetest`, signed in on the
+console while the installing account stayed logged on. The per-user install is
+invisible to it, which is what `packaging/windows/README.md` claims and what
+nothing had checked:
+
+| Asked of the second account | Answer |
+| --- | --- |
+| `HKCU` `.slpc`, the ProgID, `FileExts\.slpc`, the Add/Remove entry | all absent |
+| `%LOCALAPPDATA%\Programs\Slipcase`, the Start menu shortcut | absent |
+| `HKLM` `.slpc`, `HKLM` ProgID, the all-users Start menu | absent — the machine-wide half was never written |
+| The merged `HKCR\.slpc` | no such key |
+| This application's own type query, on `.slpc` | *the platform did not answer* |
+| The same query on `report.pdf` | Microsoft Edge — a machine-wide association, so it answers |
+
+The last row is the control that makes the rest mean something: the account is
+not simply blind to every association, it is blind to this one.
+
+**One line of the run is void, and it is the harness's fault rather than a
+finding.** The check also asked what a double-click would do and reported
+*LAUNCHED from* with no path. `Get-Process` sees processes in every session, so
+it found the copy running in the installing account's session and could not read
+its path, that process belonging to another user. Nothing launched. The script
+filters by session now, so a re-run would answer it, and the registry rows above
+already settle the question the item was asked for. Recorded rather than
+quietly dropped, because a green line that came from the wrong process is the
+shape of thing this file exists to catch.
+
+### What light mode found
+
+The walkthroughs above were all run in dark mode, which is not a neutral choice:
+the card colours two of its lines on purpose, and egui picks those colours
+against a dark background. Looked at in light mode on 2026-08-26 and then
+measured, against the card's own fill:
+
+| Line | Light, before | Dark, before |
+| --- | --- | --- |
+| *This container arrived from elsewhere…* | **2.79:1** | 7.12:1 |
+| A failure the card reports | **3.76:1** | **4.07:1** |
+| Ordinary text beside them | 19.77:1 | — |
+
+WCAG asks 4.5:1 for body text and 3:1 for large text. The provenance line failed
+both. That line is coloured because a walkthrough found that nobody reads a weak
+grey one — and in the theme half the world runs, it had become the least
+readable thing on the card. The dark red was under the bar too, so the theme
+that *had* been looked at was failing quietly as well.
+
+`warn_colour` and `error_colour` in `src/main.rs` choose per theme now, all four
+call sites go through them, and a test holds both themes to 4.5:1. Measured
+after: 5.18:1 and 6.72:1 on the light card, 7.12:1 and 5.06:1 on the dark one.
+The test computes the ratio against `Visuals::panel_fill` and reproduces the
+2.79 exactly when the repair is removed, which is also what says the fill it
+uses is the fill the screen showed.
+
+Looked at as well as measured, which is the point of this file: the line is a
+deeper rust orange on the light card, plainly legible and still plainly a
+warning rather than body text. The rendered pixels are `rgb(180,70,0)`, the
+colour asked for.
+
 ### Not yet done by hand
 
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
@@ -543,9 +603,14 @@ and rewrites the marker away.
   and a stream that exists carrying no `ZoneId` line is a file the shell does
   not gate. Reproduced first by denying the stream write, then repaired against
   a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
-  `DESIGN.md` §8 carries the table. The hand item below is still open and is
-  about the same stream.
-- **A second user account**, to confirm a per-user install is invisible to one.
+  `DESIGN.md` §8 carries the table. The hand item it pointed at — provenance,
+  which had never run on this platform — was walked later the same day and has
+  its own section above.
+
+Nothing else is waiting. Every item this section held on 2026-08-26 was run
+that day: provenance, the window, the stale `UserChoice`, a scaled display, an
+upgrade, and a second account. Anything added below should say what it needs
+that a test cannot give it, the way those did.
 
 ---
 

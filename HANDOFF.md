@@ -64,6 +64,25 @@ open it: IO error*. It reads the platform's own words now. `DESIGN.md` §8 is
 amended, because it had recorded the platform's wording as what a person sees
 before anybody had looked.
 
+**And the hand list is empty.** The stale `UserChoice`, a scaled display, an
+upgrade over a running install and a second user account were all run on the
+same day, with David at the machine for the parts only a person can do — the
+choice a `UserChoice` records cannot be forged, and a display scaling cannot be
+changed from here. Three of the four found something, and two of those were
+sentences written before anybody had looked: that 64 divides every size Windows
+draws a window icon at, and that an upgrade over a running copy explains itself.
+The fourth found that a per-user install really is invisible to another account.
+`CHECKLIST.md` holds all of it, including one line of one run that came from the
+wrong process and is marked void rather than dropped.
+
+**Light mode was the one nobody had thought to try.** Every walkthrough above ran
+in dark, and the card colours two lines on purpose. Measured against the card's
+own fill, the provenance line was 2.79:1 in light mode where WCAG asks 4.5:1 —
+the one line coloured so that it gets read was the least readable thing on the
+card — and the failure line was under the bar in *both* themes. `src/main.rs`
+picks per theme now and a test holds both to 4.5:1. Nothing about that is
+Windows's: it is egui's defaults used unchanged, so Linux and macOS had it too.
+
 ## macOS is done
 
 Both tasks in `HANDOFF-macos.md`. `opens_with` answers through Launch Services:
