@@ -82,6 +82,50 @@ unrun is a *distribution*-signed bundle carrying a provisioning profile, which
 is a different sandbox context from the development-signed one every
 measurement was taken against.
 
+**Everyone: a conformant container can name its payload something that is not
+a file, and extraction hangs on it.** Found on Windows on 2026-08-26, the first
+time the conformance corpus had been run on that platform, and it is here
+rather than in the Windows section because the code is `src/lib.rs` and the
+decision is not one arm's to take.
+
+`accept/payload-name-windows-reserved` names its payload `CON`. The container
+is conformant, the manifest expects `accept`, and `SPEC.md` §2.3 has a
+non-normative note about the difference, so nothing is wrong with the corpus or
+the library. Win32 resolves `CON` to the console device wherever the name
+appears, so `into.join(payload_name())` is not a path in that directory — it is
+the console. `File::create` returns `Ok`, `write_all` returns `Ok`, no file
+exists afterwards, `metadata` is error 87, and `std::fs::read` never returns.
+The corpus reads the payload back, so it stops there with no output and no CPU;
+it was killed at ten minutes twice before the case was identified. `LPT1` fails
+cleanly with `NotFound` and `NUL` succeeds and discards, so there is no one
+behaviour to code against.
+
+`src/lib.rs:97` reasons that joining a checked name onto a directory cannot
+leave that directory. That is true and it is not the question. The exposure is
+the Open button, which is the caller that takes the name from the container:
+extraction writes nothing, and `opener::open` is handed the console device.
+Whether the window then hangs the way the corpus does is **not measured** —
+nothing in the handover path reads the copy back — and that is a gap rather
+than a reassurance. Measuring it needs a container with a `CON` payload opened
+in the running application, which is a hand test on Windows.
+
+The repair is not taken, because all three candidates are somebody's decision
+rather than a patch. `slpc::check_payload_name` could refuse these names, which
+makes a conformant container unopenable and is the library's call. Extraction
+could name the file something else on Windows, which is this application
+renaming a person's payload. Or extraction could refuse with a sentence that
+says why, which is the smallest of the three and still a change to what `§5`
+promises. `CLAUDE.md`'s rule that the library is not worked around is what
+makes this a question. `DESIGN.md` §8 carries the amendment and `CHECKLIST.md`
+the run.
+
+The rest of the corpus is clean on Windows: re-run with that one case removed
+from the manifest and its container deleted, 76 of 76 agree, with every tree,
+card, rewrite, rename and replacement column agreeing too. So `CLAUDE.md`'s
+*all 77 must agree* holds everywhere it has been run except this one case on
+this one platform, and that is the sentence to keep until the decision above is
+taken.
+
 Two things were found on Linux while reviewing the macOS work, and neither
 belongs to Linux. They are here because this file is the only way they reach
 the session that owns the arm. Both have since been settled and are left below

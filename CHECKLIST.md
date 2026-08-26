@@ -209,8 +209,66 @@ a hash Windows validates and its key denies the user write access, which is
 deliberate and is why choosing a default is a thing a person does. It is in
 *Not yet done by hand* below with the sequence.
 
+### What running the corpus on Windows found
+
+The conformance corpus had never been run on this platform — it needs Python to
+generate its cases and there was none here until 2026-08-26. Run that day
+against Python 3.13, with the cases generated and self-checked by the
+generator: **76 of the 77 agree, and the seventy-seventh hangs.**
+
+`accept/payload-name-windows-reserved` carries a payload named `CON`. The
+container is conformant, the manifest expects `accept`, and `SPEC.md` §2.3 has
+a non-normative note about the Windows difference — so nothing here is the
+corpus being wrong. Win32 resolves `CON` to the console device wherever the
+name appears, so the extracted payload is not a file in the directory, it is
+the console. `std::fs::read` of that path never returns: it waits on input a
+windowed application will never supply. The run stops there with no output and
+no CPU. It was killed at ten minutes, twice, before the case was identified,
+which is worth saying because a corpus run that hangs looks exactly like a
+corpus run that is slow.
+
+Three names, three different answers, measured one at a time:
+
+| Payload name | `File::create` | `write_all` | Result |
+| --- | --- | --- | --- |
+| `CON` | `Ok` | `Ok` | No file exists; the bytes went to the console. `metadata` is error 87, `read` never returns |
+| `LPT1` | `Err(NotFound)` | — | Fails cleanly |
+| `NUL` | `Ok` | `Ok` | Succeeds and discards |
+| `report.` | `Ok` | `Ok` | Lands as `report`, the dot silently stripped |
+
+The exposure is the Open button rather than the corpus. `src/lib.rs` names the
+extracted file `into.join(payload_name())`, which is right for every other name
+and is where this arrives. `DESIGN.md` §8 carries the amendment and says why
+the repair is not taken here: it is a choice between the library refusing a
+conformant container, this application renaming a person's payload, and
+extraction refusing with a sentence that says why.
+
+**The other 76 agree, and that is a real result rather than a consolation.**
+Re-run with the one case removed from `manifest.toml` and its container
+deleted, so that the runner's own check for ungoverned files stays honest: 76
+cases, all agree, 67 metadata trees, 36 payload cards, 35 of 36 payloads
+extracted at their declared length with the thirty-sixth refused before
+anything was pressed because its member is encrypted, 36 rewritten through
+Repack and read back conformant, 36 renamed, 36 replaced. So the provenance
+repair above changed nothing the corpus can see.
+
+Two things about running it here at all, for whoever runs it next. The
+generator needs Python 3.11 or later and nothing else; 3.13 installed per-user
+through `winget` with no administrator. And a freshly built `corpus.exe`
+refused to start once with *Access is denied* and ran on the next attempt,
+which is Defender scanning a new binary rather than anything about the build —
+worth knowing before it is mistaken for a permissions problem.
+
 ### Not yet done by hand
 
+- **Whether the window hangs on a `CON` payload the way the corpus does.** The
+  corpus hangs because it reads the extracted payload back; nothing in the
+  handover path does, so the application may instead write nothing, hand the
+  console device to `opener::open`, and carry on. Which of those happens has
+  not been measured and the difference decides how urgent the amendment in
+  `DESIGN.md` §8 is. Build a container with a payload named `CON`, open it, and
+  press Open — and be ready to kill the process rather than assuming it is
+  thinking.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,

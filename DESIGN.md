@@ -178,6 +178,46 @@ The card reports it and nothing is disabled, which was decided rather than assum
 
 **And what the shell stops for was measured rather than reasoned about.** A script run under `-ExecutionPolicy RemoteSigned` resolves its zone through this stream, so it answers the question without a window. Refused: a `ZoneId` of 3, 4 or 99 in a `[ZoneTransfer]` section, in either case, with spaces around the `=`, with `\n` alone for a line ending, with no trailing line ending, and after other keys. Ran: 0, 1, 2, -3, an empty value, and a `ZoneId` under any other section or under none — so the section header carries weight and a `ZoneId` that merely exists is not a gate. Where two `ZoneId` lines disagreed the last one decided. The predicate is that, with one deliberate difference: a value that is not a number at all still gates on the platform — `junk3` was refused — and reads here as no gate, because being wrong that way costs a refusal to extract and being wrong the other way is the laundering this section exists to prevent. The card's question is unchanged and still over-reports, because anything written into that stream is evidence something wrote it and nothing on Windows writes one on this application's behalf.
 
+**Amended: a payload name can be legal, safe to join, and still not a file.**
+`§5` says extraction puts the payload where the container names it, and
+`src/lib.rs` reasons that joining is safe because `slpc::check_payload_name`
+rejects every separator and every traversal, so the join cannot leave the
+directory. That reasoning is correct and it is not the whole question. Measured
+on Windows on 2026-08-26, running the conformance corpus on that platform for
+the first time: `accept/payload-name-windows-reserved` carries a payload named
+`CON`, the corpus expects `accept` because the container is conformant, and
+`SPEC.md` §2.3 has a non-normative note about exactly this. `CON` does not
+leave the directory. It is not in the directory at all — Win32 resolves the
+name to the console device wherever it appears, so the extracted payload is not
+a file and never was one.
+
+What that costs was measured rather than reasoned about. `File::create` on such
+a path returns `Ok`, `write_all` returns `Ok`, `flush` returns `Ok`, and no
+file exists afterwards: the bytes went to the console. `std::fs::metadata`
+returns `ERROR_INVALID_PARAMETER`, code 87. And `std::fs::read` **never
+returns** — it opens the console for reading and waits for input that a
+windowed application will never supply. That is what the corpus does after
+extracting, so the run hangs there with no output and no CPU, indefinitely; it
+was killed at ten minutes twice before the case was identified. `LPT1` is a
+different answer again, failing cleanly with `NotFound`, and `NUL` succeeds and
+discards. So there is no single behaviour to code against, only a set of names
+that are not files.
+
+The exposure is not the corpus. `extract` names the output `into.join(payload_name())`
+and that is the Open button's path: a conformant container with a payload named
+`CON` writes nothing to the temporary directory, and `opener::open` is then
+handed the console device. Whether the application hangs the way the corpus
+does has not been measured — nothing in the handover path reads the copy back —
+and that is a gap rather than a reassurance.
+
+**Not decided here**, because it is not this platform's arm to decide. The
+choice is whether `slpc::check_payload_name` should refuse these names, which
+makes a conformant container unopenable and is the library's call and David's;
+or whether extraction should name the file something else on Windows, which
+means this application renaming a person's payload; or whether extraction
+should refuse with a sentence that says why, which is the smallest of the
+three. `CLAUDE.md`'s rule that the library is not worked around is what makes
+this a question rather than a patch. `CHECKLIST.md` holds the run.
 **Amended: the runtime libraries cannot be derived from the executable.** It links libc, libm, and libgcc, and nothing else. Everything that draws a window — the Wayland client library, the keyboard map library, the EGL and Vulkan loaders, the X11 libraries — is opened by name at run time, which is the other face of §2's claim that `wayland-sys` and `linux-raw-sys` resolve their symbols then. `dpkg-shlibdeps` sees none of it, so a package built from the linker's answer alone installs cleanly on a machine with no display stack and fails to start. The dependency list is written by hand and was measured by running the application and reading `/proc/PID/maps`.
 
 **Amended: the package carries no maintainer scripts.** `shared-mime-info`, `desktop-file-utils`, and `hicolor-icon-theme` own dpkg triggers on the three directories the package writes into, so the caches are rebuilt without a `postinst` asking. They are dependencies for that as much as for anything they provide at run time.
