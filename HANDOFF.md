@@ -39,6 +39,18 @@ a container with it loaded. Uninstalling was checked with a `UserChoice` in
 place — the key that outranks the rest and the one an uninstaller forgets — and
 leaves nothing.
 
+
+**Provenance was walked on 2026-08-26**, the last thing in this arm that had
+compiled without ever executing. It works: a container carrying a
+`Zone.Identifier` reports as arrived from elsewhere and one built here does
+not, and both extraction paths carry the whole stream onto the payload byte for
+byte. The walk also answered the question `DESIGN.md` §5 had left resting on
+nothing — a marked file in the temporary directory is gated exactly as one
+anywhere else, so the Open button is right not to be disabled — and it closed a
+gap nobody had listed: the card's provenance line had no test on this platform,
+because the one that covers it is `#[cfg(target_os = "linux")]`. There is a
+Windows counterpart now. `CHECKLIST.md` holds the run.
+
 ## macOS is done
 
 Both tasks in `HANDOFF-macos.md`. `opens_with` answers through Launch Services:

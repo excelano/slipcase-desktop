@@ -174,6 +174,32 @@ Stage 1 is a whole program rather than a preview of one: it opens a container an
 
 The card reports it and nothing is disabled, which was decided rather than assumed. Disabling the Open button for a marked container was proposed, so that a person had to extract the payload and open it themselves. It buys nothing now that the mark is carried: both paths produce the same file with the same mark, the platform gates the handler rather than the launcher, and the only difference is the number of clicks — while the cost falls entirely on the common case, a container that arrived by download being exactly the one somebody wants to look inside. It would also be this application substituting its own judgement about what is dangerous for the platform's, which `§3` refuses to do about type and should not start doing about provenance. So the card carries one line in the warning colour and the person decides. **This rests on one thing that has not been measured**: that the platform treats a marked file in a temporary directory the same as one anywhere else. `CHECKLIST.md` asks for it on both platforms that have a mark, and if the answer is that a temporary copy is trusted, this paragraph is wrong and the button should be disabled after all.
 
+**Amended: measured on Windows, and the paragraph above stands.** The thing it
+said rested on nothing was whether the platform treats a marked file in a
+temporary directory the same as one anywhere else. On Windows it does. Measured
+2026-08-26 by opening a `.cmd` carrying `ZoneId=3` through `opener::open` — the
+call the Open button makes — from the temporary tree and from an ordinary
+folder, with an unmarked copy in each as a control: both marked copies stopped
+at the security warning and neither ran, both unmarked copies ran. The
+*Open File — Security Warning* is modal inside the calling process, so a call
+that has not returned is a warning on screen; that is what was observed and both
+were killed rather than answered. So a temporary copy is not a trusted copy, the
+Open button is right not to be disabled, and `§5`'s choice to report and let the
+person decide is measured rather than assumed on this platform.
+
+Two things it does not say. The warning is shown for file types the shell treats
+as risky and not for every payload — a PDF reaches its handler with the mark on
+it and no prompt, which is the same shape macOS was measured to have. And macOS
+is still the platform where this is unmeasured; `CHECKLIST.md` keeps it there.
+
+The rest of the Windows arm was walked the same day and works: a container
+carrying a zone stream reports as arrived from elsewhere and one built here does
+not, and both extraction paths carry all 109 bytes of a real-shaped stream onto
+the payload byte for byte, with nothing invented on a copy taken from an
+unmarked container. The shape came from reading twenty-four real downloads on
+that machine rather than from imagining one — every one `ZoneId=3` followed by
+`ReferrerUrl` and `HostUrl`.
+
 **Amended: the two questions were separated on one platform, and Windows kept them one function.** The amendment above says they are separate now, and they were — in the macOS arm, which is where it was written. On Windows both were still `std::fs::metadata(path:Zone.Identifier).is_ok()`, which was harmless until `carry` gained the `AlreadyMarked` fallback, because that fallback asks the gating question to decide whether a payload whose zone write failed is safe to hand to the system. `std::fs::write` creates the stream and then writes into it, so a write that fails partway — a full disk being the realistic one — leaves a stream that exists carrying no `ZoneId`, and a stream with no `ZoneId` is not something the shell stops for. The copy would have been called already marked and the payload would have opened ungated. Reproduced on 2026-08-26 by denying the write with the read only attribute, which is this platform's counterpart of the `0o444` the macOS tests use to stand in for a sandbox, and the two arms now hold the same rule for the same reason by different means.
 
 **And what the shell stops for was measured rather than reasoned about.** A script run under `-ExecutionPolicy RemoteSigned` resolves its zone through this stream, so it answers the question without a window. Refused: a `ZoneId` of 3, 4 or 99 in a `[ZoneTransfer]` section, in either case, with spaces around the `=`, with `\n` alone for a line ending, with no trailing line ending, and after other keys. Ran: 0, 1, 2, -3, an empty value, and a `ZoneId` under any other section or under none — so the section header carries weight and a `ZoneId` that merely exists is not a gate. Where two `ZoneId` lines disagreed the last one decided. The predicate is that, with one deliberate difference: a value that is not a number at all still gates on the platform — `junk3` was refused — and reads here as no gate, because being wrong that way costs a refusal to extract and being wrong the other way is the laundering this section exists to prevent. The card's question is unchanged and still over-reports, because anything written into that stream is evidence something wrote it and nothing on Windows writes one on this application's behalf.

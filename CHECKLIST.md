@@ -292,6 +292,75 @@ refused to start once with *Access is denied* and ran on the next attempt,
 which is Defender scanning a new binary rather than anything about the build —
 worth knowing before it is mistaken for a permissions problem.
 
+### What the provenance walkthrough found
+
+Run 2026-08-26. The Windows arm of `src/provenance.rs` had compiled since it was
+written on Linux and had never executed against a real zone stream. It works,
+and the open question in `DESIGN.md` §5 is answered in the direction the design
+assumed.
+
+**What a browser really writes was read rather than imagined.** Twenty-four
+files in this machine's Downloads folder carry a `Zone.Identifier`, every one of
+them `ZoneId=3` followed by `ReferrerUrl` and then `HostUrl`. That is the shape
+the tests and the walkthrough both use. It also confirms the ordering assumption
+in the arm's parser is not the only one that occurs, since a real stream carries
+two keys after the zone rather than none.
+
+**The container was built here and given a stream of that shape**, rather than
+downloaded. Nothing public serves a `.slpc`, and hosting one to download would
+mean publishing a file to the internet for a test. Everything downstream reads
+the stream and nothing else, so a container carrying one is a downloaded
+container to every part of this code — but it is worth saying plainly rather
+than letting the record imply a browser was involved.
+
+Walked below the window, through the same calls the buttons make:
+
+| Step | Result |
+| --- | --- |
+| Card, on a container carrying a stream | `from_elsewhere` is true |
+| Card, on a container built here | false — the line is not on everything |
+| Extract to a chosen path | payload written, bytes match |
+| The chosen payload's stream | all 109 bytes, byte for byte |
+| Extract into a directory for handover | payload written |
+| The handover payload's stream | all 109 bytes, byte for byte |
+| Control: extraction from an unmarked container | no stream invented on the copy |
+
+**The temporary directory is gated exactly as anywhere else, so the Open button
+was right not to be disabled.** `§5` chose to report provenance on the card and
+let the person decide, and recorded that the choice rested on something
+unmeasured: whether the platform treats a marked file in a temporary directory
+the same as one anywhere else. It does. A `.cmd` carrying `ZoneId=3` was opened
+through `opener::open` — the call the Open button makes — from the temporary
+tree and from an ordinary folder, with an unmarked copy in each as a control:
+
+| Location | Marked | What happened |
+| --- | --- | --- |
+| Temp | yes | the call blocked on the security warning; the file did not run |
+| Temp | no | returned; the file ran |
+| Ordinary folder | yes | the call blocked on the security warning; the file did not run |
+| Ordinary folder | no | returned; the file ran |
+
+The blocking is the measurement: the *Open File — Security Warning* is modal
+inside the calling process, so a call that has not returned is a warning on
+screen. Both marked cases were killed rather than answered, so nothing ran. A
+`.cmd` was used because the warning is shown for file types the shell treats as
+risky and not for, say, a PDF — so this says the temporary directory is not a
+trusted location, which is what `§5` needed, and does not say every payload
+raises a prompt.
+
+**One gap it closed that was not on the list.** The card's provenance line had
+no test on this platform: `a_container_from_elsewhere_says_so_and_a_local_one_does_not`
+is `#[cfg(target_os = "linux")]` because it marks the container with an extended
+attribute. The Windows counterpart is written now, marking with a zone stream
+instead, and it was watched to fail — with `arrived_from_elsewhere` returning
+false it reports that a container carrying a stream was not called downloaded.
+
+**Still not done by hand: the window itself.** Everything above is the code the
+window calls rather than the window. Nobody has watched the card draw that
+sentence in the warning colour on this platform, or pressed Open on a downloaded
+container and read the warning Windows puts up. That is below in *Not yet done
+by hand*, and it is now a much smaller item than it was.
+
 ### Not yet done by hand
 
 - **What the window does with a `CON` payload now that it extracts.** The hang
@@ -310,31 +379,14 @@ worth knowing before it is mistaken for a permissions problem.
   a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
   `DESIGN.md` §8 carries the table. The hand item below is still open and is
   about the same stream.
-- **Provenance, which has never run on this platform.** `src/provenance.rs`
-  carries a container's `Zone.Identifier` stream onto the payload extracted
-  from it, and the Windows arm compiles from Linux but has never executed.
-  Download a container with a browser so it carries a real stream, confirm the
-  card says it arrived from elsewhere, extract the payload to a chosen folder,
-  and read the stream off the copy — `Get-Content -Stream Zone.Identifier`.
-  Then the question that decides whether the Open button should have been
-  disabled instead: press Open, which extracts into the temp directory and
-  hands the payload over, **and see whether Windows shows the Open File
-  security warning for a zoned file there**. If a zoned file in the temp
-  directory is treated as trusted, the reporting on the card is not enough and
-  the decision recorded in DESIGN.md §5 has to be reopened.
-- **Whether a declared association beats a stale `UserChoice`**, which is the
-  one part of question 3 above that no script can reach. `UserChoice` carries a
-  hash Windows validates and its key denies the user write access, so a choice
-  is a thing a person makes and cannot be forged into place — which is the
-  point of it. The sequence, from a clean machine: install the scripts,
-  double-click a `.slpc` and choose Slipcase with *always use this app* so a
-  `UserChoice` exists, then delete `%LOCALAPPDATA%\Programs\Slipcase` by hand
-  rather than running `uninstall.ps1`, which removes the `UserChoice` and would
-  destroy the very thing being tested. Then install the package and
-  double-click a container. Whether the manifest wins, the stale key wins, or
-  the picker appears is the answer, and the third state is now the interesting
-  one: the picker is what the package and the scripts already produce between
-  them when neither has been chosen.
+- **The card and the Open button, with a downloaded container, in the window.**
+  The walkthrough above ran everything the window calls and nothing the window
+  does, so what is left is small and is the half only an eye settles. Open a
+  container carrying a zone stream and read the card: the sentence about
+  arriving from elsewhere should be there, in the warning colour, and should be
+  absent for a container built here. Then press Open on a payload of a type the
+  shell treats as risky and confirm the security warning is what appears — the
+  measurement below the window says it will, and nobody has watched it.
 - **A high-density display.** Every size above was checked at 100%. The icon
   carries 20, 40, and 64 for the scaled sizes and none of them has been looked
   at on a display that would ask for one.

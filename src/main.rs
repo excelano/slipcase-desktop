@@ -1153,6 +1153,48 @@ mod tests {
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
+    /// The Windows counterpart of the test above, which is `cfg`-gated to Linux
+    /// because it marks the container with an extended attribute. Until the
+    /// provenance walkthrough was run on 2026-08-26 nothing on this platform
+    /// covered the card's line at all — the arm compiled and its own tests
+    /// never reached the window. The defect it catches is the same one: the
+    /// line going missing, or appearing on every container and so meaning
+    /// nothing.
+    ///
+    /// The stream is the shape a browser really writes, checked against 24
+    /// downloads on the machine this was written on: `ZoneId=3` first, then the
+    /// two URLs.
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn a_container_from_elsewhere_says_so_and_a_local_one_does_not() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = a_container(dir.path());
+
+        let local = Opened::open(&path);
+        assert!(
+            !local.from_elsewhere,
+            "a container the test built is not from elsewhere",
+        );
+
+        let mut stream = path.clone().into_os_string();
+        stream.push(":Zone.Identifier");
+        std::fs::write(
+            &stream,
+            b"[ZoneTransfer]\r\nZoneId=3\r\nReferrerUrl=https://example.invalid/\r\n\
+              HostUrl=https://example.invalid/a.slpc\r\n",
+        )
+        .expect("marking the container as downloaded");
+
+        let downloaded = Opened::open(&path);
+        assert!(
+            downloaded.from_elsewhere,
+            "a container carrying a zone stream was not reported as from elsewhere",
+        );
+
+        let mut app = app(Some(downloaded));
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
     /// Opening a container asks for focus on the Open button once, and stops
     /// asking. The defect this catches is the request being made every frame,
     /// which pins the focus to that button and leaves the tree, the Save, and
