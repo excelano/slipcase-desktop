@@ -249,6 +249,30 @@ state, there being no conffiles to leave.
   icon defect was a property of which theme carried which name, so KDE or XFCE
   could reach a different answer by the same mechanism.
 
+### What lintian says, and what to do about it
+
+Run for the first time by `linux.yml`, which runs it on every push as a report
+rather than a gate. Two tags, and both are decisions rather than defects, which
+is why that step still does not fail on them.
+
+- `E: no-changelog usr/share/doc/slipcase-desktop/changelog.gz (native
+  package)`. Debian policy wants a changelog in every binary package and this
+  one ships none. It is an error rather than a warning because a person
+  installing from an apt repository has no other way to find out what changed
+  between two versions, and this package is going into one. `git log` is the
+  record here and is written to be read, so the question is whether
+  `build-deb.sh` should generate the changelog from it or whether a hand-written
+  one is a separate document.
+- `W: no-manual-page [usr/bin/slipcase-desktop]`. There is no `slipcase-desktop(1)`.
+  It is a desktop application that takes one optional argument and is normally
+  started by double-clicking a container, so a manual page would be four lines,
+  and the tag is a convention about `/usr/bin` rather than a gap a person would
+  notice.
+
+Once each has an answer, `linux.yml`'s lintian step gets a `--fail-on` and
+stops being a report. Leaving it a report with the tags untriaged is what that
+step's comment refuses to do.
+
 ---
 
 ## macOS
