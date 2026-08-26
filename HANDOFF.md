@@ -5,8 +5,9 @@ file association per platform, and two thirds of it could not be done on the
 machine the rest was done on. Windows was then done on Windows and macOS on a
 Mac, so no platform is holding up a stage. This file says what each found and
 where the detail is, and *What is waiting on a platform* below is what has come
-back since — two things found from another machine that only the arm's owner
-can settle.
+back since — what one machine's review turned up in another machine's arm.
+Reading an arm you cannot run has now found a defect that running it had not,
+so the section is worth keeping rather than emptying.
 
 **Read `DESIGN.md` first, then `SPEC.md` in `excelano/slipcase` §4.** The design
 document is amended in place as building contradicts it, and every amendment
@@ -83,7 +84,9 @@ measurement was taken against.
 
 Two things were found on Linux while reviewing the macOS work, and neither
 belongs to Linux. They are here because this file is the only way they reach
-the session that owns the arm.
+the session that owns the arm. The macOS one has since been settled and is left
+below with its answer, because what the review cost and what it caught are both
+worth knowing before the next one.
 
 **Windows: `carries_a_mark` asks whether the stream exists, not whether it
 gates.** In `src/provenance.rs` both questions are answered by
@@ -101,12 +104,27 @@ the code and not measured, which is not the same thing: reproduce it before
 fixing it, and remember that a test which passes against the defect it was
 written for is worse than no test.
 
-**macOS: replacing across volumes has never been run.** `Landing::beside_nothing`
-stages the rewrite on the boot volume and `replaceItemAtURL:` moves it onto the
-container, and every measurement so far had both ends on the same volume. An
-external drive, a mounted disk image, or a network share is a different path
-through that call. It needs a second volume rather than a test, so it is an
-item in `CHECKLIST.md` under macOS and the detail is there.
+**macOS: replacing across volumes was never run, and it did not work.**
+Answered the day it was raised, and it was a defect rather than a doubt. The
+rewrite waited wherever `TMPDIR` pointed, which is the boot volume, and
+`replaceItemAtURL:` wants both of its ends on one volume: APFS, HFS+, FAT32 and
+exFAT all refuse with `EXDEV` under a Cocoa 512, so Save did not work for any
+container on an external drive, a mounted image, or a share. The original was
+untouched and the error reached the person every time, so nothing was lost —
+it simply never worked, and it went unnoticed because everything opened here
+had been on the boot volume. `NSItemReplacementDirectory` asked with
+`appropriateForURL:` is the directory Apple provides for this and lands on the
+right volume; the boot-volume case is unchanged because it returns one in the
+same per-user temporary area as before. `CHECKLIST.md` holds the run and
+`DESIGN.md` is amended a second time. A test owns a second volume now, and it
+took two goes: the first read the mount point out of the wrong field and
+replaced boot-volume files with boot-volume files, passing green against the
+break that was supposed to prove it bites.
+
+What is left of it is the sandbox, which no test can enter: the replacement
+directory on a second volume is not the file a person chose through the open
+panel, and Apple's word that the grant reaches it is documentation rather than
+measurement. That is an item in `CHECKLIST.md` under macOS.
 
 One thing from the same review is settled rather than waiting, and it is worth
 knowing about because it cuts both ways. `Destination::in_place` carries the

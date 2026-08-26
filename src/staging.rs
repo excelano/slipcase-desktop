@@ -43,7 +43,7 @@ impl Staged {
         }
         #[cfg(target_os = "macos")]
         {
-            let landing = macos::Landing::beside_nothing(path)?;
+            let landing = macos::Landing::reserved_for(path)?;
             Ok(Self {
                 destination: slpc::Destination::new(landing.staged(), false)?,
                 landing,
@@ -92,27 +92,56 @@ mod macos {
     use std::path::{Path, PathBuf};
 
     use objc2_foundation::{
-        NSFileManager, NSFileManagerItemReplacementOptions, NSString, NSURL,
+        NSFileManager, NSFileManagerItemReplacementOptions, NSSearchPathDirectory,
+        NSSearchPathDomainMask, NSString, NSURL,
     };
 
     /// A scratch directory holding the rewrite, and the file it will become.
     pub(crate) struct Landing {
         /// Held so the directory outlives the file inside it, and is removed
         /// after the replacement has moved that file out.
-        scratch: tempfile::TempDir,
+        scratch: Scratch,
         staged: PathBuf,
         original: PathBuf,
     }
 
     impl Landing {
-        /// Reserve a rewrite of `original` that is nowhere near it.
+        /// Reserve a rewrite of `original`, somewhere the replacement can reach
+        /// it from and nowhere near it.
+        ///
+        /// Those two are not the same requirement and the first was learned the
+        /// expensive way. `tempfile::TempDir::new` used to choose this, which
+        /// satisfies the second — the sandbox refuses a sibling of the
+        /// container, which is the whole reason this module exists — and
+        /// quietly fails the first. `TempDir` answers `TMPDIR`, which is on the
+        /// boot volume, and measured 2026-08-25 a replacement whose two ends
+        /// are on different volumes stops with `NSCocoaErrorDomain` 512 on APFS,
+        /// FAT32 and exFAT alike. Save did not work for any container on an
+        /// external drive, a mounted image, or a share. `CHECKLIST.md` holds the
+        /// run.
+        ///
+        /// `NSItemReplacementDirectory` is what Apple provides for exactly this:
+        /// asked with `appropriateForURL:`, it makes a fresh directory on the
+        /// volume that URL is on. For a container on the boot volume it returns
+        /// one under the same per-user temporary area `TempDir` was using, so
+        /// the sandbox story is unchanged and the property
+        /// `nothing_waits_beside_the_container` asserts still holds; for one on
+        /// a second volume it returns a directory there and the replacement
+        /// succeeds.
+        ///
+        /// There is deliberately no fallback to `TempDir` if this fails. The
+        /// only things that would fail it are a volume that cannot be written,
+        /// which the replacement could not have finished on either, and the
+        /// path that fallback would take is the one now known not to work.
         ///
         /// The path is resolved first, for the reason `Destination::in_place`
         /// resolves it: a container reached through a symbolic link should have
-        /// the container replaced and not the link.
-        pub(crate) fn beside_nothing(original: &Path) -> std::io::Result<Self> {
+        /// the container replaced and not the link. It also has to be resolved
+        /// before it is asked about, since the volume that matters is the one
+        /// the container is on rather than the one the link is on.
+        pub(crate) fn reserved_for(original: &Path) -> std::io::Result<Self> {
             let original = std::fs::canonicalize(original)?;
-            let scratch = tempfile::TempDir::new()?;
+            let scratch = Scratch::on_the_volume_holding(&original)?;
             // The same name it will have again, so that anything reading the
             // staged file — the validation this exists to allow — sees a
             // container named the way containers are named.
@@ -166,19 +195,94 @@ mod macos {
                 )
                 .map_err(|e| {
                     std::io::Error::other(format!(
-                        "cannot replace {}: {}",
+                        "cannot replace {}: {}{}",
                         self.original.display(),
-                        e.localizedDescription()
+                        e.localizedDescription(),
+                        because_of(&e)
                     ))
                 })?;
 
-            // Explicit rather than left to the drop, so that a failure to clean
-            // up is not silently swallowed while the replacement is reported as
-            // having succeeded. The staged file has been moved out by now, so
-            // this is an empty directory.
-            self.scratch.close()?;
+            // After the replacement rather than before, which is the whole
+            // reason this is a line and not left to fall off the end of the
+            // function: the staged file lives in there until the call above has
+            // moved it out. It used to be `TempDir::close`, reported rather than
+            // swallowed so that a failure to clean up could not hide behind a
+            // save that worked. That stopped being worth doing when the
+            // directory stopped being ours — macOS made it, macOS empties
+            // `.TemporaryItems`, and a replacement that succeeded is not a save
+            // to fail over a directory that did not go.
+            drop(self.scratch);
             Ok(())
         }
+    }
+
+    /// The directory macOS made for one replacement, removed when it is over.
+    ///
+    /// `tempfile::TempDir` was what held this and cannot be any more, because
+    /// where the rewrite waits is no longer this application's choice — see
+    /// `Landing::reserved_for`. What `TempDir` was doing for free is the drop,
+    /// so that is what this is.
+    struct Scratch(PathBuf);
+
+    impl Scratch {
+        /// Ask macOS for a directory a file can be replaced *from*.
+        ///
+        /// `NSUserDomainMask` is not a choice: `NSItemReplacementDirectory` is
+        /// documented to take that one and `appropriateForURL:` is what
+        /// actually decides where the directory lands.
+        fn on_the_volume_holding(original: &Path) -> std::io::Result<Self> {
+            let url = NSFileManager::defaultManager()
+                .URLForDirectory_inDomain_appropriateForURL_create_error(
+                    NSSearchPathDirectory::ItemReplacementDirectory,
+                    NSSearchPathDomainMask::UserDomainMask,
+                    Some(&url_for(original)),
+                    true,
+                )
+                .map_err(|e| {
+                    std::io::Error::other(format!(
+                        "nowhere to rewrite {}: {}",
+                        original.display(),
+                        e.localizedDescription()
+                    ))
+                })?;
+            // A file URL always has a path; the `Option` is for the ones that
+            // do not, and this call cannot return one of those.
+            let path = url.path().ok_or_else(|| {
+                std::io::Error::other("macOS named a replacement directory with no path")
+            })?;
+            Ok(Self(PathBuf::from(path.to_string())))
+        }
+
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+
+    impl Drop for Scratch {
+        fn drop(&mut self) {
+            // The whole tree rather than the directory alone: a successful
+            // replacement has moved the staged file out and leaves this empty,
+            // and a failed one leaves the file sitting in it.
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// Whatever the failure was underneath Cocoa's sentence, if it said.
+    ///
+    /// This exists because `localizedDescription` is written for a person
+    /// looking at a dialog and hides the only fact worth having. The
+    /// cross-volume failure this module was rewritten to fix reports *The file
+    /// “x.slpc” couldn’t be saved in the folder “y”* and nothing else, and the
+    /// `EXDEV` under it — which names the defect outright — took a probe to
+    /// reach. Appended rather than substituted: the sentence is still the one a
+    /// person can act on, and the errno is for whoever reads the message after
+    /// them.
+    fn because_of(error: &objc2_foundation::NSError) -> String {
+        use std::fmt::Write;
+        error.underlyingErrors().iter().fold(String::new(), |mut so_far, under| {
+            let _ = write!(so_far, " ({} {})", under.domain(), under.localizedDescription());
+            so_far
+        })
     }
 
     fn url_for(path: &Path) -> objc2::rc::Retained<NSURL> {
@@ -297,6 +401,126 @@ mod tests {
                 & 0o777,
             0o600,
             "the rewrite did not keep the container's own permissions"
+        );
+    }
+
+    /// The defect this catches is Save doing nothing for a container that is
+    /// not on the boot volume.
+    ///
+    /// `replaceItemAtURL:` is documented in terms of the item it replaces and
+    /// says nothing about where the replacement may come from. It wants both
+    /// ends on one volume: measured 2026-08-25, staging on the boot volume and
+    /// replacing onto a mounted image fails with `NSCocoaErrorDomain` 512 over
+    /// `NSPOSIXErrorDomain` 18, `EXDEV`, on APFS, HFS+, FAT32 and exFAT alike,
+    /// leaving the original untouched. Nothing was corrupted and the error did
+    /// reach the person, so this is the quiet kind: an external drive, a
+    /// mounted image or a share, and every save refuses. It was found by review
+    /// from another machine rather than by anything here, which is why it is
+    /// worth a test that owns a second volume rather than a note.
+    ///
+    /// It bites on the change that fixed it. Putting `tempfile::TempDir::new`
+    /// back in `Scratch::on_the_volume_holding` stages on the boot volume again
+    /// and this fails at the commit, which is how it was checked.
+    ///
+    /// The two assertions before the work are not ceremony. The first draft of
+    /// this test read the mount point out of the wrong field of `hdiutil`'s
+    /// output — its first line names the device and leaves the mount point
+    /// empty — so every run wrote into the working directory, crossed nothing,
+    /// and passed against the defect it was written for. `same_file_system`
+    /// is what makes that failure loud rather than green.
+    ///
+    /// Every macOS machine has `hdiutil`, so there is nothing here to skip
+    /// quietly over: a failure is a real one.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn a_container_on_another_volume_can_be_rewritten() {
+        use std::io::Write;
+        use std::os::unix::fs::MetadataExt;
+
+        /// Detaches on the way out, including out of a panic, so that a failure
+        /// in the middle of this test does not leave a volume mounted.
+        ///
+        /// By device rather than by mount point, because the mount point is the
+        /// thing that can be misread and a `detach ""` is a silent no-op that
+        /// leaves the volume attached — measured, eleven of them, while getting
+        /// this test wrong.
+        struct Mounted(String);
+        impl Drop for Mounted {
+            fn drop(&mut self) {
+                let _ = std::process::Command::new("hdiutil")
+                    .args(["detach", "-quiet", &self.0])
+                    .status();
+            }
+        }
+
+        let dir = tempfile::TempDir::new().expect("a directory for the image");
+        let image = dir.path().join("second-volume.dmg");
+        let made = std::process::Command::new("hdiutil")
+            .args(["create", "-size", "20m", "-fs", "APFS", "-volname", "SlipcaseTest", "-quiet"])
+            .arg(&image)
+            .status()
+            .expect("hdiutil create runs");
+        assert!(made.success(), "could not make a disk image to test against");
+
+        let attached = std::process::Command::new("hdiutil")
+            .args(["attach", "-nobrowse", "-noverify"])
+            .arg(&image)
+            .output()
+            .expect("hdiutil attach runs");
+        assert!(
+            attached.status.success(),
+            "could not mount the disk image: {}",
+            String::from_utf8_lossy(&attached.stderr)
+        );
+        // Both fields off the one line that has a mount point. The volume name
+        // is read back rather than assumed, since a volume of this name already
+        // mounted makes macOS pick another.
+        let listing = String::from_utf8_lossy(&attached.stdout);
+        let (device, mount) = listing
+            .lines()
+            .filter_map(|line| {
+                let mut fields = line.split('\t');
+                let device = fields.next()?.trim();
+                let mount = fields.nth(1)?.trim();
+                (!mount.is_empty()).then(|| (device.to_owned(), mount.to_owned()))
+            })
+            .next_back()
+            .expect("hdiutil said where it mounted the image");
+        let _mounted = Mounted(device);
+
+        let container = std::path::Path::new(&mount).join("elsewhere.slpc");
+        std::fs::write(&container, b"not a container, and nothing reads it here")
+            .expect("writes the container onto the second volume");
+
+        let same_file_system = |a: &std::path::Path, b: &std::path::Path| {
+            std::fs::metadata(a).expect("stats").dev() == std::fs::metadata(b).expect("stats").dev()
+        };
+        assert!(
+            !same_file_system(&container, std::path::Path::new(".")),
+            "{} is on the same volume as the working directory, so this test crosses nothing",
+            container.display()
+        );
+
+        let mut staged = Staged::over(&container).expect("reserves a rewrite");
+        assert!(
+            // The directory, not the reserved name: `Destination::new` writes
+            // through a temporary file and only takes that name at commit, so
+            // there is nothing to stat there yet.
+            !same_file_system(
+                staged.landing.staged().parent().expect("the rewrite waits in a directory"),
+                &std::env::temp_dir(),
+            ),
+            "the rewrite is waiting in the boot volume's temporary directory, \
+             which is the arrangement this test exists to refuse"
+        );
+
+        staged.writer().write_all(b"rewritten").expect("writes");
+        staged.commit().expect("the replacement lands on the other volume");
+
+        assert_eq!(
+            std::fs::read(&container).expect("reads the container back"),
+            b"rewritten",
+            "the container on the second volume still holds what it did"
         );
     }
 }

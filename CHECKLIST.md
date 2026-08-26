@@ -526,6 +526,67 @@ is half right in a way worth writing down: the image itself is not gated, it
 mounts. What is gated is what you then launch from it, and the mark reaches
 there by propagation rather than by being on the thing that gets refused.
 
+### What the second-volume sitting found
+
+Run 2026-08-25, against the plain build, after Linux read the arm from another
+machine and asked whether `replaceItemAtURL:` had ever crossed a volume. It had
+not, and it does not.
+
+**Save was broken for every container that is not on the boot volume.**
+`tempfile::TempDir` answers `TMPDIR`, which is on the boot volume, so the
+rewrite always waited there; `replaceItemAtURL:` then refused to move it onto a
+container anywhere else, with `NSCocoaErrorDomain` 512 over `NSPOSIXErrorDomain`
+18, `EXDEV`. Measured against mounted images formatted APFS, HFS+, FAT32 and
+exFAT — all four refuse, so it is the crossing and not the filesystem. The
+original was untouched every time and the error did reach the person, so nothing
+was corrupted and nothing was silent; it simply never worked. An external drive,
+a mounted image, or a share, and Save could not be used at all.
+
+**The fix is an API Apple provides for exactly this**, and it is now
+`Scratch::on_the_volume_holding`. `URLForDirectory:` asked for
+`NSItemReplacementDirectory` with `appropriateForURL:` makes a fresh directory
+on the volume that URL is on. For a container on a second volume it returns one
+there — `/Volumes/…/.TemporaryItems/folders.501/TemporaryItems/NSIRD_…` — and
+the replacement then succeeds on all four filesystems. For a container on the
+boot volume it returns one under the same per-user temporary area `TempDir` was
+already using, so the reason this module exists is untouched: the rewrite still
+waits nowhere near the container, and the sandbox still sees no sibling being
+created. Nothing was worked around and no unsafe was added; the binding is
+another safe function on `NSFileManager`.
+
+**Three things cost time and are worth the next person's while.**
+
+Cocoa's message hides the fact. `localizedDescription` says only *The file
+“x.slpc” couldn’t be saved in the folder “y”*, which names nothing that could be
+acted on; the `EXDEV` beneath it took a probe through `underlyingErrors` to
+reach. `Landing::replace_original` now appends whatever is under the sentence to
+the message it reports, so the next reader of this failure gets the errno for
+free.
+
+The first version of the regression test passed against the defect it was
+written for. It read the mount point out of `hdiutil attach`'s output with
+`.find_map(…nth(2))`, and that output's first line names a device and leaves the
+mount point empty, so the mount point parsed as the empty string, every
+container was written into the working directory, and every run replaced a file
+on the boot volume with a file on the boot volume. It crossed nothing and passed
+green — including the deliberate break that was supposed to prove it bites. The
+test now asserts that the container and the working directory are on different
+devices, and that the rewrite is not waiting in the boot volume's temporary
+directory, before it does anything at all. Both assertions were confirmed to
+fire.
+
+Mounting volumes from a test leaks them when the test is wrong. The detach guard
+was given the same misparsed empty string, so `hdiutil detach ""` did nothing
+and eleven images stayed mounted across the runs it took to notice. It detaches
+by the `/dev/diskN` device now, which is the field that cannot be silently
+empty.
+
+**What was measured about what survives the replacement**, on a second volume,
+matching what the same-volume run found in the sandbox sitting: the original's
+mode is kept — 0600 on APFS, and 0700 on FAT32 and exFAT because those have no
+POSIX permissions and the mount forces the execute bit — and `com.apple.macl`
+and the last-used date survive while `com.apple.quarantine` does not.
+
 ### Not yet done by hand
 
 - **A high-density display, half done.** The `@2x` entries have now been
@@ -563,13 +624,15 @@ there by propagation rather than by being on the thing that gets refused.
 - **A downloaded bundle**, carrying `com.apple.quarantine`, to see what
   Gatekeeper actually shows a person rather than what `spctl` reports.
 - **A second user account**, and an upgrade over an existing install.
-- **A container on a second volume**, which is the one thing `src/staging.rs`
-  has never been run against. `Landing::beside_nothing` stages the rewrite
-  wherever `tempfile::TempDir::new` puts it — the boot volume — and
-  `replaceItemAtURL:` then moves that file onto the container. Every
-  measurement so far had both ends on the same volume, and a cross-volume
-  replacement is a different path through that call. Open a container from an
-  external drive, a mounted disk image, and a network share; edit a key and
-  save. Under a sandbox the grant covers the container and not the directory
-  holding it, so run it against the signed bundle as well as the plain one, and
-  watch for a save that reports success while the original is untouched.
+- **A container on a second volume, under the sandbox.** The section above
+  settles this for the plain build across four filesystems and a test now holds
+  it. What a test cannot enter is the sandbox, and the sandbox is the reason
+  this module exists. `NSItemReplacementDirectory` is documented as the
+  sandbox-safe way to do this and the directory it hands back on a second volume
+  is one nobody granted us — `/Volumes/…/.TemporaryItems/…` is not the file the
+  person chose through the open panel. Apple's position is that the grant
+  extends to it; this repository does not take documentation for a measurement.
+  Open a container from a mounted image in the signed bundle, edit a key, and
+  save. Then do it from an external drive and a network share, which are the two
+  the images here do not stand in for: a share is a different `EXDEV` story
+  again and may not permit `.TemporaryItems` at all.
