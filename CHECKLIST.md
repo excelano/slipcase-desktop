@@ -209,12 +209,13 @@ a hash Windows validates and its key denies the user write access, which is
 deliberate and is why choosing a default is a thing a person does. It is in
 *Not yet done by hand* below with the sequence.
 
-### What running the corpus on Windows found
+### What running the corpus on Windows found, and what it cost to clear
 
 The conformance corpus had never been run on this platform — it needs Python to
 generate its cases and there was none here until 2026-08-26. Run that day
 against Python 3.13, with the cases generated and self-checked by the
-generator: **76 of the 77 agree, and the seventy-seventh hangs.**
+generator: **76 of the 77 agreed, and the seventy-seventh hung.** It passes now; what it
+took is below the diagnosis.
 
 `accept/payload-name-windows-reserved` carries a payload named `CON`. The
 container is conformant, the manifest expects `accept`, and `SPEC.md` §2.3 has
@@ -236,12 +237,44 @@ Three names, three different answers, measured one at a time:
 | `NUL` | `Ok` | `Ok` | Succeeds and discards |
 | `report.` | `Ok` | `Ok` | Lands as `report`, the dot silently stripped |
 
-The exposure is the Open button rather than the corpus. `src/lib.rs` names the
+The exposure was the Open button rather than the corpus. `src/lib.rs` named the
 extracted file `into.join(payload_name())`, which is right for every other name
-and is where this arrives. `DESIGN.md` §8 carries the amendment and says why
-the repair is not taken here: it is a choice between the library refusing a
-conformant container, this application renaming a person's payload, and
-extraction refusing with a sentence that says why.
+and is where this arrived. `DESIGN.md` §8 carries the amendment, and a second
+one recording that the repair turned out not to be any of the three choices it
+first set out.
+
+**Cleared the same day, and the repair was none of the three above.** The
+three candidates were all ways of deciding `CON` is a name this build will not
+honour. A fourth was measured after they were written: Windows looks for those
+device names while it parses a path, and a path in the `\\?\` verbatim form is
+not parsed that way, so the name stops being a device without anybody calling
+it a bad name. `fs::canonicalize` answers in that form, so `extract` asks it of
+the directory and joins the container's name onto the answer.
+
+Measured across every name that misbehaved. `CON`, `CON.txt`, `con`, `COM1`,
+`AUX`, `LPT1`, `PRN` and `NUL` each then wrote, read back byte for byte,
+carried a `Zone.Identifier` stream and were removable, exactly as
+`ordinary.txt` does — where before, three of them hung, two failed with
+`NotFound` and one discarded the bytes. **The corpus then passed all 77 on
+Windows, which it had never done.**
+
+It took two changes rather than one, and the second was only visible by
+running it. With `extract` repaired the run still hung, further along: the
+runner builds a path out of the container's payload name too, to test replacing
+a payload under its own name, and that path was still the console. `destination`
+is public so the two share the rule instead of each keeping a copy.
+
+The handover is not fixed and now says so. `opener::open` on a device-named
+file returns *the specified device name is invalid*, which is an error the
+application already has a sentence for, where before it was a hang or a
+silence. A payload named `CON` extracts and will not open, and that is the
+truth about that container on this platform rather than a defect left standing.
+
+One thing it cost, paid separately. The path handed back is the verbatim one,
+because that is what addresses the file, and an existing test caught *Extracted
+to* about to show a person `\\?\C:\…` — a spelling they have never seen and
+could not type. `shown` takes the prefix off for display and nothing else does.
+That test failing is the reason this was noticed rather than shipped.
 
 **The other 76 agree, and that is a real result rather than a consolation.**
 Re-run with the one case removed from `manifest.toml` and its container
@@ -261,14 +294,14 @@ worth knowing before it is mistaken for a permissions problem.
 
 ### Not yet done by hand
 
-- **Whether the window hangs on a `CON` payload the way the corpus does.** The
-  corpus hangs because it reads the extracted payload back; nothing in the
-  handover path does, so the application may instead write nothing, hand the
-  console device to `opener::open`, and carry on. Which of those happens has
-  not been measured and the difference decides how urgent the amendment in
-  `DESIGN.md` §8 is. Build a container with a payload named `CON`, open it, and
-  press Open — and be ready to kill the process rather than assuming it is
-  thinking.
+- **What the window does with a `CON` payload now that it extracts.** The hang
+  is gone and the corpus passes, so what is left is what a person sees:
+  extraction should write a real file, the Open button should fail with *the
+  specified device name is invalid* rather than silently doing nothing, and
+  *Extracted to* should name the file without the `\\?\` prefix. All three are
+  measured below the window rather than through it, which is not the same
+  thing. Build a container with a payload named `CON`, open it, press Open, and
+  read the sentence.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,

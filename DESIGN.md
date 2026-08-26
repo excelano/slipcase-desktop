@@ -218,6 +218,48 @@ means this application renaming a person's payload; or whether extraction
 should refuse with a sentence that says why, which is the smallest of the
 three. `CLAUDE.md`'s rule that the library is not worked around is what makes
 this a question rather than a patch. `CHECKLIST.md` holds the run.
+
+**Amended again, the same day: it is decided, and it is none of the three.**
+The paragraph above leaves the repair to a choice between the library refusing
+a conformant container, this application renaming a person's payload, and
+extraction refusing with a sentence. A fourth was measured after it was
+written and it costs none of those things. Windows looks for those device
+names while it is parsing a path, and a path in the `\\?\` verbatim form is not
+parsed that way — so the name stops being a device without anybody deciding it
+is a bad name.
+
+`fs::canonicalize` answers in that form on Windows, so `extract` asks it of the
+directory and joins the container's name onto the answer. Measured 2026-08-26:
+`CON`, `CON.txt`, `con`, `COM1`, `AUX`, `LPT1`, `PRN` and `NUL` then all wrote,
+read back byte for byte, carried a `Zone.Identifier` stream, and were
+removable, exactly as an ordinary name does. **The corpus passes all 77 on
+Windows for the first time.** The prefix is asked of the *directory* rather
+than spelled onto the path, so nothing here holds a list of reserved names:
+which names are devices is Windows's to know and it keeps knowing it.
+
+Two things it does not do, and both are the point. It does not touch
+`extract_at`, because that path is one a person typed and `§5` has always said
+the two halves of extraction differ in whose name it is; a test holds it to
+that. And it does not make the payload openable — `opener::open` on a
+device-named file fails with *the specified device name is invalid*, which is
+an error the application already has a sentence for, rather than the silence or
+the hang it used to be. A payload named `CON` extracts and will not open, which
+is the truth about that container on this platform.
+
+**It costs one thing, and that had to be paid for separately.** The path handed
+back is now the verbatim one, because it is what addresses the file, and
+*Extracted to* would otherwise show a person a spelling they have never seen
+and could not type. `shown` takes the prefix off for display and nothing else
+does; every filesystem call keeps the form that works. That is a presentation
+rule rather than a naming one, and `§3`'s refusal to substitute this
+application's judgement for the platform's is untouched: nothing here decides a
+name is wrong, only how a path is spelled to the person who pressed the button.
+
+`src/bin/corpus.rs` needed the same treatment for the same reason, because it
+builds a path out of a container's payload name too, and that is where the run
+still hung after `extract` was fixed. `destination` is public so that the two
+share the rule rather than each keeping a copy of it.
+
 **Amended: the runtime libraries cannot be derived from the executable.** It links libc, libm, and libgcc, and nothing else. Everything that draws a window — the Wayland client library, the keyboard map library, the EGL and Vulkan loaders, the X11 libraries — is opened by name at run time, which is the other face of §2's claim that `wayland-sys` and `linux-raw-sys` resolve their symbols then. `dpkg-shlibdeps` sees none of it, so a package built from the linker's answer alone installs cleanly on a machine with no display stack and fails to start. The dependency list is written by hand and was measured by running the application and reading `/proc/PID/maps`.
 
 **Amended: the package carries no maintainer scripts.** `shared-mime-info`, `desktop-file-utils`, and `hicolor-icon-theme` own dpkg triggers on the three directories the package writes into, so the caches are rebuilt without a `postinst` asking. They are dependencies for that as much as for anything they provide at run time.

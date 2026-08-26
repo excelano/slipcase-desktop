@@ -26,7 +26,7 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::{add_key, extract_at, rename_key, NewKey, Opened, Saved, Watch};
+use slipcase_desktop::{add_key, destination, extract_at, rename_key, NewKey, Opened, Saved, Watch};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -334,6 +334,23 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         );
         return false;
     }
+
+    // Through `destination` for the same reason `extract` goes through it: the
+    // name below is the container's, and on Windows a handful of names are
+    // devices wherever they appear rather than files in a directory.
+    // `accept/payload-name-windows-reserved` is the case that found this, and
+    // it found it by hanging the whole run rather than by disagreeing.
+    let holding = match destination(&holding) {
+        Ok(d) => d,
+        Err(e) => {
+            report.disagree(
+                "the replacement: the holding directory could not be named".to_owned(),
+                c,
+                &e.to_string(),
+            );
+            return false;
+        }
+    };
 
     let same = holding.join(&own_name);
     let renamed = holding.join(REPLACEMENT);

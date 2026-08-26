@@ -83,7 +83,7 @@ is a different sandbox context from the development-signed one every
 measurement was taken against.
 
 **Everyone: a conformant container can name its payload something that is not
-a file, and extraction hangs on it.** Found on Windows on 2026-08-26, the first
+a file, and extraction hung on it. Settled.** Found on Windows on 2026-08-26, the first
 time the conformance corpus had been run on that platform, and it is here
 rather than in the Windows section because the code is `src/lib.rs` and the
 decision is not one arm's to take.
@@ -104,27 +104,41 @@ behaviour to code against.
 leave that directory. That is true and it is not the question. The exposure is
 the Open button, which is the caller that takes the name from the container:
 extraction writes nothing, and `opener::open` is handed the console device.
-Whether the window then hangs the way the corpus does is **not measured** —
-nothing in the handover path reads the copy back — and that is a gap rather
-than a reassurance. Measuring it needs a container with a `CON` payload opened
-in the running application, which is a hand test on Windows.
+Whether the window hung the way the corpus did was never measured, because the
+repair below landed first.
 
-The repair is not taken, because all three candidates are somebody's decision
-rather than a patch. `slpc::check_payload_name` could refuse these names, which
-makes a conformant container unopenable and is the library's call. Extraction
-could name the file something else on Windows, which is this application
-renaming a person's payload. Or extraction could refuse with a sentence that
-says why, which is the smallest of the three and still a change to what `§5`
-promises. `CLAUDE.md`'s rule that the library is not worked around is what
-makes this a question. `DESIGN.md` §8 carries the amendment and `CHECKLIST.md`
-the run.
+**Repaired the same day, and the repair was none of the three this note first
+set out.** Refusing the name in the library, renaming the payload, and refusing
+with a sentence are all ways of deciding `CON` is a name this build will not
+honour. Windows looks for those device names while it *parses* a path, and a
+path in the `\\?\` verbatim form is not parsed that way — so the name stops
+being a device without anybody calling it a bad one. `fs::canonicalize` answers
+in that form, so `extract` asks it of the directory and joins the container's
+name onto the answer. `CON`, `CON.txt`, `con`, `COM1`, `AUX`, `LPT1`, `PRN` and
+`NUL` then all wrote, read back byte for byte, carried a `Zone.Identifier`
+stream and were removable, exactly as an ordinary name does. **The corpus
+passes all 77 on Windows, which it had never done.** Nothing holds a list of
+reserved names: the prefix is asked of the directory, so which names are
+devices stays Windows's to know.
 
-The rest of the corpus is clean on Windows: re-run with that one case removed
-from the manifest and its container deleted, 76 of 76 agree, with every tree,
-card, rewrite, rename and replacement column agreeing too. So `CLAUDE.md`'s
-*all 77 must agree* holds everywhere it has been run except this one case on
-this one platform, and that is the sentence to keep until the decision above is
-taken.
+Three things a reader should not have to rediscover. It took two changes, not
+one — with `extract` repaired the run still hung, because `src/bin/corpus.rs`
+builds a path out of the payload name too, so `destination` is public and the
+two share the rule. The handover is still impossible and now says so:
+`opener::open` on such a file returns *the specified device name is invalid*,
+an error the application already has a sentence for, where before there was a
+hang or a silence. And it cost one thing, paid separately: the path handed back
+is the verbatim one because that is what addresses the file, so `shown` takes
+the prefix off for display and nothing else does — an existing test caught
+*Extracted to* about to show somebody `\\?\C:\…`, which is how that was noticed
+rather than shipped.
+
+`DESIGN.md` §8 carries both amendments, the second recording that the decision
+went elsewhere, and `CHECKLIST.md` holds the run. What is still unmeasured is
+the window: everything above was measured below it, and a container with a
+`CON` payload has not been opened in the running application. That is a hand
+item rather than a doubt about the repair.
+
 
 Two things were found on Linux while reviewing the macOS work, and neither
 belongs to Linux. They are here because this file is the only way they reach

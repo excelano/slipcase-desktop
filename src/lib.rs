@@ -94,8 +94,91 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
     // `Container::open` has already put this name through
     // `slpc::check_payload_name`, which rejects every separator and every
     // traversal, so joining it onto a directory cannot leave that directory.
-    let out = into.join(container.payload_name());
+    // Leaving it was never the only way for a name to not name a file, which
+    // is what `destination` is for.
+    let out = destination(into)?.join(container.payload_name());
     copy_out(&mut container, source, &out, watch)
+}
+
+/// A directory a file is about to be created in, named the way this platform
+/// needs it named.
+///
+/// **Windows resolves a handful of names to devices wherever they appear.**
+/// `CON`, `CON.txt`, `con`, `COM1` and `AUX` joined onto a directory are the
+/// console and the serial port rather than files in it. `SPEC.md` §2.3 accepts
+/// those names, its non-normative note says why they are awkward here, and the
+/// conformance corpus carries a case for one — so this is a container somebody
+/// can legitimately be sent rather than a malformed one.
+///
+/// Measured 2026-08-26, one name at a time, because they do not agree with each
+/// other. Writing `CON` returned `Ok` at every step and left no file, since the
+/// bytes went to the console; `metadata` then failed with code 87 and
+/// `std::fs::read` **never returned at all**, because it opens the console for
+/// reading and waits for input a window will never supply. `LPT1` and `PRN`
+/// failed cleanly with `NotFound`, and `NUL` succeeded and discarded. So there
+/// is no one failure to code against, and the corpus hung rather than
+/// disagreed.
+///
+/// `canonicalize` answers with the `\\?\` verbatim form on Windows, and a
+/// verbatim path reaches the filesystem without those names being looked for.
+/// Measured the same day: every name above then wrote, read back byte for
+/// byte, carried a `Zone.Identifier` stream and was removable, exactly as an
+/// ordinary name does. It is asked of the *directory* rather than spelled onto
+/// the path, so nothing here holds a list of reserved names — which list is
+/// current is Windows's business and stays there.
+///
+/// What this does not fix is the handover, and it now fails rather than hangs:
+/// `opener::open` on such a file returns *the specified device name is
+/// invalid*, and `src/main.rs` already has a sentence for a payload that
+/// extracted and would not open.
+///
+/// # Errors
+///
+/// Returns whatever the platform says about naming the directory. On Windows
+/// that is `canonicalize`, so a directory that is not there is an error here
+/// rather than at the first write.
+#[cfg(windows)]
+pub fn destination(into: &Path) -> std::io::Result<PathBuf> {
+    std::fs::canonicalize(into)
+}
+
+/// Where no name is a device, the directory is the directory.
+///
+/// # Errors
+///
+/// None. The `Result` is the Windows arm's shape rather than this one's:
+/// nothing here can fail, and narrowing the signature would make the arms
+/// disagree and push the difference into the caller.
+#[cfg(not(windows))]
+#[allow(clippy::unnecessary_wraps)]
+pub fn destination(into: &Path) -> std::io::Result<PathBuf> {
+    Ok(into.to_path_buf())
+}
+
+/// A path as it should be shown to a person.
+///
+/// [`destination`] hands back the `\\?\` verbatim form on Windows, because that
+/// is what addresses a file whose name Windows would otherwise read as a
+/// device. That prefix is how a path is addressed and not part of the name, so
+/// *Extracted to* would otherwise show somebody where their payload went in a
+/// spelling they have never seen and could not type. It comes off here and only
+/// here: every filesystem call keeps the form that works.
+///
+/// A no-op everywhere else, and on any path that never had the prefix, so the
+/// caller does not have to know which kind it is holding.
+#[must_use]
+pub fn shown(path: &Path) -> String {
+    let text = path.display().to_string();
+    let Some(rest) = text.strip_prefix(r"\\?\") else {
+        return text;
+    };
+    // `\\?\UNC\server\share` is the same trick applied to a network path, and
+    // putting back the two leading separators is what makes it the name a
+    // person knows again.
+    match rest.strip_prefix(r"UNC\") {
+        Some(share) => format!(r"\\{share}"),
+        None => rest.to_owned(),
+    }
 }
 
 /// Copy a container's payload to a path somebody chose, watchably.
@@ -836,7 +919,9 @@ mod extraction_tests {
         let out = opened.extract_to(&into).expect("extracts");
 
         // Into the directory it was given, under the name the container gave.
-        assert_eq!(out, into.join("report.pdf"));
+        // Compared in the form a person is shown, because on Windows the path
+        // handed back is the verbatim one and `destination` says why.
+        assert_eq!(super::shown(&out), into.join("report.pdf").display().to_string());
         assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
     }
 
@@ -1517,5 +1602,133 @@ mod readable_tests {
             .expect("a conformant container has a card");
         assert!(card.can_be_decoded());
         assert_eq!(card.unreadable, None);
+    }
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod windows_extraction_tests {
+    use super::{extract, Extracted, Watch};
+    use slpc::toml_edit::DocumentMut;
+
+    /// Every name Windows resolves to a device wherever it appears. `LPT1` and
+    /// `PRN` are here even though they failed cleanly rather than hanging,
+    /// because a clean failure is still a conformant container this build
+    /// refuses, and `NUL` is here because it succeeded while discarding the
+    /// bytes, which is the worst of the three answers.
+    const DEVICE_NAMES: [&str; 6] = ["CON", "CON.txt", "con", "COM1", "AUX", "NUL"];
+
+    fn container_named(dir: &std::path::Path, payload_name: &str, payload: &[u8]) -> std::path::PathBuf {
+        let container = dir.join(format!("holds-{}.slpc", payload_name.replace('.', "-")));
+        let metadata: DocumentMut = "title = \"built by the test\"\n".parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader(payload_name, payload, metadata, &mut bytes).expect("packs");
+        std::fs::write(&container, &bytes).expect("writes the container");
+        container
+    }
+
+    /// The defect this catches is extraction handing back the console device
+    /// instead of a file. `CON` is a legal payload name — `SPEC.md` §2.3
+    /// accepts it and the conformance corpus carries a case for it — and Win32
+    /// resolves the name to a device wherever it appears, so the payload went
+    /// to the console, no file was written, and anything reading the result
+    /// back waited forever on input that never came. The corpus met it for the
+    /// first time on 2026-08-26 and hung there rather than disagreeing.
+    ///
+    /// The directory is listed before the payload is read, and that order is
+    /// deliberate: against the defect the listing is empty and the test fails
+    /// there, where reading first would hang the whole suite instead.
+    #[test]
+    fn a_payload_named_for_a_device_extracts_as_an_ordinary_file() {
+        for name in DEVICE_NAMES {
+            let dir = tempfile::tempdir().expect("a temporary directory");
+            let payload = format!("bytes for {name}").into_bytes();
+            let container = container_named(dir.path(), name, &payload);
+
+            let out = match extract(&container, dir.path(), &Watch::new()) {
+                Ok(Extracted::Done(path)) => path,
+                Ok(Extracted::Cancelled) => panic!("{name}: an unwatched copy was cancelled"),
+                Err(e) => panic!("{name}: extraction failed: {e}"),
+            };
+
+            let listed: Vec<_> = std::fs::read_dir(dir.path())
+                .expect("the directory")
+                .map(|e| e.expect("an entry").file_name())
+                .collect();
+            assert!(
+                listed.iter().any(|entry| entry == name),
+                "{name}: nothing by that name is in the directory, so the payload \
+                 went to a device rather than to a file. Listed: {listed:?}"
+            );
+
+            assert_eq!(
+                std::fs::read(&out).expect("the extracted payload"),
+                payload,
+                "{name}: the extracted bytes are not the payload"
+            );
+        }
+    }
+
+    /// The defect this catches is the repair above being applied to the path a
+    /// person chose. `extract_at` takes a name somebody typed into a save
+    /// dialog, and prefixing that would show them a path they did not choose
+    /// and did not write; the doc comments have said all along that the two
+    /// halves of extraction differ in whose name it is. Catches a repair that
+    /// went into `copy_out` instead of into `extract`.
+    #[test]
+    fn a_path_a_person_chose_is_left_as_they_wrote_it() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let container = container_named(dir.path(), "report.pdf", b"payload bytes");
+        let chosen = dir.path().join("where-they-said.pdf");
+
+        let out = match super::extract_at(&container, &chosen, &Watch::new()) {
+            Ok(Extracted::Done(path)) => path,
+            Ok(Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
+            Err(e) => panic!("extraction failed: {e}"),
+        };
+
+        assert_eq!(out, chosen, "the path handed back is not the one chosen");
+        assert!(
+            !out.to_string_lossy().starts_with(r"\\?\"),
+            "a person's own path came back in the verbatim form"
+        );
+    }
+}
+
+#[cfg(test)]
+mod shown_tests {
+    use super::shown;
+    use std::path::Path;
+
+    /// The defect this catches is a person being told their payload went
+    /// somewhere they have never seen and could not type. `destination` hands
+    /// back the `\\?\` form so that a payload named for a device is a file, and
+    /// this is the only thing keeping that spelling out of *Extracted to*.
+    /// Catches a `main.rs` that went back to `path.display()`.
+    #[test]
+    fn the_verbatim_prefix_is_not_shown_to_a_person() {
+        assert_eq!(
+            shown(Path::new(r"\\?\C:\Users\a\report.pdf")),
+            r"C:\Users\a\report.pdf"
+        );
+    }
+
+    /// The same trick applied to a network path, where dropping the prefix
+    /// whole would leave `server\share` — a relative path, and not anywhere.
+    #[test]
+    fn a_verbatim_network_path_keeps_its_two_separators() {
+        assert_eq!(
+            shown(Path::new(r"\\?\UNC\server\share\report.pdf")),
+            r"\\server\share\report.pdf"
+        );
+    }
+
+    /// The defect this catches is the stripping going too far and rewriting
+    /// paths that never carried the prefix — every path a person chose, on
+    /// every platform.
+    #[test]
+    fn a_path_that_never_had_the_prefix_is_untouched() {
+        for ordinary in [r"C:\Users\a\report.pdf", "/home/a/report.pdf", "report.pdf"] {
+            assert_eq!(shown(Path::new(ordinary)), ordinary);
+        }
     }
 }
