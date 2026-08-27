@@ -55,15 +55,24 @@ not a function of the release version — two uploads of `0.1.0` need different
 build numbers. Deriving it from the commit count (`git rev-list --count HEAD`)
 makes it monotonic without anybody remembering, and that is the recommendation.
 
-**A decision is needed before any of this is built: does the first public
-release go out as `0.1.0` or `1.0.0`?** Both stores display it. `0.x` says
-"early" honestly and costs nothing technically; `1.0.0` is what most people read
-as "finished". It affects only listing perception, not any of the machinery, but
-it wants settling once rather than being changed after a name is reserved.
+**Decided: the first public release is `0.1.0`.** Both stores display it and
+`0.x` says *early* honestly, which is what this is. It affects listing
+perception rather than any machinery, and it is settled before a name is
+reserved rather than after, which is the only timing that matters.
 
 ---
 
 ## Here (Linux) — what needs no other machine
+
+### First, and in this order
+
+- **`slpc`: expose the payload's stored mode.** The library reads `unix_mode()`
+  and keeps only the file-type bits as `EntryKind`; the permission bits are
+  discarded and there is no accessor, so the fact the card's new line rests on
+  is unreachable. A 0.3.6, and it is first because everything downstream of it
+  waits: the desktop cannot use what is not published.
+- **The card line**, once that is out — `DESIGN.md` §5 has the wording and the
+  gating.
 
 ### Every time
 
@@ -89,10 +98,13 @@ it wants settling once rather than being changed after a name is reserved.
 - **`SECURITY.md`** — `slpc-rust` has one and this repository does not. It is a
   public repository shipping an application that opens files people were sent,
   so a disclosure path is worth having before a store listing points at it.
-- **A privacy policy, hosted somewhere public.** Both stores require a URL. The
-  substance is short and unusually easy here — no network calls, no telemetry,
-  no configuration directory, nothing stored beyond files a person asked for —
-  but it has to exist at an address, and that is David's to place.
+- **A privacy policy at `excelano.com/legal/#slipcase`.** Decided, and the
+  address follows what is already there: `/legal/` carries one page with a
+  per-application anchor, `#blick` and `#zirbe` being the existing two. Both
+  stores want the URL. The substance is short and unusually easy here — no
+  network calls, no telemetry, no configuration directory, nothing stored beyond
+  files a person asked for — and the existing entries are the model for how much
+  of that to say and in what voice.
 - **Store listing text**, drafted once and used twice: a description, a short
   description, and keywords. The two stores want different lengths; one draft
   answers both.
@@ -210,10 +222,12 @@ platforms together, which no platform session can do. What it covers:
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with
   what it found rather than that it passed.
-- **`DESIGN.md` §5's undecided question is decided**: under the sandbox macOS
-  refuses an executable payload as *damaged*, which is advice to bin a file that
-  is fine. A reviewer could plausibly meet it. It is recorded as *not decided
-  here* and should not still be that when a submission goes in.
+- **The executable-payload line is in.** `DESIGN.md` §5 is decided: the card
+  says *The payload is an executable file; the extracted copy will not be
+  executable*, gated to Unix and silent where the container records no mode. It
+  needs a `slpc` addition first and is the first task below. Not a submission
+  blocker — a reviewer packaging a shell script into a container is unlikely —
+  so if it slips, it slips to a patch rather than holding the release.
 - **The three CI workflows are green**, the corpus is 77 of 77 on every platform
   that has run it, and `preflight.sh` passes.
 
