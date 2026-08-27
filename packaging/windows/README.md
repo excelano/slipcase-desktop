@@ -207,3 +207,44 @@ the run.
 This is why `slipcase.ico` is a committed artifact in a repository that
 otherwise holds only sources: the executable references it at compile time, and
 Windows has no step that would rasterize the SVG for either purpose.
+
+## What a Store build would need
+
+**The account exists; nothing Windows does.** There is a Microsoft Partner
+Center account, so registration, identity verification and the agreements are
+behind us — which matters because verification is the one step here measured in
+days rather than minutes. Recorded because a session that has to ask this
+question loses an afternoon to it, and the macOS README carries the same
+sentence about Apple for the same reason.
+
+**What is absent is a package.** `packaging/macos` holds `build-app.sh`,
+`Info.plist.in` and an entitlements file, so a bundle is reproducible from this
+repository by anyone with a Mac. There is no counterpart here. The MSIX that
+answered the three questions in `CHECKLIST.md` was built by hand at a prompt and
+nothing in the tree rebuilds it: no `AppxManifest.xml`, no build script. That —
+rather than the account, and rather than anything measured — is what stands
+between this platform and a submission.
+
+**Three values have to come out of Partner Center before a manifest is real.**
+`Package/Identity/Name`, `Publisher` and `PublisherDisplayName` are assigned
+when the name is reserved and must appear in `AppxManifest.xml` exactly as
+Partner Center gives them; a package whose identity disagrees is rejected at
+upload rather than at review. Reserving the name is cheap and blocks the listing
+work, so it is worth doing before the manifest is written rather than after.
+
+**The self-signed certificate does not carry forward, and that is fine.**
+`New-SelfSignedCertificate` and `signtool` were how the questions got answered
+on one machine; the Store signs what it distributes, so a submission uploads a
+package it has not signed itself. The measurement was never wasted — it is what
+established that the container does not change what `opens_with` sees — but no
+certificate from it goes near a submission.
+
+**The version is not the one in `Cargo.toml`.** A Store package declares
+`Major.Minor.Build.Revision` and the revision must be `0`, which is a different
+shape from the crate version and from what macOS wants in
+`CFBundleShortVersionString`. One number, three spellings, and the scheme is
+worth deciding once rather than per platform.
+
+**Unrun: the Windows App Certification Kit.** Certification runs it and a
+submission that fails it comes back. It has never been run here, and it is
+mechanical, so it belongs in a build script rather than in somebody's memory.
