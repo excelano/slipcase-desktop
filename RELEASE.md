@@ -72,7 +72,7 @@ reserved rather than after, which is the only timing that matters.
   answers all of them: a bound on what identifying a container costs — measured
   at 620 MB from a 204 KB file before, 11 MB after — and `display_name`, which
   escapes the bidirectional formatting characters SPEC §3 requires be escaped
-  wherever a name is shown. The corpus went from 77 cases to 86 over the day and
+  wherever a name is shown. The corpus went from 77 cases to 87 over the day and
   the reference implementation agrees on all of them.
 - **The card line is in**, with the wording and the gating `DESIGN.md` §5
   decided, and the payload name on the card now goes through `display_name`.

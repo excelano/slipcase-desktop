@@ -80,11 +80,10 @@ card, extraction, rewrite, rename, replacement, and pre-flight:
 
 All of them must agree. Run it before and after any change to `src/lib.rs`.
 
-How many there are is `manifest.toml`'s to say and not this file's. It was 77,
-then 83, and is 86 — all on 2026-08-27, and the second of those went stale
-inside the same day, in this paragraph, which is the argument making itself. The
-runner prints the count and fails on any disagreement, so ask it rather than
-this file.
+How many there are is `manifest.toml`'s to say and not this file's. It was 77, then 83, then 86,
+then 87 — all on 2026-08-27, and two of those went stale inside the same day in
+this paragraph, which is the argument making itself. The runner prints the count
+and fails on any disagreement, so ask it rather than this file.
 
 Two things that have caught people out. `cargo run --bin corpus` rebuilds every
 binary in the package, including `slipcase-desktop`, so do not run it while the

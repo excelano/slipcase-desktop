@@ -158,11 +158,16 @@ fn a_payload_handed_over_is_readable_by_another_process() {
     }
 }
 
-/// The directory it waits in is private, and the payload is inside it.
+/// A payload extracted into a private directory stays inside it.
 ///
-/// The other half of the change above: the point of 0700 is that the payload is
-/// not readable by anybody else, and the point of the test above is that it is
-/// still readable by the handler. Both, or the change is half done.
+/// **This does not test `App::scratch_dir`'s mode**, and its first draft said
+/// it did. `scratch()` above is this file's own copy of that builder, because
+/// the real one is private to the binary, so breaking the application's copy
+/// changes nothing here. `the_handover_directory_is_private` in `src/main.rs`
+/// is what holds the mode, and it bites.
+///
+/// What this holds is the half that copy cannot fake: that extraction puts the
+/// payload inside the directory it was given, whatever that directory's mode.
 #[test]
 #[cfg(unix)]
 fn the_payload_waits_somewhere_private() {
@@ -178,7 +183,11 @@ fn the_payload_waits_somewhere_private() {
         .expect("stats")
         .permissions()
         .mode();
-    assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
+    assert_eq!(mode & 0o777, 0o700, "this file's own builder: {:o}", mode & 0o777);
+
+    let landed = scratch.path().join("report.pdf");
+    assert!(landed.is_file(), "the payload is not in the directory it was given");
+    assert_eq!(std::fs::read(&landed).expect("reads"), b"private\n");
 }
 
 /// Opening a second container reuses the directory rather than failing.

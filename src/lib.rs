@@ -1085,12 +1085,14 @@ mod payload_tests {
 
     /// A container recording no mode at all says nothing.
     ///
-    /// This is the case the card must be silent for and the one an obvious
-    /// implementation gets wrong: the ZIP crate's `unix_mode` invents `0o664`
-    /// for an archive made on DOS, so a card built on it would tell a person
-    /// something definite about every container a Windows tool wrote. What
-    /// `pack_reader` produces records nothing, which is the same silence from
-    /// the other end.
+    /// This is the case the card must be silent for. What it does *not* catch
+    /// is the defect its first draft claimed: the ZIP crate's `unix_mode`
+    /// invents `0o664` for an archive made on DOS, and `0o664 & 0o111` is zero,
+    /// so `executable` stays false and this passes whether the mode was
+    /// invented or absent. `a_container_recording_no_mode_says_nothing` in
+    /// `slpc`'s own tests is what holds that — it asserts `payload_mode()` is
+    /// `None` and fails against the invention. This holds the smaller thing it
+    /// can: that a container recording nothing produces no line.
     #[test]
     fn a_container_recording_no_mode_says_nothing() {
         let dir = tempfile::tempdir().expect("a temporary directory");
