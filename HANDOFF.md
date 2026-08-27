@@ -357,6 +357,17 @@ What it deliberately does not claim is the window. Nothing headless reaches a
 double-clicked document, an icon, or a frame a person looks at. `CHECKLIST.md`
 stays the record for those on every platform.
 
+`.github/workflows/windows.yml` is the third, added on 2026-08-26 for the
+reason the other two were: eight `#[cfg(target_os = "windows")]` tests — five in
+`opens_with`, two in `lib.rs`, one in `main.rs` — ran on no machine that
+anything revisited, and `linux.yml`'s cross-check compiles them without running
+them. It found one thing on the day it was written, an assertion in
+`extraction_tests` comparing a canonicalised path against a `tempfile` one,
+which is false on a runner whose `TEMP` is `C:\Users\RUNNER~1\…`. It runs the
+suite, clippy, the corpus with a ten-minute timeout, and a check that the
+committed `.ico` still matches its generator. `CHECKLIST.md`'s MSIX section says
+what else could go in it and what never can.
+
 `.github/workflows/linux.yml` is the second, and it exists for the ordinary
 reason rather than a gap: Linux is the machine everything was written on. Past
 the suite and the corpus it does two things the macOS file does not. It builds

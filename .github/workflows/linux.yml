@@ -46,7 +46,11 @@ jobs:
     steps:
       # v5 rather than the v4 `apple-silicon.yml` pins: v4 targets Node 20,
       # which GitHub has deprecated and is already forcing onto Node 24. That
-      # file is the macOS session's to change, one file per platform.
+      # file is left alone rather than bumped from here — not because a
+      # workflow belongs to a platform, which `windows.yml` was later written
+      # from this one to establish it does not, but because changing a pin is
+      # worth doing where somebody is watching that runner and will read what
+      # it says next.
       - uses: actions/checkout@v5
 
       - name: What is installed

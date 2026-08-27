@@ -209,6 +209,41 @@ a hash Windows validates and its key denies the user write access, which is
 deliberate and is why choosing a default is a thing a person does. It is in
 *Not yet done by hand* below with the sequence.
 
+**Most of this sitting could be a CI step, and is not one yet.** Everything
+above was measured once, by hand, and nothing revisits it. The measurement
+itself says why that is fixable: `makeappx`, `New-SelfSignedCertificate`,
+`signtool` and `Add-AppxPackage` all ran without administrator, and the one
+action that needed it — the certificate reaching `LocalMachine\TrustedPeople` —
+is available on a GitHub runner anyway, which is administrator by default. So
+building a package, signing it, installing it, and asking `opens_with` the same
+twenty questions inside the container as outside is mechanical from end to end.
+That is most of questions 1 and 2, turned from a thing somebody did once into a
+thing that fails when it stops being true.
+
+`windows.yml` is where it would go. It was written from Linux on 2026-08-26,
+for the ordinary reason — eight `#[cfg(target_os = "windows")]` tests ran on no
+machine anything revisited — and it does not need to change hands to be added
+to: `.github/workflows` is not one of the per-platform directories `CLAUDE.md`
+scopes a session to, and re-authoring a working file to change whose name is on
+it costs the reasoning in its comments and buys nothing. What does want this
+platform is deciding *what* to assert, which has to be learned on the machine
+first. That is the order this file exists to serve: walk it, write it down, then
+automate the half that needs no eyes.
+
+**Three things that cannot go to CI**, so that a later reader does not try. The
+window, and everything about it. A real double-click, and the picker that
+appears when Windows chooses neither handler. And the stale-`UserChoice`
+sequence, for the reason the paragraph above gives — the key cannot be forged
+into place, which is the point of it.
+
+**And one trap to carry into any such step.** `AssocQueryString` answers
+`ERROR_NO_APPLICATION_ASSOCIATED` for a packaged handler's executable and
+command line while still returning its friendly names, because activation goes
+through the app model rather than through a path. An assertion that checks for
+an executable will therefore call a correct package no association at all. That
+is the `assoc` and `ftype` trap again, and it is the failure a CI step would
+most plausibly be written into.
+
 ### What running the corpus on Windows found, and what it cost to clear
 
 The conformance corpus had never been run on this platform — it needs Python to
