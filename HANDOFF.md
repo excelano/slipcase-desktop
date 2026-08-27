@@ -174,15 +174,17 @@ devices stays Windows's to know.
 
 Three things a reader should not have to rediscover. It took two changes, not
 one — with `extract` repaired the run still hung, because `src/bin/corpus.rs`
-builds a path out of the payload name too, so `destination` is public and the
-two share the rule. The handover is still impossible and now says so:
+builds a path out of the payload name too, so the two share one function. The handover is still impossible and now says so:
 `opener::open` on such a file returns *the specified device name is invalid*,
 an error the application already has a sentence for, where before there was a
 hang or a silence. And it cost one thing, paid separately: the path handed back
-is the verbatim one because that is what addresses the file, so `shown` takes
-the prefix off for display and nothing else does — an existing test caught
+is the verbatim one because that is what addresses the file, so one function
+takes the prefix off for display and nothing else does — an existing test caught
 *Extracted to* about to show somebody `\\?\C:\…`, which is how that was noticed
 rather than shipped.
+
+Both functions have since moved into `slpc` 0.3.5 as `payload_path` and
+`display_path`, with `provenance`, and neither is in this repository now.
 
 `DESIGN.md` §8 carries both amendments, the second recording that the decision
 went elsewhere, and `CHECKLIST.md` holds the run. What is still unmeasured is
