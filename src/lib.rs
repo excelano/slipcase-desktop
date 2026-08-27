@@ -95,7 +95,7 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
     // way for a name to fail to be a file: `slpc::payload_path` is where that
     // now lives, having been this application's `destination` until 0.3.5.
     let out = slpc::payload_path(into, container.payload_name())?;
-    copy_out(&mut container, source, &out, watch)
+    copy_out(&mut container, source, &out, watch, true)
 }
 
 /// Copy a container's payload to a path somebody chose, watchably.
@@ -113,44 +113,75 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
 pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
     let source = container;
     let mut container = slpc::Container::open_with(container, LIMITS)?;
-    copy_out(&mut container, source, out, watch)
+    copy_out(&mut container, source, out, watch, true)
 }
 
 /// The part both extractions share.
+///
+/// `replacing` says whether there may legitimately be a file at `out` already,
+/// and both callers pass true for different reasons. The path somebody named in
+/// a save dialog may exist because the dialog asked them about it and they said
+/// yes. The handover directory may hold a file of that name because it is one
+/// directory for the whole session and they opened a container with the same
+/// payload name earlier — which the conformance corpus found the moment this
+/// was false, twenty-five cases into a run that shares one scratch directory.
+///
+/// Replacing is safe in both and for the same reason: `Destination` renames a
+/// finished file over the destination, and a rename replaces what is at a path
+/// rather than following it. The handover directory is additionally this
+/// process's own, mode 0700, with nothing else able to put anything in it.
 fn copy_out(
     container: &mut slpc::Container<std::fs::File>,
     source: &Path,
     out: &Path,
     watch: &Watch,
+    replacing: bool,
 ) -> slpc::Result<Extracted> {
-    // Asked for before the file is created, so a container that refuses leaves
+    // Asked for before anything is reserved, so a container that refuses leaves
     // nothing behind at all.
     let mut payload = container.payload()?;
 
-    let outcome = copy(&mut payload, out, watch).and_then(|copied| {
-        // Inside the cleanup below rather than after it, because a payload
-        // whose provenance could not be carried must not be left on disk under
-        // the name a person is about to be handed. `provenance::carry` fails
-        // only where the platform gates opening on a mark the container
-        // carried, so an error here is exactly the laundering case.
-        if matches!(copied, Extracted::Done(_)) {
-            slpc::provenance::carry(source, out)?;
-        }
-        Ok(copied)
-    });
-    if !matches!(outcome, Ok(Extracted::Done(_))) {
-        // Including where the path was one somebody chose over a file they
-        // already had. `File::create` truncated it before the first byte was
-        // read, so those contents are gone either way, and a part-written file
-        // under the name they chose is the worse thing to leave.
-        let _ = std::fs::remove_file(out);
+    // Through the library rather than `File::create`, and what that replaces is
+    // a defect rather than a style. `File::create` follows a symbolic link at
+    // the destination and truncates whatever is on the other end, so extracting
+    // into a directory where somebody had planted one wrote the payload
+    // somewhere this code never chose — and the cleanup then removed the *link*
+    // and left the damage, having deleted the only evidence of where the bytes
+    // went. Measured 2026-08-27: a container whose payload fails its checksum
+    // reported failure, left an empty destination, and put 200,000 bytes into a
+    // file two directories away.
+    //
+    // `Destination` writes to a temporary file beside the destination and
+    // renames it into place, so nothing exists at `out` until the payload is
+    // whole. A rename replaces a symbolic link rather than following it, and a
+    // failure or a cancellation now leaves whatever was there untouched instead
+    // of truncating it and then deleting it.
+    let mut landing = slpc::Destination::new(out, replacing)?;
+
+    if matches!(copy(&mut payload, landing.writer(), watch)?, Extracted::Cancelled) {
+        // `landing` drops here and takes its temporary file with it. Nothing at
+        // `out` was ever opened, which is what lets the window say that nothing
+        // was left behind and be right.
+        return Ok(Extracted::Cancelled);
     }
-    outcome
+    landing.commit()?;
+
+    // After the commit rather than before, because the mark belongs to the file
+    // a person will open and `commit` is what makes that file exist under its
+    // own name. `provenance::carry` fails only where the platform gates opening
+    // on a mark the container carried, so an error here is exactly the
+    // laundering case, and a payload that would open without the warning its
+    // origin earned must not be left under the name it is about to be handed
+    // to the system under. DESIGN.md §5.
+    if let Err(why) = slpc::provenance::carry(source, out) {
+        let _ = std::fs::remove_file(out);
+        return Err(why);
+    }
+    Ok(Extracted::Done(out.to_owned()))
 }
 
 /// The copy itself, in chunks, stopping when asked.
-fn copy(payload: &mut impl Read, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
-    let mut file = std::fs::File::create(out)?;
+fn copy(payload: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slpc::Result<Extracted> {
     let mut buffer = vec![0u8; CHUNK];
 
     loop {
@@ -161,12 +192,12 @@ fn copy(payload: &mut impl Read, out: &Path, watch: &Watch) -> slpc::Result<Extr
         if n == 0 {
             break;
         }
-        file.write_all(&buffer[..n])?;
+        into.write_all(&buffer[..n])?;
         watch.advance(n);
     }
 
-    file.flush()?;
-    Ok(Extracted::Done(out.to_owned()))
+    into.flush()?;
+    Ok(Extracted::Done(std::path::PathBuf::new()))
 }
 
 /// A path, and what the library made of it.
@@ -924,6 +955,90 @@ mod payload_tests {
         assert!(opened.payload.is_none(), "and no card");
     }
 
+    /// Extraction does not write through a symbolic link at the destination.
+    ///
+    /// **The defect this catches destroyed a file and hid where it went.**
+    /// `copy` used `File::create`, which follows a link and truncates whatever
+    /// is on the other end, and `copy_out` then removed the *link* on failure —
+    /// so a container extracted into a directory where somebody had planted one
+    /// wrote its payload two directories away, reported failure, left an empty
+    /// destination, and deleted the only evidence. Measured 2026-08-27 with a
+    /// payload whose stored checksum is a lie, which `validate` calls
+    /// conformant because nothing reads a payload to reach a verdict.
+    ///
+    /// Break `copy_out` back to `File::create` and this fails at the first
+    /// assertion.
+    #[test]
+    #[cfg(unix)]
+    fn extraction_does_not_write_through_a_symlink() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let victim = dir.path().join("victim.txt");
+        std::fs::write(&victim, b"IRREPLACEABLE").expect("writes");
+
+        let into = dir.path().join("dest");
+        std::fs::create_dir(&into).expect("a directory");
+        std::os::unix::fs::symlink(&victim, into.join("report.pdf")).expect("links");
+
+        // A conformant container whose payload will fail its checksum.
+        let container = dir.path().join("c.slpc");
+        let mut bytes = Vec::new();
+        slpc::pack_reader(
+            "report.pdf",
+            &b"the payload"[..],
+            slpc::toml_edit::DocumentMut::new(),
+            &mut bytes,
+        )
+        .expect("packs");
+        let crc = bytes
+            .windows(4)
+            .position(|w| w == 0x0403_4B50u32.to_le_bytes())
+            .expect("a local header");
+        bytes[crc + 14..crc + 18].copy_from_slice(&0xDEAD_BEEFu32.to_le_bytes());
+        std::fs::write(&container, &bytes).expect("writes");
+
+        let _ = super::extract(&container, &into, &super::Watch::new());
+
+        assert_eq!(
+            std::fs::read(&victim).expect("the victim survives"),
+            b"IRREPLACEABLE",
+            "the payload was written through the link"
+        );
+    }
+
+    /// Stopping leaves the file somebody chose exactly as it was.
+    ///
+    /// The window says *Stopped. Nothing was left behind*, and until
+    /// 2026-08-27 that was false: the destination was truncated before a byte
+    /// was read and then removed, so cancelling a copy over a file somebody had
+    /// chosen to replace deleted it. Catches a return to opening the
+    /// destination before the payload is whole.
+    #[test]
+    fn cancelling_leaves_the_chosen_file_alone() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let chosen = dir.path().join("mine.pdf");
+        std::fs::write(&chosen, b"MINE").expect("writes");
+
+        let container = dir.path().join("c.slpc");
+        let mut bytes = Vec::new();
+        slpc::pack_reader(
+            "report.pdf",
+            &b"the payload"[..],
+            slpc::toml_edit::DocumentMut::new(),
+            &mut bytes,
+        )
+        .expect("packs");
+        std::fs::write(&container, &bytes).expect("writes");
+
+        let watch = super::Watch::new();
+        watch.cancel();
+
+        assert!(matches!(
+            super::extract_at(&container, &chosen, &watch).expect("does not fail"),
+            super::Extracted::Cancelled
+        ));
+        assert_eq!(std::fs::read(&chosen).expect("still there"), b"MINE");
+    }
+
     /// A payload stored executable is reported as one, on Unix.
     ///
     /// DESIGN.md §5: the card says the extracted copy will not be executable,
@@ -1168,7 +1283,8 @@ mod extraction_tests {
             left: 10 * super::CHUNK,
         };
 
-        let outcome = super::copy(&mut reader, &out, &watch).expect("does not fail");
+        let mut into = std::fs::File::create(&out).expect("a file to write into");
+        let outcome = super::copy(&mut reader, &mut into, &watch).expect("does not fail");
 
         assert!(matches!(outcome, super::Extracted::Cancelled));
         // One chunk written, and the nine that would have followed are not.
@@ -1536,7 +1652,7 @@ mod replacement_tests {
         let container = packed(dir.path(), "title = \"stopped\"\n", "report.pdf", &vec![9u8; 200_000]);
 
         let out = dir.path().join("half-a-payload.bin");
-        let watch = Watch::new();
+        let watch = super::Watch::new();
         watch.cancel();
 
         assert!(matches!(
@@ -1583,7 +1699,7 @@ mod replacement_tests {
 
         let out = dir.path().join("out");
         std::fs::create_dir(&out).expect("a directory");
-        extract(&container, &out, &Watch::new()).expect("extracts");
+        extract(&container, &out, &super::Watch::new()).expect("extracts");
         assert_eq!(
             std::fs::read(out.join("report-v2.pdf")).expect("reads"),
             b"the new payload"
@@ -1636,7 +1752,7 @@ mod replacement_tests {
 
         let into = dir.path().join("out");
         std::fs::create_dir(&into).expect("a directory");
-        extract(&container, &into, &Watch::new()).expect("extracts");
+        extract(&container, &into, &super::Watch::new()).expect("extracts");
         assert_eq!(
             std::fs::read(into.join("report.pdf")).expect("reads"),
             b"the new payload",
@@ -1779,7 +1895,7 @@ mod windows_extraction_tests {
             let payload = format!("bytes for {name}").into_bytes();
             let container = container_named(dir.path(), name, &payload);
 
-            let out = match extract(&container, dir.path(), &Watch::new()) {
+            let out = match extract(&container, dir.path(), &super::Watch::new()) {
                 Ok(Extracted::Done(path)) => path,
                 Ok(Extracted::Cancelled) => panic!("{name}: an unwatched copy was cancelled"),
                 Err(e) => panic!("{name}: extraction failed: {e}"),
@@ -1815,7 +1931,7 @@ mod windows_extraction_tests {
         let container = container_named(dir.path(), "report.pdf", b"payload bytes");
         let chosen = dir.path().join("where-they-said.pdf");
 
-        let out = match super::extract_at(&container, &chosen, &Watch::new()) {
+        let out = match super::extract_at(&container, &chosen, &super::Watch::new()) {
             Ok(Extracted::Done(path)) => path,
             Ok(Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
             Err(e) => panic!("extraction failed: {e}"),

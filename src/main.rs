@@ -134,7 +134,14 @@ mod last_folder {
             return;
         };
         if std::fs::create_dir_all(dir).is_ok() {
-            let _ = std::fs::write(file, folder);
+            // Removed first, so a symbolic link left at this path is replaced
+            // rather than followed. Inside the user's own state directory, so
+            // it takes an attacker who can already write there — but the cost
+            // of not doing it is that this application writes a path of its
+            // choosing to a file of theirs, and the cost of doing it is a
+            // system call.
+            let _ = std::fs::remove_file(&file);
+            let _ = std::fs::write(&file, folder);
         }
     }
 
@@ -654,7 +661,12 @@ impl App {
                 dialog = dialog.set_directory(folder);
             }
             if let Some(name) = suggested {
-                dialog = dialog.set_file_name(name);
+                // Escaped, for the reason the card is. This prefills the field
+                // a person reads to decide what they are saving, and a payload
+                // called `report<U+202E>fdp.exe` reads there as `report.pdf` on
+                // any toolkit that applies the override — which the platform
+                // save dialog is, whatever egui does. SPEC §3.
+                dialog = dialog.set_file_name(slpc::display_name(&name).into_owned());
             }
             // A save dialog for the one question that names a file that does
             // not exist yet, so the platform asks before overwriting.
@@ -854,9 +866,21 @@ fn card(
             match extraction {
                 Extraction::Idle | Extraction::Running(_) => {}
                 Extraction::Done(path) => {
-                    ui.label(format!("Extracted to {}", slpc::display_path(path)));
+                    // `display_path` strips the `\\?\` prefix and does nothing
+                    // about the name inside the path, which is the payload's
+                    // and is attacker-controlled. Both, so the line says where
+                    // the file is and what it is called.
+                    ui.label(format!(
+                        "Extracted to {}",
+                        slpc::display_name(&slpc::display_path(path))
+                    ));
                 }
                 Extraction::Cancelled => {
+                    // True now, and it was not until 2026-08-27: extraction
+                    // used to truncate the destination before reading a byte,
+                    // so stopping destroyed a file somebody had chosen to
+                    // replace and then deleted it. Nothing is opened at the
+                    // destination until the payload is whole.
                     ui.label("Stopped. Nothing was left behind.");
                 }
                 Extraction::Failed(why) => {
@@ -876,8 +900,28 @@ impl App {
     /// The scratch directory, made on first use.
     fn scratch_dir(&mut self) -> Result<PathBuf, String> {
         if self.scratch.is_none() {
-            let made = tempfile::Builder::new()
-                .prefix("slipcase-")
+            let mut builder = tempfile::Builder::new();
+            builder.prefix("slipcase-");
+            // 0700 asked for rather than assumed. `tempfile`'s directories go
+            // through the umask — 0755 under the common one, 0775 under
+            // Debian's — so every payload somebody pressed Open on sat in a
+            // world-listable directory readable by any account on the machine,
+            // for the life of the process. Measured 2026-08-27. `Cargo.toml`
+            // said this crate was chosen *because* `TempDir` is 0700; it is
+            // not, and that claim is corrected there. `NamedTempFile`, which
+            // `slpc::Destination` uses, genuinely is 0600, which is why the two
+            // looked alike.
+            //
+            // Unix only, because `Permissions` has no mode elsewhere. Windows
+            // puts `%TEMP%` inside the user's profile with an inherited access
+            // list, so the directory is already private to the account; there
+            // is nothing to ask for and nothing to assume.
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt as _;
+                builder.permissions(std::fs::Permissions::from_mode(0o700));
+            }
+            let made = builder
                 .tempdir()
                 .map_err(|e| format!("no temporary directory to extract into: {e}"))?;
             self.scratch = Some(made);

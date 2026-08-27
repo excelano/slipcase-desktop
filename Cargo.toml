@@ -24,7 +24,7 @@ path = "src/main.rs"
 # The `fs` feature is the library's file-placement half. `Destination`, which
 # DESIGN.md §5 writes edited metadata back through, is behind it and is
 # compiled out without it.
-slpc = { version = "0.3.7", features = ["fs", "provenance"] }
+slpc = { version = "0.3.8", features = ["fs", "provenance"] }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
@@ -38,8 +38,16 @@ opener = "0.8"
 # feature, so this compiles nothing new. Named here rather than hand-rolled
 # because a directory built from a process id is wrong twice: a crashed run
 # leaves one behind for whoever next holds that id, and `create_dir` leaves it
-# readable by everyone on the machine. `TempDir` is 0700 and unguessable, and
-# removes its tree when it drops. DESIGN.md §5.
+# readable by everyone on the machine. `TempDir` is unguessable and removes its
+# tree when it drops. DESIGN.md §5.
+#
+# It is *not* 0700, which this said until 2026-08-27 and which was the stated
+# reason for choosing it. `Builder::tempdir` goes through the umask: 0755 under
+# the common one, 0775 under Debian's, so every payload somebody pressed Open on
+# was readable by any account on the machine. Both places that make a directory
+# here now ask for 0700 explicitly. `NamedTempFile` genuinely is 0600, which is
+# how the wrong half went unnoticed — the two are different code paths and only
+# one of them was ever measured.
 tempfile = "3.27"
 
 # Launch Services answers `opens_with` on macOS, and it is a C API this crate

@@ -68,8 +68,17 @@ jobs:
       # did not. It resolves its manifest and its output directory from its own
       # location rather than the working directory, so it is run by path and
       # needs no `cd` and no `--out`.
+      # Pinned rather than tracking `main`. This clones another repository and
+      # runs a Python file out of it, before the build, on every push — so
+      # whoever can land a commit there executes code here. `excelano/slipcase`
+      # is ours and `generate.py` is read before every bump, but "ours" is not a
+      # security boundary and the corpus's own argument for determinism wants a
+      # fixed input anyway. Bump this deliberately when the corpus changes.
+      #
+      # SPEC-PIN: d0e3dd7c96e9f1dadbbfc069f058a66f25ba2fcd
       - name: The conformance corpus, every case
         run: |
-          git clone --depth 1 https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
+          git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
+          git -C "${RUNNER_TEMP}/slipcase" checkout --detach d0e3dd7c96e9f1dadbbfc069f058a66f25ba2fcd
           python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"
           cargo run --bin corpus -- "${RUNNER_TEMP}/slipcase/conformance"

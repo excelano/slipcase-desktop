@@ -114,9 +114,31 @@ decision to take with David, not one to take because there is precedent.
 
 The rest of this section still has no exceptions.
 
-**Nothing compiles C.** `cc`, `cmake`, `pkg-config`, and `bindgen` stay out of
-the build-dependency tree. Run `cargo tree -i cc` after adding any dependency. A
-crate that links a system library is fine; one that builds C is not.
+**Nothing compiles C.** A crate that links a system library is fine; one that
+builds C is not.
+
+**The check for it was wrong, and had been reporting a positive nobody read.**
+This said `cc`, `cmake`, `pkg-config` and `bindgen` stay out of the
+build-dependency tree, and named `cargo tree -i cc` as the way to know. Measured
+2026-08-27: that command has a non-empty answer and has had for as long as the
+window has existed — `cc` arrives under `wayland-backend`, `pkg-config` under
+`wayland-sys`, both through `eframe` and `rfd`, and both are compiled as
+ordinary Rust crates. A check whose red is the normal state announces nothing.
+
+The rule means the outcome, so check the outcome:
+
+    cargo build --release
+    find "$(cargo metadata --format-version 1 --no-deps |
+        sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release/build" \
+        \( -name '*.o' -o -name '*.a' \) -print -quit    # must print nothing
+    ldd target/release/slipcase-desktop                    # libc, libgcc, libm
+
+Nothing is compiled today and nothing beyond those three is linked, so what
+`DESIGN.md` §2 buys still holds. The margin is one feature: `wayland-backend`
+builds two C shims when its `log` feature is on, and `wayland-sys` probes
+pkg-config when `dlopen` is off. Cargo unifies features across the graph, so a
+new dependency can turn either on without an edit here — which is the day the
+check has to work.
 
 **No table mapping filenames to types.** What the card says about a payload's
 type is what the platform said. Where the platform will not answer, the card

@@ -69,10 +69,19 @@ jobs:
       # case had a name, so a timeout is set: a run that hangs looks exactly
       # like a run that is slow, and the whole job's default of six hours is the
       # wrong thing to find out at.
+      # Pinned rather than tracking `main`. This clones another repository and
+      # runs a Python file out of it, before the build, on every push — so
+      # whoever can land a commit there executes code here. `excelano/slipcase`
+      # is ours and `generate.py` is read before every bump, but "ours" is not a
+      # security boundary and the corpus's own argument for determinism wants a
+      # fixed input anyway. Bump this deliberately when the corpus changes.
+      #
+      # SPEC-PIN: d0e3dd7c96e9f1dadbbfc069f058a66f25ba2fcd
       - name: The conformance corpus, every case
         timeout-minutes: 10
         run: |
-          git clone --depth 1 https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
+          git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
+          git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach d0e3dd7c96e9f1dadbbfc069f058a66f25ba2fcd
           python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
           cargo run --bin corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
 

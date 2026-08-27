@@ -276,8 +276,8 @@ platforms together, which no platform session can do. What it covers:
   what it found rather than that it passed.
 - **The executable-payload line has been seen by somebody.** It is written and
   unit-tested as of 2026-08-27 and has been rendered in front of nobody.
-  `CHECKLIST.md`'s *the card's new lines, and what a save keeps* is the run,
-  four items, and it wants doing on each platform. The fourth is the one to run
+  `CHECKLIST.md`'s *the card's new lines, what a save keeps, and where a
+  payload waits* is the run, six items, and it wants doing on each platform. The fourth is the one to run
   first on macOS: it is the only place the provenance fix of 0.3.7 is untested. The same applies to the escaped payload name
   beside it.
 - **The three CI workflows are green**, the corpus agrees on every case on every platform

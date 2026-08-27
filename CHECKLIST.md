@@ -11,7 +11,7 @@ where a run found something — what actually happened.
 
 ---
 
-## Every platform: the card's new lines, and what a save keeps
+## Every platform: the card's new lines, what a save keeps, and where a payload waits
 
 Added 2026-08-27 with `slpc` 0.3.6. Both are lines on the payload card, so no
 test in this repository reaches either: there is no UI harness here and the card
@@ -72,9 +72,34 @@ Both fixtures are in the conformance corpus, so nothing has to be built by hand:
    quietly turns *arrived from elsewhere* into nothing is the failure, even
    though the file stays gated.
 
+5. **The temporary directories are private, on this platform.** Two are made:
+   the handover directory a payload is extracted into, and the probe directory
+   `opens_with` uses on Linux. Both ask for mode 0700 as of 2026-08-27, having
+   been 0755 under the ordinary umask before it — `tempfile` puts its
+   directories through the umask and this repository had recorded the opposite
+   as fact. Open a container, press Open, and look at what was made:
+
+       ls -ld /tmp/slipcase-*                    # Linux, macOS
+
+   On Windows there is nothing to ask for: `%TEMP%` is inside the user's profile
+   and inherits its access list, so the check there is that the extracted
+   payload is not somewhere else. Confirm with Explorer's Properties, Security
+   tab, that only the account and the usual system principals are listed.
+
+   On macOS under the sandbox the directory is inside the container at
+   `~/Library/Containers/com.excelano.slipcase-desktop/Data/tmp`, which is
+   already private — the question there is the one below it.
+6. **An application launched through Open can actually read the payload, under
+   the macOS sandbox.** Launch Services normally grants the opened application a
+   scope for the URL it was launched with, but the payload now sits in a 0700
+   directory inside another application's container and nobody has walked it. If
+   this fails, Open fails for every container on the Store build, so it is worth
+   doing early and it is cheap: open any container, press Open, and see whether
+   Preview shows the PDF or an error.
+
 ### Not yet done by hand
 
-- **All four items, on all three platforms.** Written the day the lines landed
+- **All six items, on all three platforms.** Written the day the lines landed
   and run on none of them. The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it

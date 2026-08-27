@@ -47,6 +47,7 @@ pub fn opens_with(_payload_name: &str) -> Option<String> {
 
 #[cfg(target_os = "linux")]
 mod linux {
+    use std::os::unix::fs::PermissionsExt as _;
     use std::path::{Path, PathBuf};
     use std::process::Command;
 
@@ -68,10 +69,10 @@ mod linux {
         }
 
         let dir = probe_dir()?;
-        let text = write_probe(&dir, "text", payload_name, b" ");
-        let binary = write_probe(&dir, "binary", payload_name, &[0u8; 4]);
+        let text = write_probe(dir.path(), "text", payload_name, b" ");
+        let binary = write_probe(dir.path(), "binary", payload_name, &[0u8; 4]);
 
-        let answer = match (text, binary) {
+        match (text, binary) {
             (Some(t), Some(b)) => {
                 let (t, b) = (query_filetype(&t)?, query_filetype(&b)?);
                 if t == b {
@@ -81,18 +82,39 @@ mod linux {
                 }
             }
             _ => None,
-        };
-
-        // The probes are this function's own litter and outlive nothing.
-        let _ = std::fs::remove_dir_all(&dir);
-        answer
+        }
+        // `dir` drops here and takes the probes with it. Returning early above
+        // is why it has to be a `TempDir` rather than a path removed at the
+        // end: the previous version's `remove_dir_all` was skipped by every `?`
+        // in this function, so a probe carrying the payload's name outlived the
+        // question on any container whose type the platform would not name.
     }
 
     /// A directory of this process's own to put the probes in.
-    fn probe_dir() -> Option<PathBuf> {
-        let dir = std::env::temp_dir().join(format!("slipcase-desktop-probe-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).ok()?;
-        Some(dir)
+    ///
+    /// **A private directory, not a predictable one, and this is the second
+    /// time that distinction has cost something here.** It used to be
+    /// `$TMPDIR/slipcase-desktop-probe-<pid>`, and every part of that was
+    /// wrong. `/tmp` is world-writable, a process id is guessable and reused,
+    /// `create_dir_all` succeeds on a path that already exists — including a
+    /// symbolic link to somewhere else — and `fs::write` follows one. So
+    /// anybody with an account on the machine could plant that path, and
+    /// opening a container would then create or truncate a file of the
+    /// container's choosing in a directory of theirs: measured 2026-08-27, a 35
+    /// byte `authorized_keys` became four NUL bytes, with no user action beyond
+    /// opening the container, because this runs from `Opened::open` at startup.
+    ///
+    /// The mode matters as much as the name. `tempfile`'s directories go
+    /// through the umask — 0755 under the common one — so the probes, which
+    /// carry the payload's filename, were readable by every account on the
+    /// machine. `Cargo.toml` already argued all of this about the *other*
+    /// scratch directory and this code did not get the message.
+    fn probe_dir() -> Option<tempfile::TempDir> {
+        tempfile::Builder::new()
+            .prefix("slipcase-probe-")
+            .permissions(std::fs::Permissions::from_mode(0o700))
+            .tempdir()
+            .ok()
     }
 
     /// One probe: the payload's name, under a directory of its own so that two
