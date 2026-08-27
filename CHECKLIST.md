@@ -11,7 +11,7 @@ where a run found something — what actually happened.
 
 ---
 
-## Every platform: the card's two new lines
+## Every platform: the card's new lines, and what a save keeps
 
 Added 2026-08-27 with `slpc` 0.3.6. Both are lines on the payload card, so no
 test in this repository reaches either: there is no UI harness here and the card
@@ -51,9 +51,30 @@ Both fixtures are in the conformance corpus, so nothing has to be built by hand:
    a hand is confirming is that the escape now shows the character that was
    always there, and that nothing about the layout broke.
 
+4. **Saving an edit does not launder the container.** Mark a container the way a
+   download would — `xattr -w com.apple.quarantine '0083;68ae0000;Safari;' c.slpc`
+   on macOS, a `Zone.Identifier` stream on Windows — open it, change one value,
+   press Save, and check the mark is still there afterwards. The card's *arrived
+   from elsewhere* line should read the same before and after.
+
+   This is the defect the whole section owes its existence to, found on Linux by
+   measurement on 2026-08-27 and fixed in `slpc` 0.3.7. Linux and Windows get the
+   fix from `Destination::in_place`, which the library's own tests cover.
+   **macOS does not**: `src/staging.rs` replaces the container through
+   `-[NSFileManager replaceItemAtURL:…]` and carries the mark itself, and nothing
+   in either repository can test that arm. It is the one to run first.
+
+   Then the sandboxed case, which is a separate answer rather than the same one:
+   the platform marks what a sandboxed process writes, so the container will be
+   marked whatever happens. What to look at is whether the card still says the
+   container arrived from elsewhere, because the agent field will now name this
+   application and `DESIGN.md` §5 has the card disregarding those. A save that
+   quietly turns *arrived from elsewhere* into nothing is the failure, even
+   though the file stays gated.
+
 ### Not yet done by hand
 
-- **All three items, on all three platforms.** Written the day the lines landed
+- **All four items, on all three platforms.** Written the day the lines landed
   and run on none of them. The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it

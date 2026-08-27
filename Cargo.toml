@@ -24,7 +24,7 @@ path = "src/main.rs"
 # The `fs` feature is the library's file-placement half. `Destination`, which
 # DESIGN.md §5 writes edited metadata back through, is behind it and is
 # compiled out without it.
-slpc = { version = "0.3.6", features = ["fs", "provenance"] }
+slpc = { version = "0.3.7", features = ["fs", "provenance"] }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature

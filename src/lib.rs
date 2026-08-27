@@ -89,7 +89,7 @@ const CHUNK: usize = 64 * 1024;
 /// from writing the file.
 pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Extracted> {
     let source = container;
-    let mut container = slpc::Container::open(container)?;
+    let mut container = slpc::Container::open_with(container, LIMITS)?;
     // Through the library rather than by joining. A name checked against
     // SPEC 2.3 cannot leave the directory, and leaving it was never the only
     // way for a name to fail to be a file: `slpc::payload_path` is where that
@@ -112,7 +112,7 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
 /// from writing the file.
 pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
     let source = container;
-    let mut container = slpc::Container::open(container)?;
+    let mut container = slpc::Container::open_with(container, LIMITS)?;
     copy_out(&mut container, source, out, watch)
 }
 
@@ -211,6 +211,38 @@ pub struct Opened {
     /// provenance instead of to type.
     pub from_elsewhere: bool,
 }
+
+/// What this application is willing to spend before it knows what it is holding.
+///
+/// SPEC §6 requires a bound on the metadata member and leaves the number to the
+/// implementation. `slpc`'s default is 1 MiB, chosen against what parsing costs;
+/// this is a quarter of that, chosen against what *rendering* costs, which is
+/// the larger number here and which the library has no way to know about.
+///
+/// Measured 2026-08-27, against the densest conformant metadata anybody can
+/// write — shortest legal keys, shortest legal values — with the window up:
+///
+/// | metadata | keys | resident |
+/// | --- | --- | --- |
+/// | none (baseline) | — | 135 MB |
+/// | 256 KiB | 40,052 | 347 MB |
+/// | 1 MiB | 152,399 | 891 MB |
+///
+/// About 8.7 KB per key, of which roughly 1.3 KB is the parsed document and the
+/// rest is what `egui` retains for a row it has been shown. DESIGN.md §4's tree
+/// renders every entry rather than the visible ones, which is right for a
+/// metadata document and wrong for a hostile one, and this is the bound that
+/// keeps the second from mattering.
+///
+/// 256 KiB is generous against every legitimate document: the format defines two
+/// keys, SPEC §2.2's example is four lines, and the largest container in the
+/// conformance corpus carries 64 KiB. A container over it is reported
+/// undetermined, which is SPEC §6's answer and not a verdict against the file.
+const LIMITS: slpc::Limits = {
+    let mut l = slpc::Limits::DEFAULT;
+    l.metadata_bytes = 256 << 10;
+    l
+};
 
 /// The payload, as the card states it.
 pub struct Payload {
@@ -523,7 +555,7 @@ fn executable<R: std::io::Read + std::io::Seek>(_container: &slpc::Container<R>)
 impl Payload {
     /// Describe the payload of a container already found conformant.
     fn of(path: &Path) -> Option<Self> {
-        let container = slpc::Container::open(path).ok()?;
+        let container = slpc::Container::open_with(path, LIMITS).ok()?;
         let name = container.payload_name().to_owned();
         // Read from the central directory, so this decompresses nothing and a
         // payload whose compression or encryption this build cannot handle is
@@ -597,11 +629,11 @@ impl Opened {
         // that check has to be asked for separately.
         let metadata = std::fs::File::open(&path)
             .ok()
-            .and_then(|f| slpc::metadata_of(f).ok());
+            .and_then(|f| slpc::metadata_of_with(f, LIMITS).ok());
 
         let outcome = match std::fs::File::open(&path) {
             Err(e) => Outcome::Unreadable(e.to_string()),
-            Ok(f) => match slpc::validate(f) {
+            Ok(f) => match slpc::validate_with(f, LIMITS) {
                 Ok(v) => Outcome::Judged(v),
                 // Always `Error::Io`: the library documents that everything a
                 // container itself can be comes back as a verdict.
@@ -712,7 +744,7 @@ impl Opened {
         // Read back before anything is replaced, which is the difference
         // between replacing the only copy of a container on faith and doing it
         // on evidence.
-        let verdict = slpc::validate(destination.written()?)?;
+        let verdict = slpc::validate_with(destination.written()?, LIMITS)?;
         if !verdict.is_conformant() {
             return Ok(Saved::Refused(verdict));
         }
@@ -848,6 +880,48 @@ mod payload_tests {
         let path = dir.join("with-a-mode.slpc");
         std::fs::write(&path, &bytes).expect("writes");
         path
+    }
+
+    /// A container whose metadata is past what this application will spend is
+    /// undetermined, and shows no tree.
+    ///
+    /// The defect this catches is a window that opens whatever it is given and
+    /// finds out afterwards. Measured 2026-08-27 before the bound: 256 KiB of
+    /// dense metadata cost 347 MB resident and 1 MiB cost 891 MB, against a
+    /// 135 MB baseline, because DESIGN.md §4's tree renders every entry rather
+    /// than the visible ones and `egui` retains about 8.7 KB for each row it has
+    /// been shown. All of it inside a container this corpus calls conformant.
+    ///
+    /// Undetermined rather than reject, which is the half an over-eager fix gets
+    /// wrong: the bound is this application's and SPEC §6 is explicit that a
+    /// reader must not publish its own configuration as a property of somebody
+    /// else's file.
+    #[test]
+    fn metadata_past_what_this_application_will_spend_is_undetermined() {
+        use std::fmt::Write as _;
+
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = dir.path().join("dense.slpc");
+
+        // The densest conformant shape: shortest legal keys and values.
+        let mut metadata = String::from("slipcase_version = \"1.0\"\n\n[payload]\nfile = \"report.pdf\"\n\n[b]\n");
+        for i in 0..80_000u32 {
+            let _ = writeln!(metadata, "k{i}=1");
+        }
+        assert!(
+            metadata.len() as u64 > super::LIMITS.metadata_bytes,
+            "the fixture has to be over the bound to test it"
+        );
+
+        let document: slpc::toml_edit::DocumentMut = metadata.parse().expect("valid TOML");
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+        std::fs::write(&path, &bytes).expect("writes");
+
+        let opened = super::Opened::open(&path);
+        assert_eq!(opened.verdict_word(), "undetermined");
+        assert!(opened.metadata.is_none(), "no tree for a document not read");
+        assert!(opened.payload.is_none(), "and no card");
     }
 
     /// A payload stored executable is reported as one, on Unix.

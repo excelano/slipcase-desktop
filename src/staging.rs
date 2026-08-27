@@ -82,6 +82,35 @@ impl Staged {
             // to its reserved name inside the scratch directory. Both are ours,
             // so nothing about that rename is a sandbox's business.
             self.destination.commit()?;
+
+            // What the platform records about where the container came from,
+            // put on the rewrite before it becomes the container. The other two
+            // platforms get this from `Destination::in_place`, which carries it
+            // across the rename it does; this arm does not use `in_place`, so
+            // without the line below saving an edit to a downloaded container
+            // would strip its `com.apple.quarantine` — the defect measured on
+            // Linux on 2026-08-27 and fixed in `slpc` 0.3.7, arriving here by
+            // the one door that fix does not reach.
+            //
+            // Done here rather than trusted to `replaceItemAtURL:`, which is
+            // documented to preserve the original item's metadata and may well
+            // preserve this too. May well is not measured, this is the
+            // attribute `CHECKLIST.md` records as the difference between an
+            // unsigned application from the internet being stopped and running,
+            // and doing it twice costs a `Mark::AlreadyMarked` and nothing else.
+            //
+            // Not fatal. `carry` refuses when the copy would be ungated where
+            // the original was gated, and that rule is written for a payload
+            // about to be handed to the system. This is a container, and the
+            // thing that opens a container is this application, which reports
+            // provenance rather than acting on it — so a save that has already
+            // been validated is not thrown away over it.
+            if let Err(e) = slpc::provenance::carry(self.landing.original(), self.landing.staged())
+            {
+                eprintln!(
+                    "slipcase-desktop: where this container came from could not be carried onto the rewrite: {e}"
+                );
+            }
             self.landing.replace_original()
         }
     }
@@ -164,6 +193,12 @@ mod macos {
 
         pub(crate) fn staged(&self) -> &Path {
             &self.staged
+        }
+
+        /// The container being replaced, for reading what the platform records
+        /// about where it came from.
+        pub(crate) fn original(&self) -> &Path {
+            &self.original
         }
 
         /// Move the rewrite onto the original.
