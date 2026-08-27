@@ -95,6 +95,29 @@ jobs:
           python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"
           cargo run --bin corpus -- "${RUNNER_TEMP}/slipcase/conformance"
 
+      # `CLAUDE.md` forbids compiling C, and the check it used to name —
+      # `cargo tree -i cc` — has had a non-empty answer for as long as this
+      # window has existed: `cc` arrives under `wayland-backend` and
+      # `pkg-config` under `wayland-sys`, both through `eframe`, and both are
+      # built as ordinary Rust crates. A check whose red is the normal state
+      # announces nothing on the day it matters, so this checks the outcome the
+      # rule means instead. `wayland-backend` compiles two C shims when its
+      # `log` feature is on, and Cargo unifies features across the graph, so a
+      # new dependency can turn that on with no edit here — which is exactly
+      # what this is watching for.
+      - name: Nothing compiled C
+        run: |
+          target=$(cargo metadata --format-version 1 --no-deps |
+              sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          objects=$(find "${target}" -path '*/build/*' \( -name '*.o' -o -name '*.a' \) -print)
+          [ -z "$objects" ] || { echo "a build script produced object files:"; echo "$objects"; exit 1; }
+
+          echo "linked at load time:"
+          ldd "${target}/debug/slipcase-desktop" | sed 's/^/  /'
+          strange=$(ldd "${target}/debug/slipcase-desktop" |
+              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib64/ld-linux)' || true)
+          [ -z "$strange" ] || { echo "unexpected shared libraries:"; echo "$strange"; exit 1; }
+
       - name: Build the package
         run: |
           cargo build --release

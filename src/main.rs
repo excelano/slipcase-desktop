@@ -149,6 +149,38 @@ mod last_folder {
     mod tests {
         use super::{read_from, write_to};
 
+        /// Remembering a folder replaces a symbolic link rather than following
+        /// it.
+        ///
+        /// Catches a plain `fs::write` at this path. It is inside the user's
+        /// own state directory, so it takes somebody who can already write
+        /// there — but what it buys them is this application writing a path of
+        /// its choosing into a file of theirs, and the cost of not letting them
+        /// is one system call.
+        #[test]
+        #[cfg(unix)]
+        fn remembering_a_folder_does_not_follow_a_link() {
+            use super::file_in;
+
+            let base = tempfile::tempdir().expect("a temporary directory");
+            let victim = base.path().join("victim");
+            std::fs::write(&victim, b"NOT A PATH").expect("writes");
+
+            let state = file_in(base.path());
+            std::fs::create_dir_all(state.parent().expect("a parent")).expect("makes it");
+            std::os::unix::fs::symlink(&victim, &state).expect("links");
+
+            let container = base.path().join("somewhere").join("c.slpc");
+            std::fs::create_dir_all(container.parent().expect("a parent")).expect("makes it");
+            write_to(base.path(), &container);
+
+            assert_eq!(
+                std::fs::read(&victim).expect("the victim survives"),
+                b"NOT A PATH",
+                "the folder was written through the link"
+            );
+        }
+
         #[test]
         fn a_folder_survives_being_written_and_read() {
             let state = tempfile::tempdir().expect("a temporary directory");
@@ -1237,6 +1269,28 @@ mod tests {
                  coloured lines are held to is one the card itself does not clear"
             );
         }
+    }
+
+    /// The directory a payload waits in is private, whatever the umask says.
+    ///
+    /// **The defect this catches published every payload somebody pressed Open
+    /// on.** `tempfile` puts its directories through the umask — 0755 under the
+    /// common one and 0775 under Debian's — so the handover directory, and the
+    /// payload inside it, were readable by every account on the machine for the
+    /// life of the process. `Cargo.toml` named this crate's 0700 as the reason
+    /// for choosing it; `NamedTempFile` is 0600 and `TempDir` is not, and only
+    /// the first had ever been measured.
+    ///
+    /// Drop the `permissions` call and this fails under any umask but 0077.
+    #[test]
+    #[cfg(unix)]
+    fn the_handover_directory_is_private() {
+        use std::os::unix::fs::PermissionsExt as _;
+
+        let mut app = app(None);
+        let dir = app.scratch_dir().expect("a scratch directory");
+        let mode = std::fs::metadata(&dir).expect("stats").permissions().mode();
+        assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
     }
 
     fn app(opened: Option<Opened>) -> App {

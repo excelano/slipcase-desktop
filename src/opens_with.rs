@@ -212,7 +212,63 @@ mod linux {
 
     #[cfg(test)]
     mod tests {
-        use super::name_in;
+        use super::{name_in, probe_dir, write_probe};
+        use std::os::unix::fs::PermissionsExt as _;
+
+        /// **The probe cannot be aimed by anybody but this process.**
+        ///
+        /// The defect this catches truncated a file of the container's choosing
+        /// in a directory of the attacker's. The probe directory used to be
+        /// `$TMPDIR/slipcase-desktop-probe-<pid>`: `/tmp` is world-writable, a
+        /// process id is guessable, `create_dir_all` succeeds on a path that is
+        /// already a symbolic link, and `fs::write` follows one. Measured
+        /// 2026-08-27, a 35-byte `authorized_keys` became four NUL bytes, from
+        /// opening a container and nothing else.
+        ///
+        /// Plant the old path at this process's own id and ask the question the
+        /// card asks. Nothing may reach the victim. Restore `probe_dir` to the
+        /// pid-named path and this fails.
+        #[test]
+        fn a_planted_directory_cannot_catch_the_probe() {
+            let victim = tempfile::tempdir().expect("a temporary directory");
+            let keys = victim.path().join("authorized_keys");
+            std::fs::write(&keys, b"ssh-rsa AAAA a-key-that-matters").expect("writes");
+
+            let old = std::env::temp_dir()
+                .join(format!("slipcase-desktop-probe-{}", std::process::id()));
+            let _ = std::fs::create_dir_all(&old);
+            for which in ["text", "binary"] {
+                let _ = std::os::unix::fs::symlink(victim.path(), old.join(which));
+            }
+
+            let _ = super::mime_of("authorized_keys");
+
+            assert_eq!(
+                std::fs::read(&keys).expect("the victim survives"),
+                b"ssh-rsa AAAA a-key-that-matters",
+                "the probe was written through a planted path"
+            );
+            let _ = std::fs::remove_dir_all(&old);
+        }
+
+        /// The probe directory is private, whatever the umask says.
+        ///
+        /// The probes carry the payload's filename, so a world-listable
+        /// directory publishes what somebody opened to every account on the
+        /// machine. `tempfile` puts its directories through the umask — 0755
+        /// under the common one — so this has to be asked for, and this crate
+        /// recorded the opposite as fact until it was measured.
+        #[test]
+        fn the_probe_directory_is_private() {
+            let dir = probe_dir().expect("a probe directory");
+            let mode = std::fs::metadata(dir.path()).expect("stats").permissions().mode();
+            assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
+
+            // And the probe inside it is where it was put, not somewhere else.
+            let probe = write_probe(dir.path(), "text", "report.pdf", b" ").expect("writes");
+            assert!(probe.starts_with(dir.path()), "{}", probe.display());
+        }
+
 
         /// `Name[de]` is somebody else's language, and a `Name` under an action
         /// group is the action's rather than the application's.
