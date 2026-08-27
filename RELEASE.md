@@ -108,10 +108,20 @@ reserved rather than after, which is the only timing that matters.
 - **A privacy policy at `excelano.com/legal/#slipcase`.** Decided, and the
   address follows what is already there: `/legal/` carries one page with a
   per-application anchor, `#blick` and `#zirbe` being the existing two. Both
-  stores want the URL. The substance is short and unusually easy here — no
-  network calls, no telemetry, no configuration directory, nothing stored beyond
-  files a person asked for — and the existing entries are the model for how much
-  of that to say and in what voice.
+  stores want the URL. The substance is short — no network calls, no telemetry,
+  no analytics, no account, and nothing sent anywhere — and the existing entries
+  are the model for how much of that to say and in what voice.
+
+  **It must say what is stored, because something is.** An earlier draft of this
+  line said *no configuration directory, nothing stored beyond files a person
+  asked for*, and that is not true of the built application:
+  `src/main.rs`'s `last_folder` writes the directory of the last container
+  opened to `$XDG_STATE_HOME/slipcase-desktop/last-folder`, so that the file
+  dialog opens somewhere useful. One line, one path, never sent anywhere, and
+  removable by deleting the file — but a privacy policy claiming nothing is
+  stored would be false, on a page two stores will link to. This is the class of
+  error the readiness review below exists to catch, found here by reading the
+  code rather than the sentence.
 - **Store listing text**, drafted once and used twice: a description, a short
   description, and keywords. The two stores want different lengths; one draft
   answers both.
