@@ -36,6 +36,49 @@ fn container(dir: &Path, payload: &[u8]) -> std::path::PathBuf {
     path
 }
 
+/// Mark `path` the way this platform's downloaders mark a file.
+///
+/// **Written directly rather than through `slpc::provenance`**, deliberately: a
+/// test that marks a file with the code under test asks the library whether it
+/// agrees with itself, and passes just as happily if both halves are wrong
+/// together. `slpc-rust` has `testsupport` for exactly this and it is a member
+/// of that workspace, not reachable from here.
+///
+/// Returns false where the filesystem will not hold the mark, which is a fact
+/// about the machine rather than something this code can answer for.
+fn mark_as_downloaded(path: &Path) -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        // `flags;timestamp;agent;event-uuid`. 0083 is what Safari writes for a
+        // download it has not yet had assessed.
+        xattr::set(path, "com.apple.quarantine", b"0083;68ae0000;Safari;").is_ok()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        xattr::set(
+            path,
+            "user.xdg.origin.url",
+            b"https://example.invalid/a.slpc",
+        )
+        .is_ok()
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let mut stream = path.as_os_str().to_os_string();
+        stream.push(":Zone.Identifier");
+        std::fs::write(
+            stream,
+            b"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=https://example.invalid/a.slpc\r\n",
+        )
+        .is_ok()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        let _ = path;
+        false
+    }
+}
+
 /// The scratch directory the window makes, built the same way.
 ///
 /// `App::scratch_dir` is private to the binary and this is an integration test,
@@ -75,7 +118,18 @@ fn a_payload_handed_over_is_readable_by_another_process() {
         slipcase_desktop::Extracted::Cancelled => unreachable!("an unwatched copy"),
     };
 
-    assert!(landed.starts_with(scratch.path()), "{}", landed.display());
+    // Compared as resolved paths rather than as strings. On Windows
+    // `slpc::payload_path` canonicalises the destination, so what comes back
+    // carries the `\\?\` verbatim prefix and `starts_with` on the un-prefixed
+    // scratch path is false. `src/lib.rs`'s extraction test learned this on
+    // 2026-08-27 and this file learned it again the same day, which is what
+    // `windows.yml` exists for.
+    assert_eq!(
+        std::fs::canonicalize(landed.parent().expect("a parent")).expect("resolves"),
+        std::fs::canonicalize(scratch.path()).expect("resolves"),
+        "the payload landed outside the scratch directory: {}",
+        landed.display()
+    );
     assert_eq!(landed.file_name().expect("a name"), "report.pdf");
     assert_eq!(
         std::fs::read(&landed).expect("this process can read it"),
@@ -85,16 +139,23 @@ fn a_payload_handed_over_is_readable_by_another_process() {
     // The handler's position: another process, same user. `cat` rather than a
     // Rust child, because what is being asked is whether an ordinary program
     // launched by the desktop can get at the bytes.
-    let out = std::process::Command::new("cat")
-        .arg(&landed)
-        .output()
-        .expect("runs cat");
-    assert!(
-        out.status.success(),
-        "another process could not read the payload: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    assert_eq!(out.stdout, b"%PDF-1.7 the payload\n");
+    //
+    // Unix only. There is no `cat` on Windows, and the question there is not
+    // this one — `%TEMP%` is inside the user's profile and inherits its access
+    // list, so nothing was asked for and nothing has to be checked back.
+    #[cfg(unix)]
+    {
+        let out = std::process::Command::new("cat")
+            .arg(&landed)
+            .output()
+            .expect("runs cat");
+        assert!(
+            out.status.success(),
+            "another process could not read the payload: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        assert_eq!(out.stdout, b"%PDF-1.7 the payload\n");
+    }
 }
 
 /// The directory it waits in is private, and the payload is inside it.
@@ -173,12 +234,11 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 /// because that is what a person meets. Skipped where the filesystem will not
 /// hold a mark, announced rather than passed quietly.
 #[test]
-#[cfg(unix)]
 fn saving_an_edit_keeps_where_the_container_came_from() {
     let dir = tempfile::tempdir().expect("a temporary directory");
     let path = container(dir.path(), b"the payload\n");
 
-    if xattr::set(&path, "user.xdg.origin.url", b"https://example.invalid/a.slpc").is_err() {
+    if !mark_as_downloaded(&path) {
         eprintln!("skipped: this filesystem will not hold a mark");
         return;
     }
