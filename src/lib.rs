@@ -1895,7 +1895,7 @@ mod windows_extraction_tests {
             let payload = format!("bytes for {name}").into_bytes();
             let container = container_named(dir.path(), name, &payload);
 
-            let out = match extract(&container, dir.path(), &super::Watch::new()) {
+            let out = match extract(&container, dir.path(), &Watch::new()) {
                 Ok(Extracted::Done(path)) => path,
                 Ok(Extracted::Cancelled) => panic!("{name}: an unwatched copy was cancelled"),
                 Err(e) => panic!("{name}: extraction failed: {e}"),
@@ -1931,7 +1931,7 @@ mod windows_extraction_tests {
         let container = container_named(dir.path(), "report.pdf", b"payload bytes");
         let chosen = dir.path().join("where-they-said.pdf");
 
-        let out = match super::extract_at(&container, &chosen, &super::Watch::new()) {
+        let out = match super::extract_at(&container, &chosen, &Watch::new()) {
             Ok(Extracted::Done(path)) => path,
             Ok(Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
             Err(e) => panic!("extraction failed: {e}"),
