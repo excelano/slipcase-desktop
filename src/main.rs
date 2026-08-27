@@ -717,7 +717,21 @@ fn card(
     let mut asked = None;
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.label(egui::RichText::new(&payload.name).strong());
+            // Through `slpc::display_name`, which SPEC §3 requires of anything
+            // showing a member name. A payload called `report<U+202E>fdp.exe`
+            // reads as `report.pdf` wherever the override is applied, and this
+            // label sits beside a button that hands the file to whatever the
+            // system registered for `.exe`.
+            //
+            // Measured 2026-08-27, and this is not the toolkit that applies it:
+            // egui lays glyphs out in logical order and gives every one of these
+            // characters zero advance width, so the override was never obeyed
+            // here and the name simply rendered a character short. That is the
+            // reason to escape rather than a reason not to. epaint carries a
+            // to-do to heed them, so the immunity is somebody else's omission
+            // and is scheduled to end; and a name that renders a character short
+            // is already a name this card is not telling the truth about.
+            ui.label(egui::RichText::new(slpc::display_name(&payload.name).into_owned()).strong());
             ui.label(payload.size_line());
             // Silent where the platform would not answer, rather than saying it
             // does not know.
@@ -733,6 +747,24 @@ fn card(
                         .color(error_colour(ui.visuals())),
                 );
             }
+            // A fact read out of the container rather than guessed from the
+            // name, which is what DESIGN.md §3's rule against a filename table
+            // forbids. Silent where the container records no mode, and on
+            // Windows where a mode bit is not what makes a file executable.
+            //
+            // In the warning colour for the reason the provenance line below is:
+            // it explains a refusal a person is about to meet — the platform
+            // will decline to run the extracted copy — and weak grey is what the
+            // walkthrough found nobody reads.
+            if payload.executable {
+                ui.label(
+                    egui::RichText::new(
+                        "The payload is an executable file; the extracted copy will not be executable.",
+                    )
+                    .color(warn_colour(ui.visuals())),
+                );
+            }
+
             // Said rather than acted on. DESIGN.md §5's amendment: the payload
             // leaves carrying whatever the container carried, and what the
             // platform then does about it is the platform's business. In the
@@ -1031,6 +1063,7 @@ mod tests {
             name: "report.pdf".to_owned(),
             size: 7,
             opens_with: None,
+            executable: false,
             unreadable: unreadable.map(ToOwned::to_owned),
         }
     }

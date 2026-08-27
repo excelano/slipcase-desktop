@@ -11,6 +11,56 @@ where a run found something — what actually happened.
 
 ---
 
+## Every platform: the card's two new lines
+
+Added 2026-08-27 with `slpc` 0.3.6. Both are lines on the payload card, so no
+test in this repository reaches either: there is no UI harness here and the card
+is drawn, not returned. The fact each line rests on is unit-tested and the
+rendering is not, which is what this file is for.
+
+Both fixtures are in the conformance corpus, so nothing has to be built by hand:
+
+    cargo run --bin corpus -- /path/to/slipcase/conformance   # generates them
+    ./target/release/slipcase-desktop \
+        /path/to/slipcase/conformance/cases/accept/payload-setuid-external-attributes.slpc
+
+1. **The executable line appears, and says what it should.** Open
+   `accept/payload-setuid-external-attributes.slpc`, whose payload records mode
+   04755. The card should carry *The payload is an executable file; the extracted
+   copy will not be executable.* in the warning colour, below the size and the
+   *Opens with* line and above the buttons. On Windows it should not appear at
+   all — a mode bit is not what makes a file executable there, and `DESIGN.md`
+   §5 gates the line to Unix for that reason.
+2. **It is absent for an ordinary container.** Open `accept/minimal.slpc`, which
+   records mode 0644. No line. Then open any container a Windows tool wrote, or
+   `accept/name-cp437-bit11-clear.slpc`, and check there is still no line: the
+   silence for a container that records no mode is the whole reason
+   `payload_mode` reads the external attributes rather than asking the ZIP crate,
+   which would have invented `0o664` and answered confidently.
+3. **The payload name is escaped, and the card does not lie about it.** Open
+   `accept/payload-name-bidi-override.slpc`, whose `payload.file` carries U+202E
+   RIGHT-TO-LEFT OVERRIDE. The card should read `report\u{202E}fdp.exe`, ending
+   in `.exe`, and the Open button beside it should still work.
+
+   What this is checking is not what it looks like. Measured 2026-08-27, egui
+   does not apply the override: it lays glyphs out in logical order and gives
+   every bidirectional formatting character zero advance width, so before the
+   escaping the card rendered `reportfdp.exe` — a name one character short of
+   the file on disk rather than a name pretending to be a PDF. The spoof
+   `SPEC.md` §3 describes is real in a terminal and was never real here. So what
+   a hand is confirming is that the escape now shows the character that was
+   always there, and that nothing about the layout broke.
+
+### Not yet done by hand
+
+- **All three items, on all three platforms.** Written the day the lines landed
+  and run on none of them. The Linux build launches against both fixtures
+  without panicking and draws a window, which is what could be checked from a
+  session with no way to take a screenshot — GNOME refused the capture — and it
+  is not the check.
+
+---
+
 ## Windows
 
 Run against a release build, because the console-window item below is a

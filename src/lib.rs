@@ -220,6 +220,18 @@ pub struct Payload {
     pub size: u64,
     /// What the platform says would open it, where the platform will say.
     pub opens_with: Option<String>,
+    /// Whether the container records the payload as an executable file.
+    ///
+    /// DESIGN.md §5: the card says so, and says that the extracted copy will
+    /// not be. False where the container records no mode at all, which is every
+    /// container a non-Unix writer produced, so the card is silent rather than
+    /// confident about a question nothing answered — `slpc::Container::payload_mode`
+    /// is what keeps that distinction, reading the external attributes rather
+    /// than taking the ZIP crate's invented answer.
+    ///
+    /// False on Windows whatever the container records. A mode bit is not what
+    /// makes a file executable there, so the sentence would be untrue.
+    pub executable: bool,
     /// Why this build cannot decode the payload, where it cannot.
     ///
     /// SPEC §2.5 puts encryption and compression method outside conformance, so
@@ -478,6 +490,36 @@ pub fn why_not_a_payload(path: &Path) -> Option<String> {
     }
 }
 
+/// Whether the container records the payload as an executable file.
+///
+/// One `#[cfg]` pair rather than a runtime test, because the answer on Windows
+/// is not *no mode was recorded* — a container written on Linux records one and
+/// this reads it fine there. It is that the question does not apply: what makes
+/// a file executable on Windows is its extension and the shell, not a permission
+/// bit, so a sentence about the bit would be false however the container was
+/// written. DESIGN.md §5.
+///
+/// The Unix arm asks the library rather than the archive, and the difference is
+/// the point. `slpc::Container::payload_mode` answers `None` where the container
+/// records nothing, where the ZIP crate's own `unix_mode` would invent
+/// `0o664` for an archive made on DOS and hand back a confident answer to a
+/// question nobody asked. `None` here is `false`, and `false` is a silent card.
+#[cfg(unix)]
+fn executable<R: std::io::Read + std::io::Seek>(container: &slpc::Container<R>) -> bool {
+    // Any of the three bits. A payload executable by its group and not its owner
+    // is still a payload that was executable where it came from.
+    container
+        .payload_mode()
+        .ok()
+        .flatten()
+        .is_some_and(|mode| mode & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn executable<R: std::io::Read + std::io::Seek>(_container: &slpc::Container<R>) -> bool {
+    false
+}
+
 impl Payload {
     /// Describe the payload of a container already found conformant.
     fn of(path: &Path) -> Option<Self> {
@@ -491,10 +533,12 @@ impl Payload {
         // Borrows shared and decompresses nothing, so this costs the card the
         // central directory entry it already has.
         let unreadable = container.check_payload_readable().err().map(|u| u.to_string());
+        let executable = executable(&container);
         Some(Self {
             name,
             size,
             opens_with,
+            executable,
             unreadable,
         })
     }
@@ -761,11 +805,104 @@ mod tests {
 mod payload_tests {
     use super::Payload;
 
+    /// A container whose payload member records `mode` in its external
+    /// attributes.
+    ///
+    /// Written by patching what `pack_reader` produced rather than by pulling
+    /// in a ZIP writer. This application parses no containers and depends on no
+    /// ZIP crate, which `CLAUDE.md` states as a property rather than an
+    /// accident, and a dev-dependency that reads like one is not worth a
+    /// tidier fixture. What the patch produces is what it says on the label: a
+    /// container some other tool wrote, carrying a mode this one never records.
+    fn with_payload_mode(dir: &std::path::Path, mode: u32) -> std::path::PathBuf {
+        let document = slpc::toml_edit::DocumentMut::new();
+        let mut bytes = Vec::new();
+        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+
+        // Walk the central directory to the payload's header and write the mode
+        // into its external attributes, which sit at offset 38 of the 46-byte
+        // fixed part. `pack_reader` records nothing there, so this is the only
+        // thing in the file that changes.
+        let eocd = bytes
+            .windows(4)
+            .rposition(|w| w == 0x0605_4B50u32.to_le_bytes())
+            .expect("an end of central directory record");
+        let mut at =
+            u32::from_le_bytes(bytes[eocd + 16..eocd + 20].try_into().unwrap()) as usize;
+        loop {
+            assert_eq!(
+                bytes[at..at + 4],
+                0x0201_4B50u32.to_le_bytes(),
+                "walked off the central directory without finding the payload"
+            );
+            let n = u16::from_le_bytes(bytes[at + 28..at + 30].try_into().unwrap()) as usize;
+            let e = u16::from_le_bytes(bytes[at + 30..at + 32].try_into().unwrap()) as usize;
+            let c = u16::from_le_bytes(bytes[at + 32..at + 34].try_into().unwrap()) as usize;
+            if &bytes[at + 46..at + 46 + n] == b"report.pdf" {
+                bytes[at + 38..at + 42].copy_from_slice(&(mode << 16).to_le_bytes());
+                break;
+            }
+            at += 46 + n + e + c;
+        }
+
+        let path = dir.join("with-a-mode.slpc");
+        std::fs::write(&path, &bytes).expect("writes");
+        path
+    }
+
+    /// A payload stored executable is reported as one, on Unix.
+    ///
+    /// DESIGN.md §5: the card says the extracted copy will not be executable,
+    /// and it has to know. Catches the field being wired to nothing, which is
+    /// what it was until `slpc` 0.3.6 gave it something to read.
+    #[test]
+    #[cfg(unix)]
+    fn an_executable_payload_is_reported_as_one() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = with_payload_mode(dir.path(), 0o100_755);
+        let opened = super::Opened::open(&path);
+        assert!(
+            opened.payload.expect("a card").executable,
+            "0o755 is executable"
+        );
+    }
+
+    /// A payload stored without an execute bit is not.
+    ///
+    /// The other direction, and the one that would make the card shout at
+    /// everybody. Catches a test of the mode being present rather than of what
+    /// it says.
+    #[test]
+    #[cfg(unix)]
+    fn an_ordinary_payload_is_not() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = with_payload_mode(dir.path(), 0o100_644);
+        let opened = super::Opened::open(&path);
+        assert!(!opened.payload.expect("a card").executable);
+    }
+
+    /// A container recording no mode at all says nothing.
+    ///
+    /// This is the case the card must be silent for and the one an obvious
+    /// implementation gets wrong: the ZIP crate's `unix_mode` invents `0o664`
+    /// for an archive made on DOS, so a card built on it would tell a person
+    /// something definite about every container a Windows tool wrote. What
+    /// `pack_reader` produces records nothing, which is the same silence from
+    /// the other end.
+    #[test]
+    fn a_container_recording_no_mode_says_nothing() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = with_payload_mode(dir.path(), 0);
+        let opened = super::Opened::open(&path);
+        assert!(!opened.payload.expect("a card").executable);
+    }
+
     fn sized(size: u64) -> Payload {
         Payload {
             name: "report.pdf".to_owned(),
             size,
             opens_with: None,
+            executable: false,
             unreadable: None,
         }
     }

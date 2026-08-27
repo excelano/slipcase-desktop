@@ -64,15 +64,22 @@ reserved rather than after, which is the only timing that matters.
 
 ## Here (Linux) — what needs no other machine
 
-### First, and in this order
+### Done, 2026-08-27
 
-- **`slpc`: expose the payload's stored mode.** The library reads `unix_mode()`
-  and keeps only the file-type bits as `EntryKind`; the permission bits are
-  discarded and there is no accessor, so the fact the card's new line rests on
-  is unreachable. A 0.3.6, and it is first because everything downstream of it
-  waits: the desktop cannot use what is not published.
-- **The card line**, once that is out — `DESIGN.md` §5 has the wording and the
-  gating.
+- **`slpc` 0.3.6 is published**, carrying `Container::payload_mode` and rather
+  more than was planned for it. `excelano/slipcase` gained four requirements in
+  SPEC §3 and a Security Considerations section as SPEC §6, and the library
+  answers all of them: a bound on what identifying a container costs — measured
+  at 620 MB from a 204 KB file before, 11 MB after — and `display_name`, which
+  escapes the bidirectional formatting characters SPEC §3 requires be escaped
+  wherever a name is shown. The corpus went from 77 cases to 83 and the
+  reference implementation agrees on all of them.
+- **The card line is in**, with the wording and the gating `DESIGN.md` §5
+  decided, and the payload name on the card now goes through `display_name`.
+  Neither is reachable by a test in this repository — the card is drawn rather
+  than returned — so both are in `CHECKLIST.md` under *the card's two new
+  lines*, and **neither has been run by hand on any platform.** That is the
+  first thing each platform session should do.
 
 ### Every time
 
@@ -222,12 +229,11 @@ platforms together, which no platform session can do. What it covers:
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with
   what it found rather than that it passed.
-- **The executable-payload line is in.** `DESIGN.md` §5 is decided: the card
-  says *The payload is an executable file; the extracted copy will not be
-  executable*, gated to Unix and silent where the container records no mode. It
-  needs a `slpc` addition first and is the first task below. Not a submission
-  blocker — a reviewer packaging a shell script into a container is unlikely —
-  so if it slips, it slips to a patch rather than holding the release.
+- **The executable-payload line has been seen by somebody.** It is written and
+  unit-tested as of 2026-08-27 and has been rendered in front of nobody.
+  `CHECKLIST.md`'s *the card's two new lines* is the run, three items, and it
+  wants doing on each platform. The same applies to the escaped payload name
+  beside it.
 - **The three CI workflows are green**, the corpus agrees on every case on every platform
   that has run it, and `preflight.sh` passes.
 
