@@ -95,7 +95,7 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
     // way for a name to fail to be a file: `slpc::payload_path` is where that
     // now lives, having been this application's `destination` until 0.3.5.
     let out = slpc::payload_path(into, container.payload_name())?;
-    copy_out(&mut container, source, &out, watch, true)
+    copy_out(&mut container, source, &out, watch)
 }
 
 /// Copy a container's payload to a path somebody chose, watchably.
@@ -113,20 +113,21 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
 pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<Extracted> {
     let source = container;
     let mut container = slpc::Container::open_with(container, LIMITS)?;
-    copy_out(&mut container, source, out, watch, true)
+    copy_out(&mut container, source, out, watch)
 }
 
 /// The part both extractions share.
 ///
-/// `replacing` says whether there may legitimately be a file at `out` already,
-/// and both callers pass true for different reasons. The path somebody named in
-/// a save dialog may exist because the dialog asked them about it and they said
-/// yes. The handover directory may hold a file of that name because it is one
-/// directory for the whole session and they opened a container with the same
-/// payload name earlier — which the conformance corpus found the moment this
-/// was false, twenty-five cases into a run that shares one scratch directory.
+/// **A file may legitimately already be at `out`, on both paths.** The one
+/// somebody named in a save dialog may exist because the dialog asked them
+/// about it and they said yes. The handover directory may hold that name
+/// because it is one directory for a whole session and they opened a container
+/// with the same payload name earlier — which the conformance corpus found the
+/// moment this refused, twenty-five cases into a run that shares one scratch
+/// directory. There was a parameter here for the difference and it had one
+/// value at both call sites, which is not a difference.
 ///
-/// Replacing is safe in both and for the same reason: `Destination` renames a
+/// Replacing is safe on both and for the same reason: `Destination` renames a
 /// finished file over the destination, and a rename replaces what is at a path
 /// rather than following it. The handover directory is additionally this
 /// process's own, mode 0700, with nothing else able to put anything in it.
@@ -135,7 +136,6 @@ fn copy_out(
     source: &Path,
     out: &Path,
     watch: &Watch,
-    replacing: bool,
 ) -> slpc::Result<Extracted> {
     // Asked for before anything is reserved, so a container that refuses leaves
     // nothing behind at all.
@@ -156,7 +156,7 @@ fn copy_out(
     // whole. A rename replaces a symbolic link rather than following it, and a
     // failure or a cancellation now leaves whatever was there untouched instead
     // of truncating it and then deleting it.
-    let mut landing = slpc::Destination::new(out, replacing)?;
+    let mut landing = slpc::Destination::new(out, true)?;
 
     if matches!(copy(&mut payload, landing.writer(), watch)?, Extracted::Cancelled) {
         // `landing` drops here and takes its temporary file with it. Nothing at
@@ -173,6 +173,15 @@ fn copy_out(
     // laundering case, and a payload that would open without the warning its
     // origin earned must not be left under the name it is about to be handed
     // to the system under. DESIGN.md §5.
+    //
+    // **This is the one path that does not leave the destination as it found
+    // it**, and the comment above claimed otherwise until it was read back.
+    // The commit has already replaced whatever was at `out`, so removing takes
+    // the replacement away and leaves nothing where a file used to be. That is
+    // §5's decision rather than an oversight — an ungated payload under a name
+    // somebody is about to open is the worse thing to leave — but it is a real
+    // cost and it belongs written down beside the code that pays it. Not
+    // reachable on Linux, where `carry`'s arm cannot fail.
     if let Err(why) = slpc::provenance::carry(source, out) {
         let _ = std::fs::remove_file(out);
         return Err(why);
@@ -197,7 +206,11 @@ fn copy(payload: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slp
     }
 
     into.flush()?;
-    Ok(Extracted::Done(std::path::PathBuf::new()))
+    // `Done` carries a path for the caller that finished an extraction, and
+    // this is not it: `copy_out` owns the destination and names it after the
+    // commit. Rather than a sentinel path nothing reads, say what is actually
+    // known here — whether the copy ran to the end.
+    Ok(Extracted::Done(PathBuf::new()))
 }
 
 /// A path, and what the library made of it.

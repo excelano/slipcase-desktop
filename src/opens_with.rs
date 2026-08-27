@@ -230,15 +230,36 @@ mod linux {
         /// pid-named path and this fails.
         #[test]
         fn a_planted_directory_cannot_catch_the_probe() {
+            /// Removes the planted directory however this test leaves.
+            ///
+            /// It has to be a `Drop`, and that is the second half of the
+            /// defect. Cleaning up after the assertion means a *failing* run
+            /// leaves the trap in a world-writable directory, and the next run
+            /// that lands on the same process id finds it, plants nothing —
+            /// `symlink` fails on a path that exists — and passes against the
+            /// very defect it is for. A test that goes green on its second run
+            /// is worse than no test.
+            struct Planted(std::path::PathBuf);
+            impl Drop for Planted {
+                fn drop(&mut self) {
+                    let _ = std::fs::remove_dir_all(&self.0);
+                }
+            }
+
             let victim = tempfile::tempdir().expect("a temporary directory");
             let keys = victim.path().join("authorized_keys");
             std::fs::write(&keys, b"ssh-rsa AAAA a-key-that-matters").expect("writes");
 
-            let old = std::env::temp_dir()
+            let at = std::env::temp_dir()
                 .join(format!("slipcase-desktop-probe-{}", std::process::id()));
-            let _ = std::fs::create_dir_all(&old);
+            let _ = std::fs::remove_dir_all(&at);
+            let planted = Planted(at.clone());
+            std::fs::create_dir_all(&at).expect("plants the old path");
             for which in ["text", "binary"] {
-                let _ = std::os::unix::fs::symlink(victim.path(), old.join(which));
+                // Asserted rather than ignored. A swallowed error here is a
+                // trap that was never set, and a test that then proves nothing.
+                std::os::unix::fs::symlink(victim.path(), at.join(which))
+                    .unwrap_or_else(|e| panic!("planting {which}: {e}"));
             }
 
             let _ = super::mime_of("authorized_keys");
@@ -248,7 +269,7 @@ mod linux {
                 b"ssh-rsa AAAA a-key-that-matters",
                 "the probe was written through a planted path"
             );
-            let _ = std::fs::remove_dir_all(&old);
+            drop(planted);
         }
 
         /// The probe directory is private, whatever the umask says.

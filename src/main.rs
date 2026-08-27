@@ -140,8 +140,18 @@ mod last_folder {
             // of not doing it is that this application writes a path of its
             // choosing to a file of theirs, and the cost of doing it is a
             // system call.
+            // `remove_file` then `create_new`, not then `write`. Removing
+            // narrows the window and `fs::write` would still open
+            // `O_CREAT|O_TRUNC` and follow a link replanted inside it;
+            // `create_new` refuses a path that exists, so the file this writes
+            // is one it created. Nothing is retried: not remembering a folder
+            // costs a dialog opening somewhere less useful.
             let _ = std::fs::remove_file(&file);
-            let _ = std::fs::write(&file, folder);
+            let _ = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&file)
+                .and_then(|mut f| std::io::Write::write_all(&mut f, folder.as_bytes()));
         }
     }
 
@@ -693,12 +703,21 @@ impl App {
                 dialog = dialog.set_directory(folder);
             }
             if let Some(name) = suggested {
-                // Escaped, for the reason the card is. This prefills the field
-                // a person reads to decide what they are saving, and a payload
-                // called `report<U+202E>fdp.exe` reads there as `report.pdf` on
-                // any toolkit that applies the override — which the platform
-                // save dialog is, whatever egui does. SPEC §3.
-                dialog = dialog.set_file_name(slpc::display_name(&name).into_owned());
+                // **Not escaped**, and it was for a few hours on 2026-08-27,
+                // which was wrong. This field's value becomes the name of a
+                // file on disk: the comment above says the payload's own name
+                // is offered and that renaming it is the person's choice, so
+                // what goes in has to be a name. `display_name` renders a name
+                // for reading — it turns U+202E into the seven characters
+                // `\u{202E}` — and prefilling that meant Extract-to defaulted
+                // to writing a file literally called `report\u{202E}fdp.exe`,
+                // where `\` is a path separator on Windows. The handover path
+                // writes the real name, so the two had come to disagree.
+                //
+                // The rule SPEC §3 states is about displaying a name. A text
+                // field whose contents become a path is not a display, and the
+                // card and the *Extracted to* line, which are, keep the escape.
+                dialog = dialog.set_file_name(name);
             }
             // A save dialog for the one question that names a file that does
             // not exist yet, so the platform asks before overwriting.
