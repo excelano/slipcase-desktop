@@ -835,12 +835,16 @@ mod extraction_tests {
         std::fs::create_dir(&into).expect("a directory to extract into");
         let out = opened.extract_to(&into).expect("extracts");
 
-        // Into the directory it was given, under the name the container gave.
-        // Compared in the form a person is shown, because on Windows the path
-        // handed back is the verbatim one and `destination` says why.
+        // Into the directory it was given, under the name the container gave —
+        // asked of the filesystem rather than of the two strings. On Windows
+        // `slpc::payload_path` answers in the verbatim form and expands 8.3
+        // short names, so on a runner whose `TEMP` is `C:\Users\RUNNER~1\…`
+        // the same file has two spellings and only one comparison holds.
+        assert_eq!(out.file_name().expect("a filename"), "report.pdf");
         assert_eq!(
-            slpc::display_path(&out),
-            into.join("report.pdf").display().to_string()
+            std::fs::canonicalize(&out).expect("the path resolves"),
+            std::fs::canonicalize(into.join("report.pdf")).expect("so does the join"),
+            "the payload did not land in the directory it was given"
         );
         assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
     }

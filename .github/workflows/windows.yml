@@ -1,0 +1,89 @@
+# Run the suite and the corpus on Windows, because eight tests here run nowhere
+# else.
+#
+# `linux.yml` cross-checks the Windows target with `cargo check --all-targets`,
+# and compiling is not running. Behind `#[cfg(target_os = "windows")]` sit five
+# tests in `src/opens_with.rs` that ask the registry what would open a payload,
+# two in `src/lib.rs` that write a payload named for a device, and one in
+# `src/main.rs` that marks a container with a `Zone.Identifier` stream and reads
+# the card's provenance line back. Every one was run by hand on a Windows
+# machine on 2026-08-26 and nothing has re-run any of them since.
+#
+# That gap is not hypothetical, and this file was written on the day it bit.
+# `src/lib.rs`'s extraction path changed when `destination` became
+# `slpc::payload_path`, an edit made on Linux; it compiled for this target and
+# an assertion in `extraction_tests` was left comparing a canonicalised path
+# against a `tempfile` one. On a runner whose `TEMP` is `C:\Users\RUNNER~1\…`
+# those are two spellings of the same file. The identical mistake had been made
+# and caught in `excelano/slpc-rust` a few hours earlier, by the Windows job
+# added there for this same reason.
+#
+# What this reaches and what it does not, stated because a green tick invites
+# more faith than it has earned.
+#
+# The `opens_with` tests are a real platform call: they read `HKCR` through
+# `windows-registry` and get whatever this runner has associated, which is not
+# what a person's machine has. What they check is that the arm answers rather
+# than what it answers, and a runner with almost nothing installed is a fair
+# test of the silent case that `DESIGN.md` §3 requires.
+#
+# Nothing here reaches the window, the installer scripts, an MSIX package, a
+# file association, or the icon at any size. `CHECKLIST.md` holds those and a
+# green run here does not stand in for one.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
+name: Windows
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: What is installed
+        run: |
+          rustc -V
+          cargo -V
+          python -V
+
+      - name: Build
+        run: cargo build --all-targets
+
+      - name: Test
+        run: cargo test
+
+      # `CLAUDE.md` says clippy must be silent, so a warning is an error here.
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      # The run that found the device-name defect in the first place, and the
+      # only platform where `accept/payload-name-windows-reserved` is anything
+      # but an ordinary filename. It hung here for ten minutes twice before the
+      # case had a name, so a timeout is set: a run that hangs looks exactly
+      # like a run that is slow, and the whole job's default of six hours is the
+      # wrong thing to find out at.
+      - name: The conformance corpus, all 77
+        timeout-minutes: 10
+        run: |
+          git clone --depth 1 https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
+          python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
+          cargo run --bin corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
+
+      # The `.ico` is a committed artifact rather than a build product, because
+      # `rc.exe` and `windres` are both tools `DESIGN.md` §2 keeps out of the
+      # build. A committed artifact can fall out of step with the source it was
+      # generated from and nothing would say so, so the generator is run and its
+      # output compared against what is in the tree.
+      - name: The committed icon still matches its generator
+        run: |
+          cd packaging/windows/make-ico
+          cargo run --release
+          cd ../../..
+          git diff --exit-code -- packaging/windows/slipcase.ico
