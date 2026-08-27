@@ -9,9 +9,9 @@
 //! §6 states from what the library answers to what the window shows. At slice 1
 //! the window shows the verdict and nothing else, so the two overlap almost
 //! entirely; the rows of §6 that add a tree and a card are checked here as
-//! slices 2 and 3 land them. What is already this repository's own is that 77
-//! containers built to break a reader produce a rendered state rather than a
-//! panic.
+//! slices 2 and 3 land them. What is already this repository's own is that
+//! every container built to break a reader produces a rendered state rather
+//! than a panic.
 //
 // Author: David M. Anderson
 // Built with AI assistance (Claude, Anthropic)

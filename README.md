@@ -61,7 +61,7 @@ because it needs a checkout of `excelano/slipcase` with its cases generated:
 cargo run --bin corpus -- /path/to/slipcase/conformance
 ```
 
-It puts all 77 fixtures through this application's own reading of them: the
+It puts every fixture through this application's own reading of them: the
 verdict, whether a metadata tree and a payload card are shown, extraction at the
 declared length, the pre-flight answer against what extraction then does, a full
 rewrite round trip with key order preserved, a rename, and a payload

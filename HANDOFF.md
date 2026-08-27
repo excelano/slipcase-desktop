@@ -429,4 +429,4 @@ generated, which you may not have. It is a command and never a test:
 
     cargo run --bin corpus -- /path/to/slipcase/conformance
 
-If you have it, run it before and after your change. 77 cases must agree.
+If you have it, run it before and after your change. Every case must agree.

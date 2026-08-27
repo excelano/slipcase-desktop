@@ -73,12 +73,17 @@ of why everything is the way it is, and it is written to be read.
 `excelano/slipcase` with its cases generated, which `cargo test` does not imply,
 and a test that has to choose between skipping quietly and failing on a machine
 that was never going to have those things is worse than a command run on
-purpose. It is the harness that matters — 77 fixtures across verdict, tree,
+purpose. It is the harness that matters — every fixture across verdict, tree,
 card, extraction, rewrite, rename, replacement, and pre-flight:
 
     cargo run --bin corpus -- /path/to/slipcase/conformance
 
-All 77 must agree. Run it before and after any change to `src/lib.rs`.
+All of them must agree. Run it before and after any change to `src/lib.rs`.
+
+How many there are is `manifest.toml`'s to say and not this file's. It was 77
+and is 83 as of 2026-08-27; the runner prints the count and fails on any
+disagreement, so a number written here buys nothing and goes stale. Nine places
+in this repository carried the old one.
 
 Two things that have caught people out. `cargo run --bin corpus` rebuilds every
 binary in the package, including `slipcase-desktop`, so do not run it while the

@@ -4,7 +4,7 @@
 # generalise: the arm64 half of a universal bundle was code nobody had
 # executed. Linux has no such gap — this is the machine everything was written
 # on — so what this file is for is the ordinary thing. It keeps the suite, the
-# clippy rule, and the 77 conformance cases from depending on somebody
+# clippy rule, and the conformance cases from depending on somebody
 # remembering, and it puts the `.deb` under the mechanical parts of
 # `CHECKLIST.md` on every push rather than once before a release.
 #
@@ -80,7 +80,7 @@ jobs:
       # never going to have them is worse than a command run on purpose. CI is
       # a machine that can always have them. The checkout is kept for the
       # association step below, which wants a real container to ask about.
-      - name: The conformance corpus, all 77
+      - name: The conformance corpus, every case
         run: |
           git clone --depth 1 https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
           python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"

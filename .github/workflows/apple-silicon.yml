@@ -68,7 +68,7 @@ jobs:
       # did not. It resolves its manifest and its output directory from its own
       # location rather than the working directory, so it is run by path and
       # needs no `cd` and no `--out`.
-      - name: The conformance corpus, all 77
+      - name: The conformance corpus, every case
         run: |
           git clone --depth 1 https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
           python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"

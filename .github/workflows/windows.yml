@@ -69,7 +69,7 @@ jobs:
       # case had a name, so a timeout is set: a run that hangs looks exactly
       # like a run that is slow, and the whole job's default of six hours is the
       # wrong thing to find out at.
-      - name: The conformance corpus, all 77
+      - name: The conformance corpus, every case
         timeout-minutes: 10
         run: |
           git clone --depth 1 https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"

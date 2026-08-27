@@ -228,7 +228,7 @@ platforms together, which no platform session can do. What it covers:
   needs a `slpc` addition first and is the first task below. Not a submission
   blocker — a reviewer packaging a shell script into a container is unlikely —
   so if it slips, it slips to a patch rather than holding the release.
-- **The three CI workflows are green**, the corpus is 77 of 77 on every platform
+- **The three CI workflows are green**, the corpus agrees on every case on every platform
   that has run it, and `preflight.sh` passes.
 
 Then, and only then, both submissions go in.
