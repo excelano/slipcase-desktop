@@ -72,6 +72,17 @@ Both fixtures are in the conformance corpus, so nothing has to be built by hand:
    quietly turns *arrived from elsewhere* into nothing is the failure, even
    though the file stays gated.
 
+**Items 4 and 5 are now covered on Linux by `tests/handover.rs`**, which walks
+the path a payload takes to the operating system: extracted into the scratch
+directory the window makes, at the mode it makes it, read back from a separate
+process — which is the handler's position on this platform — and a save that
+keeps the mark the container arrived with. That file exists because the question
+*what tests the handover?* had no answer until 2026-08-27. It cannot stand in
+for the runs below on the other two platforms, and it deliberately does not call
+`opener::open`: launching somebody's PDF viewer in the middle of a test run is
+not a test, and under the macOS sandbox the handler is not in the same position
+anyway, which is item 6.
+
 5. **The temporary directories are private, on this platform.** Two are made:
    the handover directory a payload is extracted into, and the probe directory
    `opens_with` uses on Linux. Both ask for mode 0700 as of 2026-08-27, having
