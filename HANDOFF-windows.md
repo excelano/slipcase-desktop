@@ -2,6 +2,9 @@
 
 Read `HANDOFF.md` first. Two tasks, in this order.
 
+**This brief is a record.** Both tasks below are done. If you are here for the
+release, `RELEASE.md` is the live document and this one is history.
+
 ---
 
 ## Task 1 — `opens_with` on Windows

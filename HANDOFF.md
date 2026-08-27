@@ -9,6 +9,10 @@ back since — what one machine's review turned up in another machine's arm.
 Reading an arm you cannot run has now found a defect that running it had not,
 so the section is worth keeping rather than emptying.
 
+**For the release, `RELEASE.md` is the live document** and the two briefs
+beside this one are records. It says what is left on each platform, in what
+order, and which of it a script should be doing instead of a person.
+
 **Read `DESIGN.md` first, then `SPEC.md` in `excelano/slipcase` §4.** The design
 document is amended in place as building contradicts it, and every amendment
 says what was measured. Do the same.
