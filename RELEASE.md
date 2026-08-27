@@ -209,6 +209,22 @@ Four of these are already in `CHECKLIST.md` under *Not yet done by hand*, and
 they are not paperwork — this platform has a history of the sandbox costing more
 than anybody expected.
 
+- **Saving an edit to a downloaded container, under the sandbox.** `CHECKLIST.md`
+  item 4, and **do this before any of the packaging work**: if the sandbox breaks
+  the provenance carry the way it once broke Save, that is a decision about
+  `DESIGN.md` §5 rather than a repair, and it is cheaper to take before a bundle
+  has been signed and a listing written around it.
+
+  `slpc` 0.3.7 stopped an in-place rewrite stripping the mark, and CI proves that
+  on all three platforms **unsandboxed** — the Windows and macOS runners each
+  execute `tests/provenance.rs` in full, writing and reading back a real
+  `Zone.Identifier` stream and a real `com.apple.quarantine`. What no runner
+  reaches is this application's own macOS arm: `src/staging.rs` replaces the
+  container through `-[NSFileManager replaceItemAtURL:…]` rather than the rename
+  the library uses, and carries the mark itself. Sandboxed, the platform also
+  marks whatever this process writes and names this application as the agent —
+  and `DESIGN.md` §5 has the card disregarding those, so the file can stay gated
+  while the card stops saying where it came from. That is the answer to look for.
 - **A distribution-signed bundle carrying a provisioning profile.** Every sandbox
   measurement to date was against a development-signed one, which is a different
   context. This is the one most likely to find something.
@@ -224,6 +240,25 @@ than anybody expected.
 
 Submit. Reserve the name, build and sign the package, validate it through
 Transporter if that can be done without submitting, and stop.
+
+---
+
+## What was decided about reviewing from other machines
+
+Asked on 2026-08-27, whether the security review should also run on a Mac and a
+Windows box. Decided not, and the reasoning belongs here because the question
+will come back.
+
+Almost none of it needs those machines. Every defect found that day lived in code
+all three platforms share, and the platform-specific surface is genuinely small:
+three `#[cfg]` arms in `src/opens_with.rs`, one module in `src/opened_document.rs`,
+and the packaging scripts. CI already runs the two arms it can, on real runners.
+
+What is left needs a person rather than a reviewer: the App Sandbox, the Apple
+Event a double-click delivers, the MSIX and the `.app`, and everything in
+`CHECKLIST.md` that wants eyes. Those belong to the platform sections above,
+which will already be sitting in front of the right machine — as extra items on a
+session that is building a package anyway, rather than a review pass of its own.
 
 ---
 
