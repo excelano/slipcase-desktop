@@ -7,7 +7,6 @@
 #![warn(missing_docs, clippy::pedantic)]
 
 pub mod opens_with;
-pub mod provenance;
 mod staging;
 pub mod tree;
 
@@ -91,94 +90,12 @@ const CHUNK: usize = 64 * 1024;
 pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Extracted> {
     let source = container;
     let mut container = slpc::Container::open(container)?;
-    // `Container::open` has already put this name through
-    // `slpc::check_payload_name`, which rejects every separator and every
-    // traversal, so joining it onto a directory cannot leave that directory.
-    // Leaving it was never the only way for a name to not name a file, which
-    // is what `destination` is for.
-    let out = destination(into)?.join(container.payload_name());
+    // Through the library rather than by joining. A name checked against
+    // SPEC 2.3 cannot leave the directory, and leaving it was never the only
+    // way for a name to fail to be a file: `slpc::payload_path` is where that
+    // now lives, having been this application's `destination` until 0.3.5.
+    let out = slpc::payload_path(into, container.payload_name())?;
     copy_out(&mut container, source, &out, watch)
-}
-
-/// A directory a file is about to be created in, named the way this platform
-/// needs it named.
-///
-/// **Windows resolves a handful of names to devices wherever they appear.**
-/// `CON`, `CON.txt`, `con`, `COM1` and `AUX` joined onto a directory are the
-/// console and the serial port rather than files in it. `SPEC.md` §2.3 accepts
-/// those names, its non-normative note says why they are awkward here, and the
-/// conformance corpus carries a case for one — so this is a container somebody
-/// can legitimately be sent rather than a malformed one.
-///
-/// Measured 2026-08-26, one name at a time, because they do not agree with each
-/// other. Writing `CON` returned `Ok` at every step and left no file, since the
-/// bytes went to the console; `metadata` then failed with code 87 and
-/// `std::fs::read` **never returned at all**, because it opens the console for
-/// reading and waits for input a window will never supply. `LPT1` and `PRN`
-/// failed cleanly with `NotFound`, and `NUL` succeeded and discarded. So there
-/// is no one failure to code against, and the corpus hung rather than
-/// disagreed.
-///
-/// `canonicalize` answers with the `\\?\` verbatim form on Windows, and a
-/// verbatim path reaches the filesystem without those names being looked for.
-/// Measured the same day: every name above then wrote, read back byte for
-/// byte, carried a `Zone.Identifier` stream and was removable, exactly as an
-/// ordinary name does. It is asked of the *directory* rather than spelled onto
-/// the path, so nothing here holds a list of reserved names — which list is
-/// current is Windows's business and stays there.
-///
-/// What this does not fix is the handover, and it now fails rather than hangs:
-/// `opener::open` on such a file returns *the specified device name is
-/// invalid*, and `src/main.rs` already has a sentence for a payload that
-/// extracted and would not open.
-///
-/// # Errors
-///
-/// Returns whatever the platform says about naming the directory. On Windows
-/// that is `canonicalize`, so a directory that is not there is an error here
-/// rather than at the first write.
-#[cfg(windows)]
-pub fn destination(into: &Path) -> std::io::Result<PathBuf> {
-    std::fs::canonicalize(into)
-}
-
-/// Where no name is a device, the directory is the directory.
-///
-/// # Errors
-///
-/// None. The `Result` is the Windows arm's shape rather than this one's:
-/// nothing here can fail, and narrowing the signature would make the arms
-/// disagree and push the difference into the caller.
-#[cfg(not(windows))]
-#[allow(clippy::unnecessary_wraps)]
-pub fn destination(into: &Path) -> std::io::Result<PathBuf> {
-    Ok(into.to_path_buf())
-}
-
-/// A path as it should be shown to a person.
-///
-/// [`destination`] hands back the `\\?\` verbatim form on Windows, because that
-/// is what addresses a file whose name Windows would otherwise read as a
-/// device. That prefix is how a path is addressed and not part of the name, so
-/// *Extracted to* would otherwise show somebody where their payload went in a
-/// spelling they have never seen and could not type. It comes off here and only
-/// here: every filesystem call keeps the form that works.
-///
-/// A no-op everywhere else, and on any path that never had the prefix, so the
-/// caller does not have to know which kind it is holding.
-#[must_use]
-pub fn shown(path: &Path) -> String {
-    let text = path.display().to_string();
-    let Some(rest) = text.strip_prefix(r"\\?\") else {
-        return text;
-    };
-    // `\\?\UNC\server\share` is the same trick applied to a network path, and
-    // putting back the two leading separators is what makes it the name a
-    // person knows again.
-    match rest.strip_prefix(r"UNC\") {
-        Some(share) => format!(r"\\{share}"),
-        None => rest.to_owned(),
-    }
 }
 
 /// Copy a container's payload to a path somebody chose, watchably.
@@ -217,7 +134,7 @@ fn copy_out(
         // only where the platform gates opening on a mark the container
         // carried, so an error here is exactly the laundering case.
         if matches!(copied, Extracted::Done(_)) {
-            crate::provenance::carry(source, out)?;
+            slpc::provenance::carry(source, out)?;
         }
         Ok(copied)
     });
@@ -656,7 +573,7 @@ impl Opened {
             _ => None,
         };
 
-        let from_elsewhere = crate::provenance::arrived_from_elsewhere(&path);
+        let from_elsewhere = slpc::provenance::arrived_from_elsewhere(&path);
 
         Self {
             path,
@@ -921,7 +838,10 @@ mod extraction_tests {
         // Into the directory it was given, under the name the container gave.
         // Compared in the form a person is shown, because on Windows the path
         // handed back is the verbatim one and `destination` says why.
-        assert_eq!(super::shown(&out), into.join("report.pdf").display().to_string());
+        assert_eq!(
+            slpc::display_path(&out),
+            into.join("report.pdf").display().to_string()
+        );
         assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
     }
 
@@ -1691,44 +1611,5 @@ mod windows_extraction_tests {
             !out.to_string_lossy().starts_with(r"\\?\"),
             "a person's own path came back in the verbatim form"
         );
-    }
-}
-
-#[cfg(test)]
-mod shown_tests {
-    use super::shown;
-    use std::path::Path;
-
-    /// The defect this catches is a person being told their payload went
-    /// somewhere they have never seen and could not type. `destination` hands
-    /// back the `\\?\` form so that a payload named for a device is a file, and
-    /// this is the only thing keeping that spelling out of *Extracted to*.
-    /// Catches a `main.rs` that went back to `path.display()`.
-    #[test]
-    fn the_verbatim_prefix_is_not_shown_to_a_person() {
-        assert_eq!(
-            shown(Path::new(r"\\?\C:\Users\a\report.pdf")),
-            r"C:\Users\a\report.pdf"
-        );
-    }
-
-    /// The same trick applied to a network path, where dropping the prefix
-    /// whole would leave `server\share` — a relative path, and not anywhere.
-    #[test]
-    fn a_verbatim_network_path_keeps_its_two_separators() {
-        assert_eq!(
-            shown(Path::new(r"\\?\UNC\server\share\report.pdf")),
-            r"\\server\share\report.pdf"
-        );
-    }
-
-    /// The defect this catches is the stripping going too far and rewriting
-    /// paths that never carried the prefix — every path a person chose, on
-    /// every platform.
-    #[test]
-    fn a_path_that_never_had_the_prefix_is_untouched() {
-        for ordinary in [r"C:\Users\a\report.pdf", "/home/a/report.pdf", "report.pdf"] {
-            assert_eq!(shown(Path::new(ordinary)), ordinary);
-        }
     }
 }

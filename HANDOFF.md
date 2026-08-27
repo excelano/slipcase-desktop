@@ -199,7 +199,8 @@ worth knowing before the next one.
 
 **Windows: `carries_a_mark` asked whether the stream exists, not whether it
 gates.** Settled on 2026-08-26, and it was a defect rather than a doubt. In
-`src/provenance.rs` both questions were answered by
+`src/provenance.rs`, which has since moved into `slpc` 0.3.5 and is
+`slpc::provenance` now, both questions were answered by
 `std::fs::metadata(path:Zone.Identifier).is_ok()`. That was harmless until
 `carry` gained its `AlreadyMarked` fallback, which uses the predicate to decide
 whether a payload whose zone write failed is safe to hand to the system.

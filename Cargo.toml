@@ -24,7 +24,7 @@ path = "src/main.rs"
 # The `fs` feature is the library's file-placement half. `Destination`, which
 # DESIGN.md §5 writes edited metadata back through, is behind it and is
 # compiled out without it.
-slpc = { version = "0.3.4", features = ["fs"] }
+slpc = { version = "0.3.5", features = ["fs", "provenance"] }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
@@ -91,5 +91,9 @@ ico = "0.5.0"
 # DESIGN.md §3.
 windows-registry = "0.6.1"
 
-[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+# Only the tests reach for it now. The card's provenance line and the marks
+# carried onto an extracted payload both come from `slpc::provenance`, and a
+# test that marked a file with the code under test would be asking the library
+# whether it agrees with itself.
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
 xattr = { version = "1.6", default-features = false }

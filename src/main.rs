@@ -579,7 +579,7 @@ impl App {
                         // different sentence: the payload is on disk either way.
                         Err(e) => Extraction::Failed(format!(
                             "{} was extracted, and the system would not open it: {}",
-                            slipcase_desktop::shown(&path),
+                            slpc::display_path(&path),
                             why(&e)
                         )),
                     },
@@ -822,7 +822,7 @@ fn card(
             match extraction {
                 Extraction::Idle | Extraction::Running(_) => {}
                 Extraction::Done(path) => {
-                    ui.label(format!("Extracted to {}", slipcase_desktop::shown(path)));
+                    ui.label(format!("Extracted to {}", slpc::display_path(path)));
                 }
                 Extraction::Cancelled => {
                     ui.label("Stopped. Nothing was left behind.");
