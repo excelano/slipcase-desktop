@@ -879,6 +879,35 @@ which is a hint and not an answer, and this is a submission policy question that
 rather than a repair, because the alternative — removing `ShellExecuteW` — is
 removing the application.
 
+**Amended: the kit says in its own configuration that this test is optional for
+this kind of application, and that is a measurement rather than a hint.** Asked
+on 2026-08-28 after the third run, of the files the kit ships rather than of any
+documentation. `en-us\configuration_locdata.xml` gives *Blocked executables* the
+task id `069E8A26-F39D-4402-81E0-112A2B2E8538`, and `configuration.xml` defines
+that task as
+
+    INTERNAL_NAME="DetectBlockedExes" ... OPTIONAL_FOR_APP_TYPES="Centennial"
+    REQUIREMENT_ID="2AFBE4A0-…"   (requirement title: "Package sanity test")
+
+and the report's own root element says `APP_TYPE="Centennial"`, which is what a
+packaged desktop application is. So the failing test is one the kit marks
+optional for exactly this application type — which is also the mechanism behind
+the thing that had only been a hint: an optional test failing is why three runs
+reported `WARNING` overall over a test reading `FAIL`.
+
+`DPIAwarenessValidation` is the contrast worth noting, because it shows the
+attribute means something. Task `A7B07CFF-24B6-41D0-B677-302C7AA2DB7A`, under
+the requirement *High-DPI support*, carries **no** `OPTIONAL_FOR_APP_TYPES` at
+all — it is not optional, and it still only warns, so the two knobs are separate:
+whether a test applies, and how loudly it complains.
+
+**This is still not the Store's answer and must not be written down as one.**
+What was measured is how the kit classifies the test on this machine.
+Certification runs this suite, so it is a good deal more than a guess — but a
+human reviewer applies policy on top of a suite, and nothing local can measure
+that. The decision in `RELEASE.md` stands; it is merely far better informed than
+it was an hour ago.
+
 **The second run is void, and is kept here rather than dropped.** Attempted the
 same day against the package carrying the forty-five assets and the resource
 index. `appcert` refuses to overwrite an existing report — *Specified report …

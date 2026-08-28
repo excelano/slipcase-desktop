@@ -286,10 +286,22 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
   `opener`, whose Windows arm calls that and nothing else: it is the Open
   button, and removing it is removing the application.
 
-  So the decision is not *what to change* but **whether to submit with it**. The
-  kit did not escalate it to an overall FAIL, which is a hint and not an answer,
-  and Store policy is not something this repository can measure. Worth settling
-  before the readiness review rather than during it.
+  So the decision is not *what to change* but **whether to submit with it**.
+
+  **And it is a much smaller decision than it looked, because the kit says so
+  itself.** `configuration.xml` in the App Certification Kit defines that task
+  with `OPTIONAL_FOR_APP_TYPES="Centennial"`, and the report's own root says
+  `APP_TYPE="Centennial"` — a packaged desktop application. The test is optional
+  for this kind of application, which is also why three runs reported `WARNING`
+  overall over a test reading `FAIL`. That was read out of the files the kit
+  ships rather than out of documentation; `CHECKLIST.md` has the task ids.
+
+  It is evidence and not a guarantee. Certification runs this suite, so it is a
+  good deal better than a guess, but a person applies policy on top of a suite
+  and nothing local can measure that. Settle it before the readiness review
+  rather than during it — the honest position is that the one failing test is
+  one Microsoft's own tool marks optional for us, and that the application
+  cannot do its job without the API it names.
 
 - **`DPIAwarenessValidation`, WARNING.** The kit says the application is not DPI
   aware. It is: `GetWindowDpiAwarenessContext` on the running packaged window

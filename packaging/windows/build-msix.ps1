@@ -66,7 +66,11 @@ $ErrorActionPreference = 'Stop'
 #                           library's batch-file spawn, which no arm of this
 #                           application calls on Windows, and `ShellExecuteW` is
 #                           `opener` performing the handover the Open button
-#                           exists to perform.
+#                           exists to perform. The kit's own `configuration.xml`
+#                           marks this task `OPTIONAL_FOR_APP_TYPES="Centennial"`
+#                           and the report says this package is Centennial, which
+#                           is why an overall of WARNING sits over a test reading
+#                           FAIL.
 #   DPIAwarenessValidation  The kit reads the PE application manifest, which
 #                           declares nothing. The running process reports
 #                           PER_MONITOR_AWARE, which winit sets at startup, so
