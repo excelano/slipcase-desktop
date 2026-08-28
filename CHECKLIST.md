@@ -664,12 +664,12 @@ needs somebody to choose *always open with* again.
 
 **Reproduced 2026-08-28 against the real package, and the second row holds.**
 The run above was made against a package carrying an invented identity, because
-the name had not been reserved yet. This one was made against
-the real package, built by `build-msix.ps1` from
-the identity Partner Center assigned that morning: the same `UserChoice` from
-2026-08-26 was still in place with its hash intact, the script install was
-removed by hand again leaving that key alone, and `ShellExecute` on a container
-launched `C:\Program Files\WindowsApps\…\slipcase-desktop.exe` with no picker.
+the name had not been reserved yet. This one was made against the package
+`build-msix.ps1` builds from the identity Partner Center assigned that morning:
+the same `UserChoice` from 2026-08-26 was still in place with its hash intact,
+the script install was removed by hand again leaving that key alone, and
+`ShellExecute` on a container launched
+`C:\Program Files\WindowsApps\…\slipcase-desktop.exe` with no picker.
 So nothing about the answer depended on the identity being a real one, which was
 not obvious beforehand.
 
@@ -687,11 +687,11 @@ because doing so needs a fresh human choice and the one on this machine is spent
 on the second row.
 
 **A free check came out of it.** Windows computed the installed package's family
-name, and it matched byte for byte what Partner
-Center calculated from the same two identity values. That hash is over `Name`
-and `Publisher`, so a single wrong character in the `Publisher` GUID would
-produce a different family name — which makes `Get-AppxPackage` after a local
-install a check that the identity was transcribed correctly, without logging in
+name, and it matched byte for byte what Partner Center calculated from the same
+two identity values. That hash is over `Name` and `Publisher`, so a single wrong
+character in the `Publisher` GUID would produce a different family name — which
+makes `Get-AppxPackage` after a local install a check that the identity was
+transcribed correctly, without logging in
 to anything. It costs nothing and it catches the mistake that is otherwise found
 at upload.
 
