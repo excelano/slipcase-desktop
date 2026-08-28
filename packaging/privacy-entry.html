@@ -1,0 +1,50 @@
+<!--
+  The privacy section for excelano.com/legal/#slipcase.
+
+  Written to be pasted into `~/excelano.com/legal/index.html` after the Zirbe
+  section, whose structure and voice it follows: what it is, the short version,
+  what stays, what leaves, what it does not collect, how to check, and the one
+  thing outside the application's control. Not committed to the website from
+  here, because that repository is not this one's to push.
+
+  Every claim is checkable against this repository at the commit that shipped
+  the release the section describes.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<h3 id="slipcase">Slipcase (macOS, Windows, Linux) — Privacy</h3>
+<p>Slipcase is an open-source desktop application for slipcase containers: a container is one file holding a document of any type together with a TOML description of it. Slipcase opens a container, shows the description, lets you edit it, and hands the document to whatever application your computer has registered for that kind of file. It makes no network connection of any kind. This section is the canonical statement of what Slipcase does and does not do with your data. The application is open source so that every claim here is independently verifiable, and the claims are enforced by how the code is built rather than by a policy that depends on the developer behaving well. The repository is at <a href="https://github.com/excelano/slipcase-desktop" rel="noopener noreferrer">github.com/excelano/slipcase-desktop</a>.</p>
+
+<h4>The short version</h4>
+<p>Slipcase talks to nothing. There is no Slipcase server, no account to create, no analytics, no telemetry, no crash reporting, and no third-party SDK. It reads the file you open and writes where you tell it to. On the App Store its App Privacy declaration is “Data Not Collected,” because the developer collects nothing and has nowhere to put it.</p>
+
+<h4>What stays on your device</h4>
+<p><strong>One line, and it is a folder name.</strong> So that the file dialog opens somewhere useful rather than at your home directory every time, Slipcase remembers the folder the last container you opened came from. That is one path in one file — <code>slipcase-desktop/last-folder</code>, inside the per-application state directory your operating system provides. It records a folder, never a filename, never the contents of anything. Deleting the file removes it and Slipcase makes a new one the next time you open a container. Nothing else is stored: no configuration directory, no history, no cache of what you have opened, no index.</p>
+<p><strong>On Linux, asking what opens a file writes two placeholders.</strong> To find out what would open a payload, Slipcase asks the desktop's own <code>xdg-mime</code> — and that tool answers about a file that exists, not about a name. So Slipcase briefly creates two empty placeholder files carrying the payload's name in a private temporary folder of its own, asks about them, and deletes the folder before it answers you. The placeholders hold one space and four zero bytes respectively; they never hold your payload. The folder is readable only by your account. macOS and Windows answer the same question from their own registries and write nothing.</p>
+<p><strong>A payload you press Open on is written to a private temporary folder</strong>, because handing a file to another application means there has to be a file. That folder is created for the running application, readable only by your own account, and removed when Slipcase exits. If Slipcase is killed rather than closed, the folder survives until your operating system clears its temporary directory, which is the same for every application that writes a temporary file.</p>
+
+<h4>What leaves your device</h4>
+<p><strong>Nothing.</strong> Slipcase makes no network request. It has no update check, no license check, no analytics service, no crash reporter, and no remote logging. The project imports none of that on purpose, and the dependency list is short enough to read.</p>
+<p><strong>Except what you hand to another application.</strong> Pressing Open passes the payload to whatever your computer has registered for that kind of file, and from that moment the file is in that application's hands and subject to that application's behaviour, not to this one's. That is the point of the button, and it is worth saying plainly: Slipcase does not vet what it hands over, and it makes no judgement about whether opening something is wise. What it does instead is tell you what it found.</p>
+
+<h4>What it tells you about a file</h4>
+<p>If a container arrived from elsewhere — downloaded, or received as an attachment — your operating system records that on the file, and Slipcase says so on screen. It also passes that marking onto the payload you extract, so whatever opens the payload next raises the same warning the container would have. Editing and saving a container keeps the marking. This is the opposite of collection: it is Slipcase declining to launder a fact your system already knew, which is a property an application handling files people were sent has to have.</p>
+
+<h4>What Slipcase does not collect</h4>
+<p>Slipcase does not collect the contents of your files, the names of your files, what you opened, when you opened it, how often, which buttons you pressed, screen views, crash reports, performance metrics, diagnostic logs, device identifiers, advertising identifiers, installation identifiers, or anything else. It has no way to, because it makes no network connection. This section and the open-source repository are the substance behind the “Data Not Collected” label.</p>
+
+<h4>One thing outside the application's control</h4>
+<p>Both stores collect their own figures about installs and, on Apple's platforms, aggregate anonymous crash logs from devices where <strong>Share With App Developers</strong> is turned on. Slipcase neither collects that data nor contains any code that touches it, but the store may still show the developer account aggregate, anonymised numbers regardless of what the application does. On macOS the control is at <strong>System Settings &gt; Privacy &amp; Security &gt; Analytics &amp; Improvements &gt; Share With Mac Developers</strong>; on Windows, under <strong>Settings &gt; Privacy &amp; security &gt; Diagnostics &amp; feedback</strong>. Either applies to every application, not only this one. A copy installed from the Excelano apt repository or built from source involves no store at all.</p>
+
+<h4>How to verify the claims yourself</h4>
+<p>The full source is at <a href="https://github.com/excelano/slipcase-desktop" rel="noopener noreferrer">github.com/excelano/slipcase-desktop</a>. To check the claims here independently:</p>
+<ol class="legal-steps">
+    <li>Search the project for anything that opens a network connection. There is nothing: no HTTP client, no socket, no URL is contacted. The dependency manifest lists a window toolkit, a file dialog, a way to ask the system to open a file, and the container library — none of which reaches the network.</li>
+    <li>Search for analytics and crash-reporter names: Firebase, Sentry, Crashlytics, Mixpanel, Amplitude, Segment, GoogleAnalytics. None appears. Searching for <em>segment</em> alone does match <code>unicode-segmentation</code>, which splits text into characters and words for the on-screen layout and reaches nothing.</li>
+    <li>Search for what is written to disk. Three things: the folder name described above, the two placeholders the Linux type question needs, and a payload extracted where you asked for it or into the temporary folder Open uses.</li>
+    <li>Confirm there is no server component in the repository. There is nothing to self-host, because Slipcase has no backend by design.</li>
+</ol>
+
+<h4>Updates to this section</h4>
+<p>This section changes as the application changes. The change history is the git log of <code>packaging/privacy-entry.html</code> in the Slipcase source repository, which is where this text is maintained.</p>

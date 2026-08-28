@@ -145,6 +145,11 @@ reserved rather than after, which is the only timing that matters.
   no analytics, no account, and nothing sent anywhere — and the existing entries
   are the model for how much of that to say and in what voice.
 
+  ~~Done 2026-08-28~~, in `packaging/privacy-entry.html`, following the Zirbe
+  section's structure and voice. Maintained here rather than on the website, so
+  its history is the history of the code it describes; it is pasted into
+  `excelano.com/legal/index.html` after that section.
+
   **It must say what is stored, because something is.** An earlier draft of this
   line said *no configuration directory, nothing stored beyond files a person
   asked for*, and that is not true of the built application:
@@ -155,9 +160,21 @@ reserved rather than after, which is the only timing that matters.
   stored would be false, on a page two stores will link to. This is the class of
   error the readiness review below exists to catch, found here by reading the
   code rather than the sentence.
-- **Store listing text**, drafted once and used twice: a description, a short
-  description, and keywords. The two stores want different lengths; one draft
-  answers both.
+
+  **And there is a second write nobody had counted.** A first draft of the entry
+  said two things reach disk: the remembered folder and an extracted payload.
+  That was wrong. On Linux, `opens_with` asks `xdg-mime` what would open a
+  payload, and `xdg-mime` answers about a file rather than a name — so it
+  briefly creates two placeholders *carrying the payload's filename* in a
+  private temporary directory. They hold a space and four zero bytes, never the
+  payload, and the directory is removed before the question is answered. It is
+  disclosed, because a privacy statement that omits a write is the same failure
+  as one that overstates.
+- ~~**Store listing text**~~ — done 2026-08-28, in `packaging/store-listing.md`.
+  Every field measured against both stores' real limits, and one paragraph
+  marked as differing per store: the executable-payload sentence is cut for the
+  Microsoft Store, because that card line is gated to Unix and would describe
+  something a Windows shopper never sees.
 - **Screenshots are not here.** They need a real window on each platform, so
   they belong to those sections and are named there.
 
