@@ -348,18 +348,36 @@ exists whose command names a deleted executable, a double-click is refused with
 a way out. An MSIX runs no code at install time, so the package cannot clear
 that key itself.
 
-Two ways out, and they are not equivalent:
+Two ways out looked available, and only one of them exists.
 
 - **The listing says to run `uninstall.ps1` first.** Costs nothing, and relies
   on a person reading a store page before installing, which is not a thing
   people do.
-- **The application clears a stale `UserChoice` at startup.** Reliable, and it
-  means writing to the one key whose entire purpose is to record a choice a
-  person made — for somebody whose choice was *this application*, which is the
-  mitigating half. It is a `DESIGN.md` §8 decision and it is David's.
+- ~~**The application clears a stale `UserChoice` at startup.**~~ **Chosen,
+  built, measured and reverted on 2026-08-28.** It works in an unpackaged build
+  and does nothing in a packaged one: MSIX virtualises a package's registry
+  *writes*, so the delete never reaches the real hive. Confirmed twice — the
+  packaged application left the key untouched, and a probe deleting a key under
+  the same path from inside the container left it standing while the same delete
+  from outside removed it. And it is not worth keeping for the side-loaded
+  install, because clearing the key only helps if something else then supplies a
+  working association, which is the package. It helps only the case it cannot
+  run in. `CHECKLIST.md` holds the run.
 
-It is here rather than in the *by hand* list because no amount of running it
-again answers it.
+**So the listing option is the only one, and it is now a writing task rather
+than a decision.** `packaging/store-listing.md` has to say, in the description a
+Windows shopper reads, that anyone who installed Slipcase with the scripts
+should run `uninstall.ps1` before installing from the Store. That sentence is
+not written yet and it belongs to the readiness review.
+
+One route was refused rather than missed: `unvirtualizedResources` would turn
+the virtualisation off, is a restricted capability needing Microsoft's approval,
+and would spend the capability story the manifest is built around.
+
+One is untried rather than refused: a packaged application can still *read* the
+registry, so it could detect this state and tell a person how to clear it in
+Settings. That is informing rather than repairing, it is a question about what
+the window says, and nobody has asked it.
 - **A walkthrough of the packaged application**, not the executable: install the
   package, double-click a container, press Open, and look at the screen. Every
   window defect this project has found was found this way and none of them by a

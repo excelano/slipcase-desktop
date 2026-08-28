@@ -614,6 +614,54 @@ listing tells a person to run `uninstall.ps1` first, or the application clears a
 stale one at startup — which is a decision rather than a repair, because it
 means writing to the key that exists to record a person's own choice.
 
+**Amended 2026-08-28: the second option does not exist. It was built, measured,
+and reverted the same day.** David chose it, it was written, and it works
+everywhere except the one place it is needed.
+
+The code was not the problem. `clear_stale_user_choice` removed the key only
+where the recorded choice named this application's own `ProgID` *and* that
+`ProgID`'s open command named an executable that was not there — never another
+application's choice, never a live install's, and never on a command it could
+not parse. Four tests, each broken deliberately and watched to fail. The dead
+state was reconstructed rather than described: the `ProgID` was recreated
+pointing at the deleted `%LOCALAPPDATA%` executable, a double-click gave
+*Application not found* with the installed package ignored, and running the
+**unpackaged** release binary removed the key and restored the association.
+
+**The packaged build did nothing at all, and MSIX registry virtualisation is
+why.** The same state, the application activated through the app model, and the
+key untouched afterwards. Confirmed with a probe that spent no state: a key
+created under the same `FileExts` path from outside, deleted from inside the
+container through `Invoke-CommandInDesktopPackage`, was still there afterwards;
+deleted from outside as a control, it went. The container swallows the write.
+This is the other face of the 2026-08-26 finding that a package's *reads* are
+not virtualised while its writes are — that one was good news and this one is
+the bill for it.
+
+**And it is not worth keeping for the side-loaded install either**, which is
+what settled it. Clearing the key only helps if something else then supplies a
+working association, and that something is the package. Without the package the
+class keys still name the missing executable, so the extension stays broken
+after the repair. It helps only the packaged case and cannot run in the packaged
+case. Working code that cannot act where it is needed is worse than none,
+because it reads like the problem is handled.
+
+So the listing option is not a preference any more, it is the only one, and
+`RELEASE.md` says so. One route was not tried and is recorded as refused rather
+than missed: `unvirtualizedResources` is a restricted capability that would turn
+the virtualisation off, needs Microsoft's approval, and would spend the
+capability story `AppxManifest.xml.in` is built around — one capability,
+`runFullTrust`, and nothing a person has to read and wonder about.
+
+A third possibility is untried rather than rejected: a packaged application can
+still *read* the registry, so it could detect this state and tell the person how
+to clear it in Settings. That is informing rather than repairing, and it is a
+question about what the window says, which nobody has asked yet.
+
+**The state this section was measured against is spent.** The `UserChoice` was
+removed by the unpackaged run, and it cannot be forged — anything further here
+needs somebody to choose *always open with* again.
+
 **Reproduced 2026-08-28 against the real package, and the second row holds.**
 The run above was made against a package carrying an invented identity, because
 the name had not been reserved yet. This one was made against
