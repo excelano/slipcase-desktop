@@ -984,6 +984,39 @@ steps `DESIGN.md` §2 keeps out, which is why `main.rs` carries the icon through
 linker takes `/MANIFESTINPUT` with `/MANIFEST:EMBED` through `-C link-arg` —
 but taking it is a `DESIGN.md` §2 decision and not this section's.
 
+**Taken, on 2026-08-28, with David's agreement.** `build.rs` is the crate's
+first build script and prints those two linker arguments on `windows-msvc`;
+`packaging/windows/slipcase-desktop.manifest` is what it embeds, and it declares
+`dpiAware` and `dpiAwareness` and nothing else. `DESIGN.md` §2 is amended with
+why a linker argument is not the build step that section keeps out. It reads
+`CARGO_CFG_TARGET_*` rather than `cfg!`, because a build script is compiled for
+the host and would take the wrong branch under the Linux cross-check.
+
+Measured after, and **the honest result is that it changed nothing about how the
+application behaves**. The manifest is embedded — 654 bytes, read back out of
+the built binary as an `RT_MANIFEST` resource, with the linker's own
+`asInvoker` trust block merged into it. The application launches and its window
+context is `PER_MONITOR_AWARE_V2` exactly. But so was the packaged build from
+*before* the change, tested the same way: winit was already setting V2 inside
+`EventLoop::new`, so nothing was broken and nothing got fixed.
+
+What it does buy is two things, and neither is the one that would have justified
+it on its own. The awareness is now set before any of this program's code runs
+rather than a moment into it, which closes a window that was never observed to
+matter. And a tool reading the binary can see the declaration, which is the
+whole reason the kit complained. Whether the kit is satisfied is the open item:
+the first message it gave was *Failed to process the binary*, which may mean it
+never read the file rather than read it and found nothing declared.
+
+Two things worth keeping for whoever touches this next. winit's run-time call
+must now be failing, because awareness cannot be changed once set — and it does
+not care: the application launches and behaves identically, which was checked
+rather than assumed, because "the library probably ignores that error" is the
+shape of claim this repository keeps catching. And the linker argument is
+attached to one named binary rather than to `-bins`: `corpus.exe` was checked
+and carries no manifest, which is right, since a console runner has no window to
+be aware about.
+
 ### Not yet done by hand
 
 - **Screenshots**, at the sizes the Store asks for. The only Windows item left

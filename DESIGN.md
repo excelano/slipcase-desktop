@@ -32,7 +32,13 @@ The specification in `excelano/slipcase` is the authority on the format, and thi
 
 **Nothing compiles C.** `cc`, `cmake`, `pkg-config`, and `bindgen` are all absent from the build-dependency tree. `wayland-sys` and `linux-raw-sys` are declaration crates that resolve their symbols at run time. A build needs a Rust toolchain and nothing else.
 
-**It cross-compiles.** `cargo check --target x86_64-pc-windows-msvc` succeeds on a Linux machine carrying no MSVC toolchain.
+**Amended 2026-08-28: there is a build script now, and it holds to both sentences above.** `build.rs` exists and does exactly one thing: on `windows-msvc` it prints `/MANIFEST:EMBED` and `/MANIFESTINPUT:…` as linker arguments, so that the linker already linking the binary embeds `packaging/windows/slipcase-desktop.manifest`. It compiles nothing, adds no build dependency, and a build still needs a Rust toolchain and nothing else. The check this section is measured by — no `.o` or `.a` under the build directory, `ldd` naming libc, libgcc and libm — is unmoved.
+
+The distinction it turns on is narrow and worth stating, because the obvious route was already rejected once. `packaging/windows/README.md` ruled out `rc.exe` and `windres` when the window icon wanted a resource, which is why that icon travels through `include_bytes!`. What was rejected there is the *resource compiler*, and embedding through the linker needs none. A second use of this build script is a decision to take rather than a precedent to follow.
+
+**What it bought is smaller than what prompted it, and that was measured rather than assumed.** The Windows App Certification Kit reads the application manifest rather than the process and reported the application as not DPI aware because there was nothing there to read. It was aware regardless: the packaged build from *before* this change reports `PER_MONITOR_AWARE_V2` exactly, which winit sets inside `EventLoop::new`. So the manifest changed no run-time behaviour. What it changes is that the awareness is declared before any of this program's code runs rather than set a moment into it, and that a tool reading the binary can now see it.
+
+**It cross-compiles.** `cargo check --target x86_64-pc-windows-msvc` succeeds on a Linux machine carrying no MSVC toolchain. The build script reads `CARGO_CFG_TARGET_OS` and `CARGO_CFG_TARGET_ENV` rather than `cfg!`, because a build script is compiled for the host and `cfg!(windows)` inside one answers about the machine doing the building — which is the question that cross-check is designed not to ask.
 
 **The minimum supported Rust version is 1.95, and it comes from `eframe`** rather than from anything written here. Measured, and expected to rise whenever egui raises its own.
 

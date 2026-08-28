@@ -315,6 +315,14 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
   takes `/MANIFESTINPUT` with `/MANIFEST:EMBED` through `-C link-arg` — and
   taking it is a `DESIGN.md` §2 amendment rather than a packaging change.
 
+  **Decided and done, 2026-08-28.** The linker route was taken, `DESIGN.md` §2
+  is amended with why a linker argument is not the build step it keeps out, and
+  the manifest is embedded and read back out of the binary. It changed no
+  behaviour — the build from before it was already `PER_MONITOR_AWARE_V2` — so
+  what it buys is the declaration itself and awareness being set before any of
+  this program's code runs. **Whether the kit is satisfied is unrun**, and it is
+  the one thing left on this platform that needs an elevated session.
+
 ### One decision this platform owes, and it is not packaging
 
 **The stale `UserChoice` sequence is done and was done on 2026-08-26.** This
