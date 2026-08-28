@@ -879,6 +879,25 @@ which is a hint and not an answer, and this is a submission policy question that
 rather than a repair, because the alternative — removing `ShellExecuteW` — is
 removing the application.
 
+**The second run is void, and is kept here rather than dropped.** Attempted the
+same day against the package carrying the forty-five assets and the resource
+index. `appcert` refuses to overwrite an existing report — *Specified report …
+already exists. Please specify a unique report file name.* — and stopped before
+running a single test, which is visible in its output as the thirty task lines
+of the first run being replaced by none. `build-msix.ps1` then found the report
+present, parsed it, and printed **the first run's findings as this run's**,
+identical to the letter, which is exactly why they looked so reassuring.
+
+That is the failure the script's own comment claimed to guard against. It
+distinguished a kit that ran and failed from a kit that never ran, and *stale*
+is a third state neither word covers. The report is now removed before the kit
+is started and the one that appears is required to be newer than the run; the
+predicate was checked both ways, though only against a constructed file, because
+proving the whole path needs an elevated run.
+
+Nothing is known about the packaged assets' effect on certification. That is the
+open item, and it is a third run.
+
 **WARNING — DPIAwarenessValidation.** Two messages: *Failed to process the
 binary* and *The app … is not DPI Aware*.
 

@@ -377,10 +377,30 @@ if ($Certify) {
     }
 
     $report = Join-Path $OutDir "wack-$version.xml"
+
+    # The report is removed first, and then the one that appears is checked for
+    # being newer than this run. Both, because the first version of this did
+    # neither and reported a previous run's verdict as though it were this one's.
+    #
+    # `appcert` refuses to overwrite a report: given a path that exists it prints
+    # "Please specify a unique report file name" and stops before running a
+    # single test. The file was still there, `Test-Path` was satisfied, and the
+    # findings printed were the previous package's - on a run whose whole
+    # purpose was to test a different package under the same version number.
+    #
+    # This is the failure the comment below already claimed to guard against,
+    # which is worth reading twice: a kit that ran and failed and a kit that
+    # never ran must not come out the same, and *stale* is a third state neither
+    # of those words covers.
+    if (Test-Path $report) { Remove-Item $report -Force }
+    $startedAt = Get-Date
     & $appcert reset | Out-Null
     & $appcert test -appxpackagepath $package -reportoutputpath $report
     if (-not (Test-Path $report)) {
         Refuse "the certification kit wrote no report to $report"
+    }
+    if ((Get-Item $report).LastWriteTime -lt $startedAt) {
+        Refuse "the report at $report is older than this run - the kit did not write it, so nothing below would be about this package"
     }
 
     # The verdict is read out of the report rather than out of an exit code. A
