@@ -316,8 +316,8 @@ is not.
   attribution. `slpc` gained `Mark::Recorded` and
   `com.excelano.slipcase.origin`, and `arrived_from_elsewhere` consults it. The
   card is right after a save and after a reopen, proven end to end through a
-  signed sandboxed bundle. **What is left here is a version bump when 0.3.10
-  ships**, which belongs with the release rather than with this platform's work.
+  signed sandboxed bundle. **Done**: `slpc` 0.3.10 shipped on
+  2026-08-28 and this repository takes it, which is all that was left here.
   The original entry is kept below because its reasoning was right.
 
   `CHECKLIST.md`
