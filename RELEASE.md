@@ -270,6 +270,12 @@ package, and its final paragraphs say which of it a CI step could take over.
   look there: it drew the icon on a plate filled with the user's accent colour.
   Fixed with unplated variants, scale variants, and the resource index that
   makes any of them resolve, then looked at again.
+- ~~**A walkthrough of the packaged application**~~ — done 2026-08-28, against
+  the installed package rather than the executable. Open hands the payload over,
+  a container opened from Explorer launches the packaged binary, and the window
+  reads correctly in both themes. Every window defect this project has found was
+  found this way and none of them by a test, which is why it stayed on this list
+  until somebody had looked.
 - ~~**Screenshots** of the real window, at the sizes the Store asks for.~~
   **Done 2026-08-28, and this entry was wrong about needing a person.** It sat
   under *by hand, because no script can*, which was an assumption:
@@ -349,56 +355,6 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
 
   **The kit is satisfied: it no longer reports the finding, and the package now
   passes overall.** This item is closed.
-
-### One decision this platform owes, and it is not packaging
-
-**The stale `UserChoice` sequence is done and was done on 2026-08-26.** This
-file listed it as outstanding for two days, along with `HANDOFF.md` and
-`packaging/windows/README.md`, while `CHECKLIST.md` carried the answer the whole
-time. Reproduced on 2026-08-28 against the real reserved identity.
-
-What it found is a decision rather than a task. A `UserChoice` left behind by
-somebody who deleted the script install instead of running `uninstall.ps1` can
-leave the extension **dead**: where the stale key names a ProgID that still
-exists whose command names a deleted executable, a double-click is refused with
-*Application not found*, the installed package is ignored, and no picker offers
-a way out. An MSIX runs no code at install time, so the package cannot clear
-that key itself.
-
-Two ways out looked available, and only one of them exists.
-
-- **The listing says to run `uninstall.ps1` first.** Costs nothing, and relies
-  on a person reading a store page before installing, which is not a thing
-  people do.
-- ~~**The application clears a stale `UserChoice` at startup.**~~ **Chosen,
-  built, measured and reverted on 2026-08-28.** It works in an unpackaged build
-  and does nothing in a packaged one: MSIX virtualises a package's registry
-  *writes*, so the delete never reaches the real hive. Confirmed twice — the
-  packaged application left the key untouched, and a probe deleting a key under
-  the same path from inside the container left it standing while the same delete
-  from outside removed it. And it is not worth keeping for the side-loaded
-  install, because clearing the key only helps if something else then supplies a
-  working association, which is the package. It helps only the case it cannot
-  run in. `CHECKLIST.md` holds the run.
-
-**So the listing option is the only one, and it is now a writing task rather
-than a decision.** `packaging/store-listing.md` has to say, in the description a
-Windows shopper reads, that anyone who installed Slipcase with the scripts
-should run `uninstall.ps1` before installing from the Store. That sentence is
-not written yet and it belongs to the readiness review.
-
-One route was refused rather than missed: `unvirtualizedResources` would turn
-the virtualisation off, is a restricted capability needing Microsoft's approval,
-and would spend the capability story the manifest is built around.
-
-One is untried rather than refused: a packaged application can still *read* the
-registry, so it could detect this state and tell a person how to clear it in
-Settings. That is informing rather than repairing, it is a question about what
-the window says, and nobody has asked it.
-- **A walkthrough of the packaged application**, not the executable: install the
-  package, double-click a container, press Open, and look at the screen. Every
-  window defect this project has found was found this way and none of them by a
-  test.
 
 ### Do not
 

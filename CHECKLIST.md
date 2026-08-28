@@ -646,8 +646,15 @@ after the repair. It helps only the packaged case and cannot run in the packaged
 case. Working code that cannot act where it is needed is worse than none,
 because it reads like the problem is handled.
 
-So the listing option is not a preference any more, it is the only one, and
-`RELEASE.md` says so. One route was not tried and is recorded as refused rather
+So telling people is the only option left — but not in the store listing, which
+took asking who it is for. There are no script-install users: the scripts have
+only ever existed in this repository and the application has never been
+released. The problem is prospective rather than retrospective, because the
+scripts stay after this release deliberately, so the warning goes where those
+people are, beside the command they would be running:
+`packaging/windows/README.md` carries it, with both failure states and the
+reason `uninstall.ps1` is the thing to run. One route was not tried and is
+recorded as refused rather
 than missed: `unvirtualizedResources` is a restricted capability that would turn
 the virtualisation off, needs Microsoft's approval, and would spend the
 capability story `AppxManifest.xml.in` is built around — one capability,

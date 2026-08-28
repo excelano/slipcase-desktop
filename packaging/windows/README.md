@@ -10,6 +10,20 @@ on the platform that has no freedesktop database to put them in.
 and `-Prefix DIR` puts the files somewhere else. `uninstall.ps1 -KeepFiles`
 removes the association and leaves them.
 
+**If you install this way and later install Slipcase from the Microsoft Store,
+run `uninstall.ps1` first.** With both registered Windows chooses neither and
+puts up its *how do you want to open this file* picker, so a package installed
+over a live script installation turns a working association into a prompt. Worse
+if the files are deleted by hand instead: a `UserChoice` left pointing at a
+`ProgID` whose executable is gone kills the extension outright — *Application not
+found*, the package ignored, and no picker offering a way out. `uninstall.ps1`
+removes that key, which is the whole reason it is the thing to run.
+
+Both states are measured and are in `CHECKLIST.md`. Neither is repairable from
+inside a package: an MSIX runs no code at install time, and one running later
+cannot write the key back, because a package's registry writes are virtualised —
+which was built, measured and reverted rather than assumed.
+
 ## What is here
 
 | File | What it is |
