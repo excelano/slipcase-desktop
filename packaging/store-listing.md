@@ -21,13 +21,35 @@ Limits, so a later edit does not overrun them:
 
 | Field | Microsoft Store | Mac App Store |
 | --- | --- | --- |
+| App name | unmeasured | 30 |
 | Description | 10,000 | 4,000 |
 | Short description | 1,000 | — |
 | Subtitle | — | 30 |
 | Promotional text | — | 170 |
 | Keywords | 7 terms | 100 characters |
 
+The Mac App Store's 30 is the one that binds; the Microsoft Store's limit is far
+above anything here and is left unmeasured rather than written down wrong.
+
 ---
+
+## App name (both)
+
+    Slipcase
+
+**This is the string that gets reserved, and it is the only name a shopper ever
+sees.** `CLAUDE.md` settles it: the application is presented to a person as
+Slipcase, while `slipcase-desktop` is the crate, the binary, and the reverse-DNS
+stem of the bundle identifier. Those are identifiers rather than names, and no
+store displays them — `com.excelano.slipcase-desktop` is claimed in App Store
+Connect's identifier namespace, which is a different reservation from this one.
+
+It is written here because it has to be typed identically into four places that
+cannot see each other: the App Store Connect reservation, the Partner Center
+reservation, `Package/Properties/DisplayName` in `AppxManifest.xml`, and
+`CFBundleDisplayName` in `Info.plist`. Until this section existed the name
+appeared in this file only inside the prose below, which is not somewhere a
+person copies a value from.
 
 ## Subtitle (Mac App Store, 30)
 

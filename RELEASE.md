@@ -188,10 +188,11 @@ package, and its final paragraphs say which of it a CI step could take over.
 
 ### Once
 
-- **Reserve the name in Partner Center.** Do this first: `Package/Identity/Name`,
-  `Publisher` and `PublisherDisplayName` are assigned at reservation, and a
-  package whose identity disagrees with them is rejected at upload rather than
-  at review. Everything below wants those three values.
+- **Reserve the name in Partner Center**, which is `Slipcase` — the section on
+  the name below says why it is that and not `slipcase-desktop`. Do this first:
+  `Package/Identity/Name`, `Publisher` and `PublisherDisplayName` are assigned
+  at reservation, and a package whose identity disagrees with them is rejected
+  at upload rather than at review. Everything below wants those three values.
 - **Fill them into `AppxManifest.xml.in`** — or rather into whatever the build
   script substitutes from, so that they live in one place.
 
@@ -238,8 +239,10 @@ and `LSApplicationCategoryType` is declared.
 
 ### Once
 
-- **Reserve the name in App Store Connect**, and create the app record and the
-  App ID for `com.excelano.slipcase-desktop`.
+- **Reserve the name in App Store Connect**, which is `Slipcase`, and create the
+  app record and the App ID for `com.excelano.slipcase-desktop`. Those are two
+  different reservations in two different namespaces and the section on the name
+  below says why the distinction matters.
 - **Certificates and profile**: an Apple Distribution certificate, a Mac
   Installer Distribution certificate, and a Mac App Store provisioning profile,
   which a Store bundle carries as `embedded.provisionprofile` and which must
@@ -316,6 +319,45 @@ written around it is the expensive order.
 
 Submit. Reserve the name, build and sign the package, validate it through
 Transporter if that can be done without submitting, and stop.
+
+---
+
+## What was decided about the name, and about the command-line tool
+
+Asked on 2026-08-28, whether two names should be reserved — `slipcase` for the
+command-line tool and `slipcase-desktop` for this application. Decided that one
+name is reserved in each store and that it is **Slipcase**, and the reasoning is
+here because both halves of the question will come back.
+
+**`slipcase-desktop` is not a name.** `CLAUDE.md` has said so from the start:
+the application is presented to a person as Slipcase, and `slipcase-desktop` is
+the crate, the binary, and the stem of `com.excelano.slipcase-desktop`. A store
+reservation claims the display name a shopper sees and searches, and no store
+displays an identifier. The bundle identifier is claimed separately in App Store
+Connect and that reservation is not this one. `packaging/store-listing.md` now
+carries the name as a field rather than only inside its prose, with the four
+places it has to be typed identically named there.
+
+**The command-line tool is not a store product, and on macOS it cannot be.**
+`slpc-rust` already distributes it more thoroughly than this application is
+distributed: `dist-workspace.toml` builds five targets with cargo-dist,
+including `aarch64-apple-darwin`, and produces a shell installer, a PowerShell
+installer, and a Homebrew tap at `excelano/homebrew-tap`, alongside crates.io
+for `cargo install` and `[package.metadata.deb]` for Debian. Those are the
+channels somebody looking for a CLI reaches for, and a store is not among them.
+
+Apple's side settles itself: the Mac App Store takes GUI application bundles,
+and a sandboxed bundle cannot put anything on `PATH`, so a command-line tool
+could only ship buried inside a container where being on `PATH` is the entire
+point. The Microsoft Store could carry a console application inside an MSIX, but
+winget is the idiomatic Windows channel for one and the PowerShell installer
+already covers the same ground. If a store-shaped Windows presence is ever
+wanted for the CLI, a winget manifest is the thing to want, and it is
+independent of everything in this file.
+
+**So the stores are for the GUI.** Reserving a second name buys nothing and both
+stores reclaim reservations that never receive a build, so a defensive
+reservation would most likely lapse before it was ever used.
 
 ---
 
