@@ -255,12 +255,38 @@ and `LSApplicationCategoryType` is declared.
 
 ### By hand, because no script can
 
-Four of these are already in `CHECKLIST.md` under *Not yet done by hand*, and
+Most of these are already in `CHECKLIST.md` under *Not yet done by hand*, and
 they are not paperwork — this platform has a history of the sandbox costing more
 than anybody expected.
 
+**The first two come before any of the packaging work.** Both ask whether the
+App Sandbox breaks something this application did to itself in the days before,
+and both have answers that are decisions about `DESIGN.md` §5 rather than
+repairs. Taking a decision like that after a bundle is signed and a listing is
+written around it is the expensive order.
+
+- **Can a launched application read the payload at all, under the sandbox?**
+  `CHECKLIST.md` item 6, and **the very first thing** — it is one open, one
+  button, and one look at the screen, and it is the cheapest way to find out
+  whether the Store build works at all.
+
+  On 2026-08-27 the handover directory became mode 0700, to stop every payload
+  somebody pressed Open on being readable by every account on the machine. On
+  Linux that costs the handler nothing, because it runs as the same user, and
+  `tests/handover.rs` proves it by reading the payload back from a separate
+  process. Under the App Sandbox the handler is a *different application with a
+  container of its own*, and the payload now sits in a private directory inside
+  this one's. Launch Services normally grants the opened application a scope for
+  the URL it was launched with, which ought to be enough — but *ought* is not a
+  measurement, and nothing on Linux can take it.
+
+  **If it fails, Open fails for every container on the Store build.** The fix is
+  a decision rather than a repair: the mode that keeps a payload private from
+  other accounts on the machine is the mode that would be hiding it from the
+  program meant to open it. Preview showing the PDF is a pass; anything else is
+  the finding.
 - **Saving an edit to a downloaded container, under the sandbox.** `CHECKLIST.md`
-  item 4, and **do this before any of the packaging work**: if the sandbox breaks
+  item 4, and **also before the packaging work**: if the sandbox breaks
   the provenance carry the way it once broke Save, that is a decision about
   `DESIGN.md` §5 rather than a repair, and it is cheaper to take before a bundle
   has been signed and a listing written around it.
