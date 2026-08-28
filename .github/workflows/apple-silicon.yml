@@ -31,7 +31,7 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The architecture is the whole reason this workflow exists, and a label
       # is a promise rather than a fact: `macos-13` is Intel and `macos-14`
