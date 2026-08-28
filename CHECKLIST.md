@@ -837,6 +837,32 @@ the test asks for the body-text row too rather than having it written alongside.
 None of the conclusions move: 4.31:1 is under 4.5:1 the same way 4.07:1 was, and
 the repair was needed in both themes.
 
+**Looked at on 2026-08-28, which had not happened: the repair was measured and
+never seen.** Everything above repaired the colours and proved the repair with a
+test, and every walkthrough on this platform ran in dark mode — so the light card
+had been looked at while it was broken and not since it was fixed. David switched
+the desktop to light while the screenshots were being taken and it cost two more
+captures. The provenance line reads clearly. It is a look rather than a
+measurement, which is exactly what this section had been missing.
+
+**And the pixels were measured too, out of the screenshots rather than out of the
+code**, because the whole embarrassment above was figures computed against a
+colour the screen never showed.
+
+| | Card fill, as drawn | Darkest ink pixel | Contrast |
+| --- | --- | --- | --- |
+| Light | `#F8F8F8` | `#B95312` | **4.59:1** |
+| Dark | `#1B1B1B` | `#FE8E00` | **7.45:1** |
+
+Dark agrees with the test's 7.53:1 within antialiasing. Light comes out 4.59
+against the test's 5.18, and the difference is not a defect in either: the
+configured colour is `rgb(180, 70, 0)`, whose contrast on `#F8F8F8` computes to
+5.18:1 exactly, and no antialiased glyph pixel quite reaches its own colour. So
+the two numbers say different things and both are worth having — 5.18:1 is the
+colour, 4.59:1 is the worst pixel an eye actually receives, and **both clear
+4.5:1**. The second is the one this section had no way of knowing before, since
+it can only be taken off a screen.
+
 Looked at as well as measured, which is the point of this file: the line is a
 deeper rust orange on the light card, plainly legible and still plainly a
 warning rather than body text. The rendered pixels are `rgb(180,70,0)`, the

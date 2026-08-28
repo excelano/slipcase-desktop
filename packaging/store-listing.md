@@ -127,10 +127,23 @@ available if a listing ever wants one — `screenshot.ps1` takes `-Width` and
 Taken by `packaging/windows/screenshot.ps1`, against the **packaged**
 application, on 2026-08-28. The two are:
 
-| File | What it shows |
-| --- | --- |
-| `01-window.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
-| `02-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| Order | File | What it shows |
+| --- | --- | --- |
+| 1 | `03-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
+| 2 | `04-light-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| 3 | `01-window.png` | The first again, in dark mode |
+| 4 | `02-arrived-from-elsewhere.png` | The second again, in dark mode |
+
+**Light leads, and that is a decision rather than a preference.** The application
+follows the system theme, and a fresh Windows 10 or 11 installation runs apps
+light — `AppsUseLightTheme` is 1 — so the majority of people looking at this
+listing are looking at a light desktop, and a listing whose first picture is dark
+shows them something their machine will not give them. The dark pair is kept
+because following the theme is worth showing and costs two slots out of ten.
+
+**Both pairs are the same two containers and the same script**, so the only
+difference between 1 and 3 is the desktop's theme. That is deliberate: a shopper
+comparing them sees the application, not two different demonstrations.
 
 **The container in them is a demonstration and is not in this repository.** It
 holds a real one-page PDF and a metadata document written to exercise the tree
