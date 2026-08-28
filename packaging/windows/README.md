@@ -217,13 +217,28 @@ days rather than minutes. Recorded because a session that has to ask this
 question loses an afternoon to it, and the macOS README carries the same
 sentence about Apple for the same reason.
 
-**What is absent is a package.** `packaging/macos` holds `build-app.sh`,
-`Info.plist.in` and an entitlements file, so a bundle is reproducible from this
-repository by anyone with a Mac. There is no counterpart here. The MSIX that
+**What is absent is the build, and it is now half absent.**
+`AppxManifest.xml.in` landed on 2026-08-28, templated the way `control.in` and
+`Info.plist.in` are, with four placeholders: three identity values Partner
+Center assigns and the version, which `packaging/version.sh` answers when asked
+for the appx spelling. What is still missing is `build-msix.ps1`. The MSIX that
 answered the three questions in `CHECKLIST.md` was built by hand at a prompt and
-nothing in the tree rebuilds it: no `AppxManifest.xml`, no build script. That —
-rather than the account, and rather than anything measured — is what stands
-between this platform and a submission.
+nothing in the tree rebuilds it.
+
+**The manifest names image assets that do not exist yet.** `StoreLogo.png`,
+`Square150x150Logo.png`, `Square44x44Logo.png`, `Wide310x150Logo.png` and
+`slipcase.png`, all under `Assets\`. `packaging/windows/slipcase.ico` is the
+source for the last of those and `packaging/linux/icons/` holds the scalable
+originals for the rest, so nothing has to be drawn — but something has to
+produce PNGs at the sizes the Store asks for, and that belongs in the build
+script beside everything else mechanical. The `.ico` generator in
+`packaging/windows/make-ico` is the model: committed output, checked in CI
+against a rebuild.
+
+**The association in the manifest mirrors `install.ps1` deliberately.** Same
+extension, same content type, same friendly name. If the packaged application
+and a side-loaded one ever claim `.slpc` differently, a person with both sees
+the wrong one win and has nothing to explain it.
 
 **Three values have to come out of Partner Center before a manifest is real.**
 `Package/Identity/Name`, `Publisher` and `PublisherDisplayName` are assigned

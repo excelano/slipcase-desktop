@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The MSIX package manifest, templated the way `control.in` and `Info.plist.in`
+  are. `build-msix.ps1`, which does not exist yet, substitutes the placeholders
+  below; nothing here is meant to be edited per build.
+
+  WHAT MUST COME FROM PARTNER CENTER, AND WHY IT CANNOT BE GUESSED
+
+  @IDENTITY_NAME@, @PUBLISHER@ and @PUBLISHER_DISPLAY_NAME@ are assigned when the
+  name is reserved. A package whose identity disagrees with the reservation is
+  rejected at upload rather than at review, so there is no way to find out you
+  guessed wrong except by trying. @PUBLISHER@ in particular is a full X.500
+  string — `CN=...` with a GUID — and not the display name. Reserving the name
+  is cheap and unblocks this file, which is why `RELEASE.md` puts it first in
+  the Windows section.
+
+  @VERSION_APPX@ is what `packaging/version.sh` prints when asked for the appx
+  spelling: four parts with the fourth always 0, which the Store requires. It is a different shape from the crate
+  version and from what macOS wants, which is why one script answers all three.
+
+  WHAT IS DECIDED HERE
+
+  The file-type association mirrors what `install.ps1` writes to `HKCU` for a
+  side-loaded install, so a packaged Slipcase and an installed-from-source one
+  claim the same extension under the same content type and the same friendly
+  name. If those two ever disagree, a person who has both sees the wrong one
+  win with nothing to explain it.
+
+  No capabilities beyond `runFullTrust`. This application makes no network call,
+  needs no broad filesystem access — it opens the file it was launched with and
+  writes where a person points a save dialog — and asks for no device. A
+  capability requested and unused is a question at certification with no good
+  answer, and it is what a person reads on the store page before installing.
+
+  Author: David M. Anderson
+  Built with AI assistance (Claude, Anthropic)
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="@IDENTITY_NAME@"
+    Publisher="@PUBLISHER@"
+    Version="@VERSION_APPX@"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>Slipcase</DisplayName>
+    <PublisherDisplayName>@PUBLISHER_DISPLAY_NAME@</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+    <Description>Open a slipcase container, read and edit the metadata travelling with its payload, and hand the payload to whatever opens that kind of file.</Description>
+  </Properties>
+
+  <Dependencies>
+    <!-- 10.0.17763 is the oldest Windows 10 that supports the packaging
+         features used here. Raising it excludes machines for nothing; lowering
+         it is not possible. -->
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.17763.0"
+      MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-gb" />
+  </Resources>
+
+  <Applications>
+    <Application
+      Id="Slipcase"
+      Executable="slipcase-desktop.exe"
+      EntryPoint="Windows.FullTrustApplication">
+
+      <uap:VisualElements
+        DisplayName="Slipcase"
+        Description="Open a slipcase container and hand its payload to whatever opens that kind of file."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- The same extension, content type and friendly name `install.ps1`
+             writes for a side-loaded install. The icon index is 0 because
+             `slipcase.ico` holds one image set; `make-ico` builds it and
+             `windows.yml` checks the committed copy still matches its
+             generator. -->
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="slpc">
+            <uap:SupportedFileTypes>
+              <uap:FileType ContentType="application/x.slipcase+zip">.slpc</uap:FileType>
+            </uap:SupportedFileTypes>
+            <uap:DisplayName>Slipcase Container</uap:DisplayName>
+            <uap:Logo>Assets\slipcase.png</uap:Logo>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <!-- A packaged desktop application needs this and nothing else. See the
+         comment at the top of this file. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

@@ -122,9 +122,19 @@ reserved rather than after, which is the only timing that matters.
 
 ### Once
 
-- **`AppxManifest.xml.in`** — templated on the identity values Partner Center
-  assigns, the way `control.in` and `Info.plist.in` are templated. Declarative,
-  and writable here even though it can only be *built* on Windows.
+- ~~**`AppxManifest.xml.in`**~~ — done 2026-08-28. Four placeholders: the three
+  identity values Partner Center assigns when the name is reserved, and the
+  version in its appx spelling. The file-type association mirrors what
+  `install.ps1` writes for a side-loaded install, and the only capability
+  declared is `runFullTrust`, because a capability asked for and unused is a
+  question at certification with no good answer and a line a person reads before
+  installing.
+
+  It names image assets that do not exist: five PNGs under `Assets\`. The
+  sources are all in the tree — `packaging/windows/slipcase.ico` and
+  `packaging/linux/icons/` — so nothing has to be drawn, but producing them at
+  the Store's sizes belongs in `build-msix.ps1`. `packaging/windows/README.md`
+  says so where the Windows session will read it.
 - **`SECURITY.md`** — `slpc-rust` has one and this repository does not. It is a
   public repository shipping an application that opens files people were sent,
   so a disclosure path is worth having before a store listing points at it.
