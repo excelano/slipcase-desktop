@@ -787,8 +787,108 @@ deeper rust orange on the light card, plainly legible and still plainly a
 warning rather than body text. The rendered pixels are `rgb(180,70,0)`, the
 colour asked for.
 
+### What looking at the tiles found
+
+Looked at 2026-08-28, David at the machine, against the installed package. The
+Start menu tile and the application list entry read correctly, which settles the
+one part of the assets that was a reading of Microsoft's guidance rather than a
+measurement: the drawing at two thirds of a tile and filling an icon-shaped
+asset is right.
+
+**The taskbar was not right, and nobody had thought to look there.** The icon
+sat on a purple square. That is not the drawing and not the desktop: the
+manifest declares `BackgroundColor="transparent"`, so where Windows draws a
+*plated* icon it fills the plate with the user's accent colour, and this
+machine's accent is `#744DA9` — read out of `HKCU\…\DWM\ColorizationColor` and
+identical to the purple on the screen. The asset itself is transparent at all
+four corners, checked pixel by pixel.
+
+**So the packaged application and the side-loaded one wore different faces**,
+which is exactly what `AppxManifest.xml.in`'s comment about mirroring
+`install.ps1` exists to prevent: the script install draws the same icon unplated
+from `slipcase.ico`.
+
+The repair is an `altform-unplated` asset, and it took two changes rather than
+one. `make-ico` now writes the target-size and unplated variants — and the
+`scale-` variants beside them, which were missing for the same reason and would
+have had the shell rescaling one bitmap at every display scaling this repository
+already cares enough about to render nine `.ico` sizes for. **And a variant is
+inert without a resource index**: a qualifier is resolved through
+`resources.pri` and nowhere else, so all forty-five images would have shipped
+with the shell reading only the five the manifest names by literal path.
+`build-msix.ps1` runs `makepri` now, and `makepri dump` confirms the unplated
+qualifier is indexed rather than merely present.
+
+Unlooked-at: the taskbar after that change. It is the item below.
+
+### What the certification kit found, first run
+
+Run 2026-08-28 by David from an elevated prompt, which is what the kit needs;
+`build-msix.ps1 -SelfSign -Certify` drove it. It has never been run before, and
+`packaging/windows/README.md` had it listed as unrun since the channel was
+chosen. **Overall: WARNING.** The package it tested carried five images and no
+resource index — the run started before the assets below landed, so it will want
+repeating.
+
+**Two tests did not pass, and the kit's own overall verdict hid one of them.**
+`Blocked executables` read FAIL while the report's `OVERALL_RESULT` said
+WARNING, so a gate reading only the overall would have called a failing test a
+warning. `build-msix.ps1` now refuses on either and prints every non-passing
+test with its messages; the first version printed nothing at all, because it
+looked for an `OVERALL_RESULT` attribute and only the report element has one.
+
+**FAIL — Blocked executables.** Five messages against `slipcase-desktop.exe`:
+references to `kernel32.dll!CreateProcessW` and `shell32.dll!ShellExecuteW`, and
+blocked references to `"CsI"`, `"cmd.exe"` and `"\cmd.exe"`.
+
+Traced rather than argued about. The two `cmd.exe` strings are in the **Rust
+standard library**: both sit beside a `library\std\src\sys\…` path in the
+binary, and the longer one is `cmd.exe /e:ON /v:OFF /d /c`, which is std's
+batch-file spawn. A hello-world Rust binary contains neither string, so they
+arrive with `std::process`, not with the toolchain unconditionally. Every
+`std::process::Command` in this repository is inside a `#[cfg]` arm for Linux
+(`opens_with.rs`, asking `xdg-mime`) or macOS (`staging.rs`, driving `hdiutil`
+in a test), so none of it compiles on Windows — the string is reachable code in
+std that this build never calls.
+
+`ShellExecuteW` is `opener`, and it is the application's whole declared purpose:
+`opener` 0.8.5's Windows arm calls `ShellExecuteW` and nothing else, which was
+read rather than assumed. Handing a payload to whatever the system registered
+for it is what the Open button is.
+
+`"CsI"` was not traced. It is three characters and the kit matched it in a
+binary; that is as much as is known.
+
+**What is not known is whether the Store minds.** The kit did not escalate it,
+which is a hint and not an answer, and this is a submission policy question that
+`RELEASE.md` deliberately stops short of. It is recorded here as a decision
+rather than a repair, because the alternative — removing `ShellExecuteW` — is
+removing the application.
+
+**WARNING — DPIAwarenessValidation.** Two messages: *Failed to process the
+binary* and *The app … is not DPI Aware*.
+
+**Measured against the running process, and it is not true of the behaviour.**
+`GetWindowDpiAwarenessContext` on the packaged application's own window, while
+it was running from `WindowsApps`, reports `PER_MONITOR_AWARE` — winit sets that
+at startup. The kit reads the PE application manifest, which carries no
+`dpiAware` element, so what it found is a missing *declaration*. The hand run at
+125% and 200% recorded above agrees with the process and not with the kit.
+
+Declaring it statically needs a Win32 manifest embedded in the executable, and
+that is the same wall the window icon hit: `rc.exe` and `windres` are build
+steps `DESIGN.md` §2 keeps out, which is why `main.rs` carries the icon through
+`include_bytes!`. There is a route that does not compile anything — the MSVC
+linker takes `/MANIFESTINPUT` with `/MANIFEST:EMBED` through `-C link-arg` —
+but taking it is a `DESIGN.md` §2 decision and not this section's.
+
 ### Not yet done by hand
 
+- **The taskbar, after the unplated assets.** The plate is what the change was
+  for, and the change has not been looked at. Needs the package reinstalled and
+  one glance at the taskbar.
+- **The certification kit, against a package carrying the assets.** The run
+  above tested five images and no `resources.pri`. Both changed the same day.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,

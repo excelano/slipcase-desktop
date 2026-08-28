@@ -188,13 +188,16 @@ Copy-Item $Binary (Join-Path $stage 'slipcase-desktop.exe')
 # are checked here rather than trusted: a manifest naming an image that is not
 # there is a makeappx failure with a worse message than this one.
 $assets = Join-Path $here 'assets'
+Copy-Item (Join-Path $assets '*.png') (Join-Path $stage 'Assets')
+# The whole directory is copied and then the five the manifest names are
+# checked, rather than the five being copied by name. The qualified variants
+# beside them are resolved by `resources.pri` and never named anywhere, so a
+# copy-by-name list would silently stop shipping them the day one was added.
 foreach ($image in 'StoreLogo.png', 'Square150x150Logo.png', 'Square44x44Logo.png',
                    'Wide310x150Logo.png', 'slipcase.png') {
-    $from = Join-Path $assets $image
-    if (-not (Test-Path $from)) {
+    if (-not (Test-Path (Join-Path $stage "Assets\$image"))) {
         Refuse "no $image in $assets - run 'cargo run --release' in packaging/windows/make-ico"
     }
-    Copy-Item $from (Join-Path $stage "Assets\$image")
 }
 
 # --- the manifest -----------------------------------------------------------
@@ -223,6 +226,61 @@ if ($left) {
     (Join-Path $stage 'AppxManifest.xml'),
     $manifest,
     (New-Object System.Text.UTF8Encoding $false))
+
+# --- the resource index -----------------------------------------------------
+
+# Without this the package ships the images and the shell reads only the five
+# the manifest names by literal path: every `scale-` and `altform-` qualifier
+# beside them is inert, because a qualifier is resolved through the resource
+# index and nowhere else.
+#
+# The visible cost of not having one was the taskbar. `BackgroundColor` is
+# `transparent`, so Windows plates the icon in the user's accent colour, and on
+# 2026-08-28 that drew this application on a purple square while the side-loaded
+# install drew the same icon unplated from `slipcase.ico`. The
+# `altform-unplated` asset is what stops it, and it was in the package and doing
+# nothing until this step existed.
+#
+# The configuration is written outside the staging tree on purpose. `makepri`
+# indexes the directory it is given, so a configuration file left inside it
+# becomes a resource of the package.
+$makepri = Find-SdkTool 'makepri.exe'
+if (-not $makepri) { Refuse 'no makepri.exe in any Windows SDK' }
+$priConfig = Join-Path $OutDir 'priconfig.xml'
+# `en-GB` matches the `<Resource Language="en-gb" />` the manifest declares. If
+# the two disagree the index has no default language and the shell falls back to
+# the literal paths, which is the failure this whole step exists to remove --
+# and it fails silently, so it is spelled once here from the manifest's value.
+& $makepri createconfig /cf $priConfig /dq en-GB /o | Out-Null
+if ($LASTEXITCODE -ne 0) { Refuse "makepri createconfig failed ($LASTEXITCODE)" }
+
+# The default configuration splits qualified resources into *resource packages*,
+# which is right for a bundle and wrong for one monolithic package. Left alone,
+# `makepri` wrote `resources.scale-125.pri` and four siblings and left the scale
+# variants out of the main index entirely: `makepri dump` of the installed
+# package found no `scale-125` anywhere in it, so every one of those images
+# shipped and resolved to nothing. This is a package, not a bundle, so the
+# splitting is turned off and everything lands in one index.
+[xml] $priXml = Get-Content $priConfig
+foreach ($split in @($priXml.SelectNodes('//autoResourcePackage'))) {
+    $split.ParentNode.RemoveChild($split) | Out-Null
+}
+$priXml.Save($priConfig)
+
+& $makepri new /pr $stage /cf $priConfig /of (Join-Path $stage 'resources.pri') /o | Out-Null
+if ($LASTEXITCODE -ne 0) { Refuse "makepri new failed ($LASTEXITCODE)" }
+Remove-Item $priConfig -Force
+if (-not (Test-Path (Join-Path $stage 'resources.pri'))) {
+    Refuse 'makepri reported success and wrote no resources.pri'
+}
+# Nothing should have been split out. If a `resources.<qualifier>.pri` appears
+# beside the main one, the configuration edit above stopped working and the
+# variants are silently unresolvable again - which is a thing that looks like a
+# working package right up until somebody photographs a taskbar.
+$split = Get-ChildItem (Join-Path $stage 'resources.*.pri') -ErrorAction SilentlyContinue
+if ($split) {
+    Refuse "makepri split resources into $($split.Name -join ', ') - those belong to a bundle, and this is one package"
+}
 
 # --- the package ------------------------------------------------------------
 
@@ -285,6 +343,13 @@ if ($SelfSign) {
     if ($trusted) {
         Write-Host 'install it:'
         Write-Host "  Add-AppxPackage $package"
+        # Deployment refuses 0x80073CFB for a package whose identity and version
+        # match one already installed but whose contents differ, which is every
+        # rebuild during a day's work. The version is not bumped for that - it
+        # is one number with three spellings and a release decision - so the old
+        # one comes off first. Measured by hitting it.
+        Write-Host '  # rebuilding the same version? remove the installed one first:'
+        Write-Host "  Get-AppxPackage $($identity.Name) | Remove-AppxPackage"
     } else {
         Write-Host 'to install it, this certificate has to be trusted, which needs administrator once:'
         Write-Host "  Export-Certificate -Cert Cert:\CurrentUser\My\$($cert.Thumbprint) -FilePath `$env:TEMP\slipcase-test.cer"
@@ -327,13 +392,32 @@ if ($Certify) {
     if (-not $overall) {
         Refuse "the certification kit's report at $report has no OVERALL_RESULT - read it rather than trusting this script"
     }
-    foreach ($failed in $xml.SelectNodes('//*[@OVERALL_RESULT="FAIL"]')) {
-        $title = $failed.GetAttribute('TITLE')
-        if (-not $title) { $title = $failed.Name }
-        Write-Host "FAIL  $title"
+    # Read out of `<TEST><RESULT>` and not out of an `OVERALL_RESULT` attribute.
+    # Only the report element carries that attribute; every individual test
+    # states its verdict in a child element, so the first version of this printed
+    # nothing at all while a test was failing, and said only "WARNING". Worse
+    # than useless: the kit's own overall verdict does not escalate a failing
+    # test, so `Blocked executables` can read FAIL under an overall of WARNING.
+    # Whatever this refuses on, it now says what.
+    $unhappy = @()
+    foreach ($test in $xml.SelectNodes('//TEST')) {
+        $node = $test.SelectSingleNode('RESULT')
+        if (-not $node) { continue }
+        $verdict = $node.InnerText.Trim()
+        if ($verdict -eq 'PASS') { continue }
+        $unhappy += "$verdict $($test.GetAttribute('NAME'))"
+        Write-Host "$verdict  $($test.GetAttribute('NAME'))"
+        foreach ($message in $test.SelectNodes('.//MESSAGE')) {
+            $text = $message.GetAttribute('TEXT')
+            if ($text) { Write-Host "        $text" }
+        }
     }
     Write-Host "certification kit: $overall  ($report)"
-    if ($overall -ne 'PASS') {
-        Refuse "the Windows App Certification Kit says $overall - certification runs it too, so this comes back"
+    # Both, and not just the overall. The kit's own overall verdict does not
+    # escalate a failing test: the 2026-08-28 run reported WARNING overall with
+    # `Blocked executables` reading FAIL underneath it. Gating on the overall
+    # alone would have let that through on a day the other warning was fixed.
+    if ($overall -ne 'PASS' -or $unhappy) {
+        Refuse "the Windows App Certification Kit says $overall, with $($unhappy.Count) test(s) not passing - certification runs it too, so this comes back"
     }
 }

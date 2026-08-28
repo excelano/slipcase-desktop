@@ -41,12 +41,42 @@ const PNG_ABOVE: u32 = 48;
 
 /// One of the images `AppxManifest.xml.in` names, at the size the Store wants.
 struct Asset {
-    name: &'static str,
+    stem: &'static str,
     width: u32,
     height: u32,
     /// How much of the shorter side the drawing occupies, centred.
     fill: f32,
+    /// Whether the shell ever draws this one as a bare icon rather than on a
+    /// tile. Only `Square44x44Logo` is, and only that one gets the target-size
+    /// and unplated variants below.
+    icon: bool,
 }
+
+/// The display scalings Windows offers, as the Store spells them.
+///
+/// Without these there is one bitmap per asset and every other scaling is an
+/// upscale of it. `slipcase.ico` carries nine sizes for exactly this reason and
+/// the argument does not change because the file is a PNG.
+const SCALES: &[u32] = &[100, 125, 150, 200, 400];
+
+/// The sizes the shell asks for when it wants an icon rather than a tile.
+const TARGET_SIZES: &[u32] = &[16, 24, 32, 48, 256];
+
+/// The three forms of each target size, and the reason this list exists.
+///
+/// `BackgroundColor` in `AppxManifest.xml` is `transparent`, so where Windows
+/// draws a *plated* icon it fills the plate with the user's accent colour. On
+/// the taskbar that put this drawing on a purple square — measured on
+/// 2026-08-28 against an accent of `#744DA9`, which is where the colour came
+/// from — while the side-loaded install draws the same icon unplated from
+/// `slipcase.ico`. One application with two faces, which is what the manifest's
+/// own comment about matching `install.ps1` exists to prevent.
+///
+/// An `altform-unplated` asset is what tells the shell not to plate. The light
+/// variant is the same pixels: this drawing is coloured rather than monochrome,
+/// so it needs no separate treatment for a light taskbar — but the qualifier
+/// has to exist or Windows 11 falls back to the plated form there.
+const ALTFORMS: &[&str] = &["", "_altform-unplated", "_altform-lightunplated"];
 
 /// The five images the manifest names, and nothing else.
 ///
@@ -62,11 +92,11 @@ struct Asset {
 /// set: without a `resources.pri` the shell resolves no `targetsize-` variants,
 /// so the alternative to one large image is one small one.
 const ASSETS: &[Asset] = &[
-    Asset { name: "StoreLogo.png", width: 50, height: 50, fill: 1.0 },
-    Asset { name: "Square44x44Logo.png", width: 44, height: 44, fill: 1.0 },
-    Asset { name: "Square150x150Logo.png", width: 150, height: 150, fill: 0.66 },
-    Asset { name: "Wide310x150Logo.png", width: 310, height: 150, fill: 0.66 },
-    Asset { name: "slipcase.png", width: 256, height: 256, fill: 1.0 },
+    Asset { stem: "StoreLogo", width: 50, height: 50, fill: 1.0, icon: false },
+    Asset { stem: "Square44x44Logo", width: 44, height: 44, fill: 1.0, icon: true },
+    Asset { stem: "Square150x150Logo", width: 150, height: 150, fill: 0.66, icon: false },
+    Asset { stem: "Wide310x150Logo", width: 310, height: 150, fill: 0.66, icon: false },
+    Asset { stem: "slipcase", width: 256, height: 256, fill: 1.0, icon: false },
 ];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -111,18 +141,66 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .join(", ")
     );
 
-    std::fs::create_dir_all(&assets)?;
-    for asset in ASSETS {
-        let pixmap = draw(&tree, asset.width, asset.height, asset.fill)?;
-        std::fs::write(assets.join(asset.name), pixmap.encode_png()?)?;
-        println!(
-            "wrote {} — {}×{}",
-            assets.join(asset.name).display(),
-            asset.width,
-            asset.height
-        );
+    // Written fresh every time. A renamed or dropped asset would otherwise be
+    // left behind by a rebuild, and `windows.yml` compares this directory
+    // against a rebuild — so a stale file would sit in the package and in the
+    // tree with nothing objecting to it.
+    if assets.exists() {
+        std::fs::remove_dir_all(&assets)?;
     }
+    std::fs::create_dir_all(&assets)?;
 
+    let mut written = 0usize;
+    for asset in ASSETS {
+        // The unqualified name as well as the qualified ones. The manifest
+        // names this one, and it is what resolves when nothing indexes the
+        // package — so keeping it means the assets are correct with or without
+        // `resources.pri`, rather than only with.
+        write_png(&tree, &assets, &format!("{}.png", asset.stem), asset.width, asset.height, asset.fill)?;
+        written += 1;
+
+        for &scale in SCALES {
+            let (w, h) = (scaled(asset.width, scale), scaled(asset.height, scale));
+            let name = format!("{}.scale-{}.png", asset.stem, scale);
+            write_png(&tree, &assets, &name, w, h, asset.fill)?;
+            written += 1;
+        }
+
+        if asset.icon {
+            for &size in TARGET_SIZES {
+                for altform in ALTFORMS {
+                    let name = format!("{}.targetsize-{}{}.png", asset.stem, size, altform);
+                    write_png(&tree, &assets, &name, size, size, 1.0)?;
+                    written += 1;
+                }
+            }
+        }
+    }
+    println!("wrote {} — {} images", assets.display(), written);
+
+    Ok(())
+}
+
+/// One asset dimension at one scaling, the way the Store rounds it.
+///
+/// 50 at 125% is 62.5 and the Store's own table says 63, so this rounds rather
+/// than truncating. Getting it wrong by a pixel is not a build failure — it is
+/// an image the shell quietly rescales, which is the whole thing these variants
+/// exist to avoid.
+fn scaled(size: u32, scale: u32) -> u32 {
+    (f64::from(size) * f64::from(scale) / 100.0).round() as u32
+}
+
+fn write_png(
+    tree: &usvg::Tree,
+    dir: &Path,
+    name: &str,
+    width: u32,
+    height: u32,
+    fill: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let pixmap = draw(tree, width, height, fill)?;
+    std::fs::write(dir.join(name), pixmap.encode_png()?)?;
     Ok(())
 }
 
