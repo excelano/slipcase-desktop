@@ -41,10 +41,44 @@ param(
     [switch] $SelfSign,
     # Run the Windows App Certification Kit and fail on it. Needs elevation, and
     # needs the package to be installable, so it needs -SelfSign as well.
-    [switch] $Certify
+    [switch] $Certify,
+    # Apply the -Certify gate to a report that already exists and do nothing
+    # else. Needs no elevation and builds nothing, which is what makes the gate
+    # checkable: breaking KNOWN_FINDINGS deliberately and watching this refuse
+    # is the only way to know it still bites, and a kit run costs an elevated
+    # session and several minutes.
+    [string] $ReadReport
 )
 
 $ErrorActionPreference = 'Stop'
+
+# What the Windows App Certification Kit says about this application every time,
+# so that `-Certify` can be quiet about those and loud about anything else.
+#
+# **This is a record of what is known, not a claim that it is acceptable.**
+# Whether to submit with `Blocked executables` failing is a decision, it is
+# David's, and `RELEASE.md` carries it. Recording a finding here does not take
+# it.
+#
+# Traced rather than tolerated; `CHECKLIST.md` has the working for both.
+#
+#   Blocked executables     The `cmd.exe` strings are the Rust standard
+#                           library's batch-file spawn, which no arm of this
+#                           application calls on Windows, and `ShellExecuteW` is
+#                           `opener` performing the handover the Open button
+#                           exists to perform.
+#   DPIAwarenessValidation  The kit reads the PE application manifest, which
+#                           declares nothing. The running process reports
+#                           PER_MONITOR_AWARE, which winit sets at startup, so
+#                           what is absent is the declaration and not the
+#                           behaviour.
+#
+# Shrink this list when a finding goes away; the run says so when one does.
+$KNOWN_FINDINGS = @{
+    'Blocked executables'    = 'FAIL'
+    'DPIAwarenessValidation' = 'WARNING'
+}
+
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $root = Split-Path -Parent (Split-Path -Parent $here)
 if (-not $OutDir) { $OutDir = Join-Path $root 'dist' }
@@ -52,6 +86,87 @@ if (-not $OutDir) { $OutDir = Join-Path $root 'dist' }
 function Refuse([string] $message) {
     Write-Error "build-msix.ps1: $message"
 }
+
+# Read a certification report and apply the gate. A function so that it can
+# be run against a report on its own, which is the only way to check that the
+# gate bites without an elevated session and a fresh kit run: `-ReadReport`
+# takes that path.
+function Test-CertificationReport([string] $report) {
+    # The verdict is read out of the report rather than out of an exit code. A
+    # kit that ran and failed and a kit that never ran are different things, and
+    # this must never call the second one a pass: a missing verdict is a refusal
+    # too.
+    [xml] $xml = Get-Content $report
+    $overall = $xml.REPORT.OVERALL_RESULT
+    if (-not $overall) {
+        Refuse "the certification kit's report at $report has no OVERALL_RESULT - read it rather than trusting this script"
+    }
+    # Read out of `<TEST><RESULT>` and not out of an `OVERALL_RESULT` attribute.
+    # Only the report element carries that attribute; every individual test
+    # states its verdict in a child element, so the first version of this printed
+    # nothing at all while a test was failing, and said only "WARNING". Worse
+    # than useless: the kit's own overall verdict does not escalate a failing
+    # test, so `Blocked executables` can read FAIL under an overall of WARNING.
+    # Whatever this refuses on, it now says what.
+    $unexpected = @()
+    $seen = @{}
+    foreach ($test in $xml.SelectNodes('//TEST')) {
+        $node = $test.SelectSingleNode('RESULT')
+        if (-not $node) { continue }
+        $verdict = $node.InnerText.Trim()
+        if ($verdict -eq 'PASS') { continue }
+        $name = $test.GetAttribute('NAME')
+        $seen[$name] = $verdict
+        $expected = $KNOWN_FINDINGS[$name]
+        if ($expected -eq $verdict) {
+            Write-Host "$verdict  $name  (known - see CHECKLIST.md)"
+        } else {
+            $unexpected += "$verdict $name"
+            Write-Host "$verdict  $name  ** NOT IN THE KNOWN LIST **"
+        }
+        foreach ($message in $test.SelectNodes('.//MESSAGE')) {
+            $text = $message.GetAttribute('TEXT')
+            if ($text) { Write-Host "        $text" }
+        }
+    }
+    # A known finding that stopped being reported is good news and not a
+    # refusal, but it is said out loud, because a baseline nobody ever shrinks
+    # becomes a list of things that used to be true.
+    foreach ($name in $KNOWN_FINDINGS.Keys) {
+        if (-not $seen.ContainsKey($name)) {
+            Write-Host "gone   $name is no longer reported - take it out of KNOWN_FINDINGS"
+        }
+    }
+    Write-Host "certification kit: $overall  ($report)"
+
+    # The gate is the comparison against the list, not the count of things that
+    # are not PASS. `Blocked executables` fails on every run this project will
+    # ever do, so refusing on any non-PASS made `-Certify` refuse always -- and
+    # `CLAUDE.md` has the name for that, about the check for compiled C: a check
+    # whose red is the normal state announces nothing. This one is quiet when
+    # the kit says what it said last time and loud when it says anything else.
+    #
+    # An overall of FAIL is still a refusal on its own. The kit does not
+    # escalate a failing test into it -- three runs reported WARNING over a
+    # FAIL -- so if it ever does say FAIL, it has decided something the
+    # per-test list does not cover.
+    if ($unexpected) {
+        Refuse "the certification kit reported $($unexpected.Count) finding(s) not in the known list: $($unexpected -join '; ') - certification runs it too, so this comes back"
+    }
+    if ($overall -eq 'FAIL') {
+        Refuse 'the Windows App Certification Kit says FAIL overall, which it has never said before'
+    }
+}
+
+
+# Nothing above this line has run yet, which is the point: a report is read on
+# its own, without building or signing anything.
+if ($ReadReport) {
+    if (-not (Test-Path $ReadReport)) { Refuse "no report at $ReadReport" }
+    Test-CertificationReport (Resolve-Path $ReadReport).Path
+    exit 0
+}
+
 
 # --- the identity, from one place -------------------------------------------
 
@@ -403,41 +518,5 @@ if ($Certify) {
         Refuse "the report at $report is older than this run - the kit did not write it, so nothing below would be about this package"
     }
 
-    # The verdict is read out of the report rather than out of an exit code. A
-    # kit that ran and failed and a kit that never ran are different things, and
-    # this must never call the second one a pass: a missing verdict is a refusal
-    # too.
-    [xml] $xml = Get-Content $report
-    $overall = $xml.REPORT.OVERALL_RESULT
-    if (-not $overall) {
-        Refuse "the certification kit's report at $report has no OVERALL_RESULT - read it rather than trusting this script"
-    }
-    # Read out of `<TEST><RESULT>` and not out of an `OVERALL_RESULT` attribute.
-    # Only the report element carries that attribute; every individual test
-    # states its verdict in a child element, so the first version of this printed
-    # nothing at all while a test was failing, and said only "WARNING". Worse
-    # than useless: the kit's own overall verdict does not escalate a failing
-    # test, so `Blocked executables` can read FAIL under an overall of WARNING.
-    # Whatever this refuses on, it now says what.
-    $unhappy = @()
-    foreach ($test in $xml.SelectNodes('//TEST')) {
-        $node = $test.SelectSingleNode('RESULT')
-        if (-not $node) { continue }
-        $verdict = $node.InnerText.Trim()
-        if ($verdict -eq 'PASS') { continue }
-        $unhappy += "$verdict $($test.GetAttribute('NAME'))"
-        Write-Host "$verdict  $($test.GetAttribute('NAME'))"
-        foreach ($message in $test.SelectNodes('.//MESSAGE')) {
-            $text = $message.GetAttribute('TEXT')
-            if ($text) { Write-Host "        $text" }
-        }
-    }
-    Write-Host "certification kit: $overall  ($report)"
-    # Both, and not just the overall. The kit's own overall verdict does not
-    # escalate a failing test: the 2026-08-28 run reported WARNING overall with
-    # `Blocked executables` reading FAIL underneath it. Gating on the overall
-    # alone would have let that through on a day the other warning was fixed.
-    if ($overall -ne 'PASS' -or $unhappy) {
-        Refuse "the Windows App Certification Kit says $overall, with $($unhappy.Count) test(s) not passing - certification runs it too, so this comes back"
-    }
+    Test-CertificationReport $report
 }

@@ -260,16 +260,48 @@ package, and its final paragraphs say which of it a CI step could take over.
   store is not read for this and importing there leaves deployment failing
   `0x800B0109` just the same, which `CHECKLIST.md` measured on 2026-08-26.
   `build-msix.ps1 -SelfSign` prints the two commands and does not attempt them.
-- **The Windows App Certification Kit.** `build-msix.ps1 -Certify` runs it and
-  fails on its verdict, and `appcert.exe` is stock on this machine — but the kit
-  needs an elevated session and installs the package it tests, so it is a
-  person's to start. **It has still never been run.** Certification runs it
-  anyway, so anything it says is cheaper to hear here.
-- **The tiles, looked at.** How much of each asset the drawing occupies is a
-  reading of Microsoft's tile guidance and not a measurement;
-  `packaging/windows/README.md` says which is which. A Start menu tile and an
-  application list entry settle it in one look.
+- ~~**The Windows App Certification Kit**~~ — run 2026-08-28, three times, the
+  middle one void. Twenty-four tests, twenty-two passing.
+  `CHECKLIST.md` holds all of it. What is left of it is two findings, and both
+  are decisions rather than repairs; they are below.
+- ~~**The tiles, looked at**~~ — done 2026-08-28. The tile and the application
+  list entry were right, which settles the two-thirds split that was a reading
+  of Microsoft's guidance. **The taskbar was not**, and nobody had thought to
+  look there: it drew the icon on a plate filled with the user's accent colour.
+  Fixed with unplated variants, scale variants, and the resource index that
+  makes any of them resolve, then looked at again.
 - **Screenshots** of the real window, at the sizes the Store asks for.
+
+### Two decisions the certification kit left, and neither is a repair
+
+Both are about the executable rather than the package, both survived three runs
+unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
+
+- **`Blocked executables`, FAIL.** The kit objects to `cmd.exe` and `\cmd.exe`
+  in the binary, and to `CreateProcessW` and `ShellExecuteW`. The two `cmd.exe`
+  strings are the Rust standard library's batch-file spawn — they sit beside a
+  `library\std\src\sys\…` path in the binary, and a hello-world Rust binary
+  contains neither. Every `std::process::Command` in this repository is inside a
+  Linux or macOS `#[cfg]` arm, so none of it compiles here. `ShellExecuteW` is
+  `opener`, whose Windows arm calls that and nothing else: it is the Open
+  button, and removing it is removing the application.
+
+  So the decision is not *what to change* but **whether to submit with it**. The
+  kit did not escalate it to an overall FAIL, which is a hint and not an answer,
+  and Store policy is not something this repository can measure. Worth settling
+  before the readiness review rather than during it.
+
+- **`DPIAwarenessValidation`, WARNING.** The kit says the application is not DPI
+  aware. It is: `GetWindowDpiAwarenessContext` on the running packaged window
+  reports `PER_MONITOR_AWARE`, which winit sets at startup, and the 125% and
+  200% hand run agrees. What is missing is the *declaration* — the kit reads the
+  PE application manifest and there is none.
+
+  Declaring it hits the wall the window icon hit: `rc.exe` and `windres` are
+  build steps `DESIGN.md` §2 keeps out, which is why the icon travels through
+  `include_bytes!`. There is a route that compiles nothing — the MSVC linker
+  takes `/MANIFESTINPUT` with `/MANIFEST:EMBED` through `-C link-arg` — and
+  taking it is a `DESIGN.md` §2 amendment rather than a packaging change.
 
 ### One decision this platform owes, and it is not packaging
 

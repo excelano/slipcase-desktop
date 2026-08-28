@@ -835,7 +835,7 @@ before `makepri` ran, and the scale variants were in `resources.pri` before the
 `autoResourcePackage` elements came out of the configuration; in both states the
 package built, installed, launched, and drew a purple square.
 
-### What the certification kit found, first run
+### What the certification kit found, over three runs
 
 Run 2026-08-28 by David from an elevated prompt, which is what the kit needs;
 `build-msix.ps1 -SelfSign -Certify` drove it. It has never been run before, and
@@ -895,8 +895,48 @@ is started and the one that appears is required to be newer than the run; the
 predicate was checked both ways, though only against a constructed file, because
 proving the whole path needs an elevated run.
 
-Nothing is known about the packaged assets' effect on certification. That is the
-open item, and it is a third run.
+**The third run is the real one for the packaged assets, and it found nothing
+new.** Run the same day, elevated, against the forty-eight-file package: the
+forty-five images, `resources.pri`, the manifest and the executable. Twenty-four
+tests, twenty-two of them passing, and the two below unchanged to the letter.
+The report was written under a minute before it was read, which is now checked
+rather than assumed — and the guard passing silently on a real run is the only
+evidence there is that it does not misfire, since the void run only ever proved
+the other direction.
+
+**The four tests the assets could have moved all pass**: `App resources`,
+`Resource Packages`, `Branding`, `App manifest`. So the resource index is
+accepted, nothing objects to forty-five images where there were five, and
+`Resource Packages` in particular is content with one package carrying its own
+qualified resources — which was the arrangement `makepri`'s default
+configuration had to be talked out of.
+
+Both remaining findings are about the executable and neither has anything to do
+with packaging, which is what the run was for establishing.
+
+**And the gate those three runs were feeding was useless, which the third run is
+what showed.** `-Certify` refused on any test that was not PASS, and
+`Blocked executables` fails on every run this project will ever do — so it
+refused every time, identically, whatever the package contained. `CLAUDE.md` has
+the name for that in the paragraph about the check for compiled C: *a check whose
+red is the normal state announces nothing.* It was rebuilt against the same
+argument. The two findings are recorded in `KNOWN_FINDINGS` in the script, with
+what each was traced to, and the gate now refuses on a finding that is **new** or
+**worse than recorded** and says so when a recorded one stops being reported.
+
+**Recording a finding there is not accepting it**, and the comment above the list
+says so: whether to submit with `Blocked executables` failing is a decision, it
+is David's, and `RELEASE.md` carries it. The list exists so that the next run
+after that decision can still be surprised by something else.
+
+`-ReadReport` applies the gate to a report that already exists and does nothing
+else — no elevation, no build. That is what makes the gate checkable, and it was
+checked three ways: a finding taken out of the list is refused as not in it, a
+recorded verdict changed to a worse one is refused the same way, and a listed
+finding the kit does not report prints *gone* and exits zero, because that is
+news rather than a failure. Without `-ReadReport` each of those costs an elevated
+session and several minutes, which is the sort of price that stops a check from
+being re-checked.
 
 **WARNING — DPIAwarenessValidation.** Two messages: *Failed to process the
 binary* and *The app … is not DPI Aware*.
@@ -917,8 +957,9 @@ but taking it is a `DESIGN.md` §2 decision and not this section's.
 
 ### Not yet done by hand
 
-- **The certification kit, against a package carrying the assets.** The run
-  above tested five images and no `resources.pri`. Both changed the same day.
+- **Screenshots**, at the sizes the Store asks for. The only Windows item left
+  that wants a person, and the only one that is neither a measurement nor a
+  decision.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,

@@ -395,3 +395,24 @@ exit code, and a report with no verdict in it is a refusal too. A kit that ran
 and failed and a kit that never ran are different things, and the second must
 never be reported as a pass — which is the same failure `preflight.sh` found in
 its own CI check, where a run still in progress was being counted as a result.
+
+**Amended: run three times on 2026-08-28, and both of those sentences turned out
+to be missing a case.** `CHECKLIST.md` holds the runs.
+
+*Stale* is a third state that neither *ran and failed* nor *never ran* covers.
+`appcert` refuses to overwrite an existing report and stops before running a
+single test, so the second run parsed the first run's file and printed its
+findings as though they were the new package's. The report is deleted before the
+kit starts and the one that appears must be newer than the run.
+
+And the gate refused on any test that was not PASS, which meant it refused every
+time: `Blocked executables` fails on every run this application will ever do.
+That is the *red is the normal state* problem this file's own rule about compiled
+C is written around. The known findings are named in `KNOWN_FINDINGS` at the top
+of the script with what each was traced to, and the gate fires on a finding that
+is new or worse than recorded. Naming one there is not accepting it — that
+decision is `RELEASE.md`'s.
+
+`-ReadReport <path>` applies the gate to an existing report and does nothing
+else, which is how the gate gets checked without an elevated session: take a
+finding out of the list and watch it refuse.
