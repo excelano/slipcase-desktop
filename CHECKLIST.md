@@ -1092,11 +1092,42 @@ attached to one named binary rather than to `-bins`: `corpus.exe` was checked
 and carries no manifest, which is right, since a console runner has no window to
 be aware about.
 
+### What taking the screenshots found
+
+Taken 2026-08-28 by `packaging/windows/screenshot.ps1`, against the packaged
+application, and the entry that asked for them was wrong about them. `RELEASE.md`
+had screenshots under *by hand, because no script can*; a script does the whole
+mechanical part. What it genuinely cannot do turned out to be narrower than the
+entry claimed and is now said by the script itself when it finishes: which
+container to open is editorial, and whether the picture is a good advertisement
+is a look.
+
+**Two measurements, both a handful of pixels, and both would have produced an
+upload refused at the far end.** `SetWindowPos` sizes the *window rect*, which on
+this platform carries an invisible resize border outside the visible frame:
+asking for 1366 x 768 produced a visible frame of 1352 x 761, sixteen pixels
+under the Store's minimum in one dimension and seven in the other. The visible
+frame is `DWMWA_EXTENDED_FRAME_BOUNDS` and the border measured 14 by 7.
+
+And that frame's top edge is one pixel above what is actually drawn, so a capture
+at exactly the frame rect includes a sliver of whatever is behind the window. It
+arrived as a strip of console text across the top of the first two attempts,
+which is the sort of thing that reaches a store listing because nobody looks at
+the top eight pixels of their own screenshot. The capture is two rows taller than
+wanted and the top two are cropped. The script refuses if the frame does not come
+back the size it expects, which was checked by breaking the border constant and
+watching it refuse.
+
+**The containers are a demonstration built for this**, because the walkthrough
+fixtures have three metadata keys between them and the tree is the thing worth
+photographing. A real one-page PDF, and metadata covering a string, two dates, an
+array, integers, a float, a boolean, nested tables and an array of tables — one
+of each thing `src/tree.rs` has a renderer for. The second shot is the same
+container carrying a `Zone.Identifier`, so the card's provenance line is in it.
+`packaging/store-listing.md` records both.
+
 ### Not yet done by hand
 
-- **Screenshots**, at the sizes the Store asks for. The only Windows item left
-  that wants a person, and the only one that is neither a measurement nor a
-  decision.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
   on 2026-08-26 rather than walked, because it was a defect rather than a
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,
@@ -1107,9 +1138,12 @@ be aware about.
   which had never run on this platform — was walked later the same day and has
   its own section above.
 
-Nothing else is waiting. Every item this section held on 2026-08-26 was run
-that day: provenance, the window, the stale `UserChoice`, a scaled display, an
-upgrade, and a second account. Anything added below should say what it needs
+Nothing else is waiting, including the two items 2026-08-28 added and closed:
+the certification kit, run three times, and the screenshots, which turned out to
+need a script rather than a person. Every item this section held on 2026-08-26
+was run that day: provenance, the window, the stale `UserChoice`, a scaled
+display, an upgrade, and a second account. Anything added below should say what
+it needs
 that a test cannot give it, the way those did.
 
 ---

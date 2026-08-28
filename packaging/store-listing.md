@@ -114,3 +114,33 @@ Slipcase is open source, and so is the format it reads and the library that read
 **Microsoft Store** (seven terms):
 
     metadata, container, slpc, TOML, archive, document, file viewer
+
+## Screenshots (Microsoft Store)
+
+**1366 x 768, PNG**, which is the Store's minimum for a desktop screenshot and
+is deliberately not exceeded: the application's window at that size looks like a
+window, and at 1920 x 1080 it looks like a window with a great deal of nothing
+beside it. The display these were taken on is 2560 x 1302, so a larger size is
+available if a listing ever wants one — `screenshot.ps1` takes `-Width` and
+`-Height`.
+
+Taken by `packaging/windows/screenshot.ps1`, against the **packaged**
+application, on 2026-08-28. The two are:
+
+| File | What it shows |
+| --- | --- |
+| `01-window.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
+| `02-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+
+**The container in them is a demonstration and is not in this repository.** It
+holds a real one-page PDF and a metadata document written to exercise the tree
+rather than to be minimal — a string, two dates, an array, integers, a float, a
+boolean, nested tables and an array of tables — because the tree is the thing
+worth photographing and the walkthrough fixtures have three keys between them.
+Its subject is invented and names no real person or organisation. Rebuilding it
+is a few lines; what matters is that it is rich enough to show the renderers,
+and that is recorded here rather than left to be rediscovered.
+
+**What the script will not do is decide whether a screenshot is any good**, and
+it says so when it finishes. It guarantees the size, which is the part that gets
+an upload refused, and nothing about the composition.

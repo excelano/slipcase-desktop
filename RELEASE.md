@@ -270,7 +270,24 @@ package, and its final paragraphs say which of it a CI step could take over.
   look there: it drew the icon on a plate filled with the user's accent colour.
   Fixed with unplated variants, scale variants, and the resource index that
   makes any of them resolve, then looked at again.
-- **Screenshots** of the real window, at the sizes the Store asks for.
+- ~~**Screenshots** of the real window, at the sizes the Store asks for.~~
+  **Done 2026-08-28, and this entry was wrong about needing a person.** It sat
+  under *by hand, because no script can*, which was an assumption:
+  `packaging/windows/screenshot.ps1` sizes the window so the visible frame is
+  exactly what the Store asks for, brings it to the front, captures it, crops,
+  and refuses if what came back is the wrong size. Two shots at 1366 x 768,
+  against the packaged application, listed in `packaging/store-listing.md`.
+
+  What a script genuinely cannot do is smaller than the entry claimed, and the
+  script says it out loud when it finishes: choosing which container to open and
+  judging whether the result is a good advertisement. The first is an editorial
+  decision recorded in the listing; the second is a look.
+
+  It cost two measurements, both pixels, and both are in the script's header.
+  `SetWindowPos` sizes the window rect, which carries an invisible resize border
+  — asking for 1366 x 768 gave a visible frame of 1352 x 761, under the minimum.
+  And the frame's top edge is a pixel above what is drawn, so the first two
+  attempts came back with a strip of console text across the top.
 
 ### Two decisions the certification kit left, and neither is a repair
 
