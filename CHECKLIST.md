@@ -1008,6 +1008,33 @@ whole reason the kit complained. Whether the kit is satisfied is the open item:
 the first message it gave was *Failed to process the binary*, which may mean it
 never read the file rather than read it and found nothing declared.
 
+**The fourth run says it worked, and the kit now passes overall.** Run the same
+day, elevated, against a package built from the manifested binary. The gate
+printed *gone — DPIAwarenessValidation is no longer reported*, the finding was
+taken out of `KNOWN_FINDINGS` on the run that reported it, and the report reads
+**`OVERALL_RESULT="PASS"`**: twenty-three tests passing and one failing, where
+the run before it was twenty-two passing, one failing and one warning.
+
+**That the overall is PASS while a test reads FAIL is the strongest thing here,
+and it is not about DPI.** It confirms the reading of the kit's own
+configuration taken earlier: `Blocked executables` carries
+`OPTIONAL_FOR_APP_TYPES="Centennial"`, so failing it does not stop the kit
+passing the package. Before this run that was an inference from an XML attribute
+and a WARNING; now the same package with the same failing test comes out PASS
+because the one *non*-optional complaint was answered. The two knobs behaved
+exactly as the configuration said they would.
+
+**And a fifth message disappeared that nobody repaired.** The first three runs
+reported `a blocked executable reference to "CsI"` alongside the two `cmd.exe`
+ones; this run reports four messages and `CsI` appears nowhere in the report.
+Nothing was done that could remove a real reference to a program of that name,
+and no such program was ever identified — the earlier entry says plainly that it
+was not traced. Embedding a manifest changes the layout of the binary, and a
+three-character match in binary data is exactly the kind of thing that moves
+when layout does. **That is the likeliest explanation and it is not a
+measurement**, and it is written down chiefly so that nobody later reads its
+absence as something having been fixed.
+
 Two things worth keeping for whoever touches this next. winit's run-time call
 must now be failing, because awareness cannot be changed once set — and it does
 not care: the application launches and behaves identically, which was checked

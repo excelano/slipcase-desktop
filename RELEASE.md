@@ -296,12 +296,20 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
   overall over a test reading `FAIL`. That was read out of the files the kit
   ships rather than out of documentation; `CHECKLIST.md` has the task ids.
 
+  **And the kit has now demonstrated what that attribute means, rather than
+  merely declaring it.** With the DPI warning answered, the same package with
+  the same failing test comes out `OVERALL_RESULT="PASS"` — twenty-three tests
+  passing, `Blocked executables` still failing, and the kit passing the package
+  anyway. An optional test failing does not stop the kit. That is no longer an
+  inference from an XML attribute; it is what the tool did.
+
   It is evidence and not a guarantee. Certification runs this suite, so it is a
   good deal better than a guess, but a person applies policy on top of a suite
-  and nothing local can measure that. Settle it before the readiness review
-  rather than during it — the honest position is that the one failing test is
-  one Microsoft's own tool marks optional for us, and that the application
-  cannot do its job without the API it names.
+  and nothing local can measure that. The honest position is that the one
+  failing test is one Microsoft's own tool marks optional for this kind of
+  application and passes the package in spite of, and that the application
+  cannot do its job without the API it names. **That is about as settled as it
+  gets short of submitting.**
 
 - **`DPIAwarenessValidation`, WARNING.** The kit says the application is not DPI
   aware. It is: `GetWindowDpiAwarenessContext` on the running packaged window
@@ -315,13 +323,15 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
   takes `/MANIFESTINPUT` with `/MANIFEST:EMBED` through `-C link-arg` — and
   taking it is a `DESIGN.md` §2 amendment rather than a packaging change.
 
-  **Decided and done, 2026-08-28.** The linker route was taken, `DESIGN.md` §2
-  is amended with why a linker argument is not the build step it keeps out, and
-  the manifest is embedded and read back out of the binary. It changed no
-  behaviour — the build from before it was already `PER_MONITOR_AWARE_V2` — so
-  what it buys is the declaration itself and awareness being set before any of
-  this program's code runs. **Whether the kit is satisfied is unrun**, and it is
-  the one thing left on this platform that needs an elevated session.
+  **Decided, done, and confirmed, 2026-08-28.** The linker route was taken,
+  `DESIGN.md` §2 is amended with why a linker argument is not the build step it
+  keeps out, and the manifest is embedded and read back out of the binary. It
+  changed no behaviour — the build from before it was already
+  `PER_MONITOR_AWARE_V2` — so what it buys is the declaration itself and
+  awareness being set before any of this program's code runs.
+
+  **The kit is satisfied: it no longer reports the finding, and the package now
+  passes overall.** This item is closed.
 
 ### One decision this platform owes, and it is not packaging
 

@@ -38,6 +38,8 @@ The distinction it turns on is narrow and worth stating, because the obvious rou
 
 **What it bought is smaller than what prompted it, and that was measured rather than assumed.** The Windows App Certification Kit reads the application manifest rather than the process and reported the application as not DPI aware because there was nothing there to read. It was aware regardless: the packaged build from *before* this change reports `PER_MONITOR_AWARE_V2` exactly, which winit sets inside `EventLoop::new`. So the manifest changed no run-time behaviour. What it changes is that the awareness is declared before any of this program's code runs rather than set a moment into it, and that a tool reading the binary can now see it.
 
+**It did what it was added for.** The kit stopped reporting the finding on the next run, and the package went from an overall verdict of `WARNING` to `PASS`. So the build script earns its place rather than merely being defensible: the paragraph above is about the application's behaviour being unchanged, not about the change being pointless.
+
 **It cross-compiles.** `cargo check --target x86_64-pc-windows-msvc` succeeds on a Linux machine carrying no MSVC toolchain. The build script reads `CARGO_CFG_TARGET_OS` and `CARGO_CFG_TARGET_ENV` rather than `cfg!`, because a build script is compiled for the host and `cfg!(windows)` inside one answers about the machine doing the building — which is the question that cross-check is designed not to ask.
 
 **The minimum supported Rust version is 1.95, and it comes from `eframe`** rather than from anything written here. Measured, and expected to rise whenever egui raises its own.

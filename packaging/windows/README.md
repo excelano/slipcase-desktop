@@ -416,3 +416,18 @@ decision is `RELEASE.md`'s.
 `-ReadReport <path>` applies the gate to an existing report and does nothing
 else, which is how the gate gets checked without an elevated session: take a
 finding out of the list and watch it refuse.
+
+**The kit passes the package.** Fourth run, 2026-08-28: `OVERALL_RESULT="PASS"`,
+twenty-three tests passing and one failing. The DPI warning is gone, because
+`build.rs` embeds an application manifest for the linker to read — see
+`DESIGN.md` §2 for why a linker argument is not the build step that section keeps
+out, and why this is not a precedent for a second one.
+
+What remains is `Blocked executables`, and the kit passes the package with it
+failing. That is not luck: `configuration.xml` in the kit marks that task
+`OPTIONAL_FOR_APP_TYPES="Centennial"`, which is what this package is, so failing
+it does not stop the overall verdict. It objects to `ShellExecuteW` — `opener`
+performing the handover the Open button exists for — and to `cmd.exe` strings
+that belong to the Rust standard library rather than to any code this build
+calls. `CHECKLIST.md` has the tracing and `RELEASE.md` has the decision, which is
+about submitting rather than about changing anything.

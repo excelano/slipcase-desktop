@@ -71,16 +71,16 @@ $ErrorActionPreference = 'Stop'
 #                           and the report says this package is Centennial, which
 #                           is why an overall of WARNING sits over a test reading
 #                           FAIL.
-#   DPIAwarenessValidation  The kit reads the PE application manifest, which
-#                           declares nothing. The running process reports
-#                           PER_MONITOR_AWARE, which winit sets at startup, so
-#                           what is absent is the declaration and not the
-#                           behaviour.
+#
+# `DPIAwarenessValidation` was the second entry and is gone: the kit read the PE
+# application manifest, found nothing declared, and said so. `build.rs` embeds
+# one now and the kit stopped reporting it, which is what took the overall
+# verdict from WARNING to PASS. Removed on the run that reported it gone, which
+# is what the line below asks for.
 #
 # Shrink this list when a finding goes away; the run says so when one does.
 $KNOWN_FINDINGS = @{
-    'Blocked executables'    = 'FAIL'
-    'DPIAwarenessValidation' = 'WARNING'
+    'Blocked executables' = 'FAIL'
 }
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
