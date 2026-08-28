@@ -90,9 +90,16 @@ jobs:
       # build. A committed artifact can fall out of step with the source it was
       # generated from and nothing would say so, so the generator is run and its
       # output compared against what is in the tree.
-      - name: The committed icon still matches its generator
+      #
+      # The same generator now writes the five PNGs `AppxManifest.xml` names,
+      # for the same reason and with the same exposure: nothing on Windows
+      # rasterizes an SVG, so those are committed too. The comparison is over
+      # the whole directory rather than the one file, because an asset that
+      # drifted from the drawing would otherwise reach a store listing with
+      # nothing having looked at it.
+      - name: The committed icon and Store assets still match their generator
         run: |
           cd packaging/windows/make-ico
           cargo run --release
           cd ../../..
-          git diff --exit-code -- packaging/windows/slipcase.ico
+          git diff --exit-code -- packaging/windows/slipcase.ico packaging/windows/assets
