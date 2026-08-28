@@ -625,6 +625,13 @@ launched `C:\Program Files\WindowsApps\…\slipcase-desktop.exe` with no picker.
 So nothing about the answer depended on the identity being a real one, which was
 not obvious beforehand.
 
+**And it was double-clicked from Explorer**, later the same day, by David at the
+machine — the packaged application opened the container. That is a separate item
+from the paragraph above rather than a restatement of it: everything measured
+here reached the shell through `ShellExecute`, which is what a double-click
+performs and is not somebody performing one. The two agree, which is the answer
+that was wanted and not the one that was owed.
+
 It is worth saying what this run did *not* re-establish. It reproduced one row
 of three. The first row — a `UserChoice` naming a ProgID that still exists whose
 command names a deleted executable — is the trap, and it was not set up again,
@@ -891,11 +898,6 @@ but taking it is a `DESIGN.md` §2 decision and not this section's.
 
 ### Not yet done by hand
 
-- **A double-click from Explorer**, on the packaged install. Everything above
-  reached the shell through `ShellExecute`, which is what a double-click
-  performs and is not the same as somebody performing one: only Explorer settles
-  what a person actually sees, and this project has twice found that the two
-  descriptions of a thing differ.
 - **The certification kit, against a package carrying the assets.** The run
   above tested five images and no `resources.pri`. Both changed the same day.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
