@@ -84,6 +84,32 @@ actually chose then outranks the manifest is the one part still unmeasured, and
 it stays unmeasured on purpose: that key is hash-validated and write-denied, so
 it cannot be forged and a person has to make the choice.
 
+**Amended: it was measured later the same day, and this paragraph was stale for
+two days without anybody noticing.** David made the choice by hand on
+2026-08-26 and `CHECKLIST.md`'s *What the stale UserChoice run found* holds the
+result, in three rows. The short version is that the answer depends on what the
+stale key points at, which is not a distinction anyone had anticipated:
+
+| `UserChoice` names | What a double-click does |
+| --- | --- |
+| A ProgID that exists, whose command names a deleted executable | **Refused: *Application not found***. The package is ignored and no picker appears |
+| A ProgID that no longer exists at all | The package wins and launches from `WindowsApps` |
+| Nothing | The package wins |
+
+Reproduced on 2026-08-28 against a package carrying the real reserved identity,
+for the middle row. The other two were not set up again: a fresh human choice is
+needed for the first, and this machine's one is spent.
+
+**The middle row is a trap and the first is worse**, and neither is something an
+MSIX can clear: a package runs no code at install time, so it cannot remove a
+`UserChoice`. That leaves a decision, and it is recorded in `RELEASE.md` rather
+than settled here.
+
+Worth noticing how this was found: `CHECKLIST.md` was written and this file, and
+`HANDOFF.md`, and `RELEASE.md` all went on saying the question was open. The
+record was right and three summaries of it were wrong, which is the argument for
+reading the record rather than the summary.
+
 One thing to carry into any check of a packaged install: `AssocQueryString`
 answers `ERROR_NO_APPLICATION_ASSOCIATED` for the executable and the command
 line of a packaged handler while still returning its friendly names, because

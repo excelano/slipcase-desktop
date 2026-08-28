@@ -269,13 +269,35 @@ package, and its final paragraphs say which of it a CI step could take over.
   reading of Microsoft's tile guidance and not a measurement;
   `packaging/windows/README.md` says which is which. A Start menu tile and an
   application list entry settle it in one look.
-- **The stale `UserChoice` sequence.** `CHECKLIST.md` has it under *Not yet done
-  by hand*, and it is unautomatable by design: the key carries a hash Windows
-  validates and denies the user write access, precisely so that a default is
-  something a person chose. Remove the script install **by hand** rather than
-  with `uninstall.ps1`, which removes the `UserChoice` and would destroy the
-  subject.
 - **Screenshots** of the real window, at the sizes the Store asks for.
+
+### One decision this platform owes, and it is not packaging
+
+**The stale `UserChoice` sequence is done and was done on 2026-08-26.** This
+file listed it as outstanding for two days, along with `HANDOFF.md` and
+`packaging/windows/README.md`, while `CHECKLIST.md` carried the answer the whole
+time. Reproduced on 2026-08-28 against the real reserved identity.
+
+What it found is a decision rather than a task. A `UserChoice` left behind by
+somebody who deleted the script install instead of running `uninstall.ps1` can
+leave the extension **dead**: where the stale key names a ProgID that still
+exists whose command names a deleted executable, a double-click is refused with
+*Application not found*, the installed package is ignored, and no picker offers
+a way out. An MSIX runs no code at install time, so the package cannot clear
+that key itself.
+
+Two ways out, and they are not equivalent:
+
+- **The listing says to run `uninstall.ps1` first.** Costs nothing, and relies
+  on a person reading a store page before installing, which is not a thing
+  people do.
+- **The application clears a stale `UserChoice` at startup.** Reliable, and it
+  means writing to the one key whose entire purpose is to record a choice a
+  person made — for somebody whose choice was *this application*, which is the
+  mitigating half. It is a `DESIGN.md` §8 decision and it is David's.
+
+It is here rather than in the *by hand* list because no amount of running it
+again answers it.
 - **A walkthrough of the packaged application**, not the executable: install the
   package, double-click a container, press Open, and look at the screen. Every
   window defect this project has found was found this way and none of them by a

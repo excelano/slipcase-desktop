@@ -614,6 +614,32 @@ listing tells a person to run `uninstall.ps1` first, or the application clears a
 stale one at startup — which is a decision rather than a repair, because it
 means writing to the key that exists to record a person's own choice.
 
+**Reproduced 2026-08-28 against the real package, and the second row holds.**
+The run above was made against a package carrying an invented identity, because
+the name had not been reserved yet. This one was made against
+the real package, built by `build-msix.ps1` from
+the identity Partner Center assigned that morning: the same `UserChoice` from
+2026-08-26 was still in place with its hash intact, the script install was
+removed by hand again leaving that key alone, and `ShellExecute` on a container
+launched `C:\Program Files\WindowsApps\…\slipcase-desktop.exe` with no picker.
+So nothing about the answer depended on the identity being a real one, which was
+not obvious beforehand.
+
+It is worth saying what this run did *not* re-establish. It reproduced one row
+of three. The first row — a `UserChoice` naming a ProgID that still exists whose
+command names a deleted executable — is the trap, and it was not set up again,
+because doing so needs a fresh human choice and the one on this machine is spent
+on the second row.
+
+**A free check came out of it.** Windows computed the installed package's family
+name, and it matched byte for byte what Partner
+Center calculated from the same two identity values. That hash is over `Name`
+and `Publisher`, so a single wrong character in the `Publisher` GUID would
+produce a different family name — which makes `Get-AppxPackage` after a local
+install a check that the identity was transcribed correctly, without logging in
+to anything. It costs nothing and it catches the mistake that is otherwise found
+at upload.
+
 ### What the high-density run found
 
 Run 2026-08-26 at 125% and 200%, David changing the setting and this session

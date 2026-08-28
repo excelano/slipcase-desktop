@@ -236,6 +236,14 @@ Write-Host "  identity  $($identity.Name)"
 Write-Host "  publisher $($identity.Publisher)"
 Write-Host "  version   $version"
 Write-Host "  from      $Binary"
+# Said out loud because the package name is deterministic, so a plain run
+# overwrites a signed package of the same version with an unsigned one and says
+# nothing about it. Deployment then fails 0x800B0100, "no signature was present",
+# which reads like a signing problem rather than like the last build having been
+# a different build. Measured by doing it.
+if (-not $SelfSign) {
+    Write-Host '  unsigned  - pass -SelfSign to install it here'
+}
 
 # --- signing, for a local install and nothing else --------------------------
 

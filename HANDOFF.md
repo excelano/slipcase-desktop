@@ -306,6 +306,18 @@ the sequence, including the one step that matters — remove the script install
 by hand rather than with `uninstall.ps1`, which removes the `UserChoice` and
 would destroy what is being tested.
 
+**It was run later that same day and this paragraph never said so.** David made
+the choice by hand and `CHECKLIST.md`'s *What the stale UserChoice run found*
+has the answer in three rows: a stale key naming a ProgID that no longer exists
+loses to the package, a stale key naming one that still exists but points at a
+deleted executable **kills the association outright** — *Application not found*,
+no picker, no way out — and no key at all loses to the package. Reproduced on
+2026-08-28 against the real reserved identity for the middle row.
+
+The paragraph is left standing because the way it went stale is the lesson. Three
+documents summarised a question `CHECKLIST.md` had already answered, and stayed
+wrong for two days, because a summary is easier to write than to revisit.
+
 Getting any package installed costs exactly one administrator action, which is
 worth knowing before the next session plans around it. `makeappx`,
 `New-SelfSignedCertificate`, `signtool` and `Add-AppxPackage` all run as an
