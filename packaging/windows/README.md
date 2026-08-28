@@ -17,7 +17,11 @@ removes the association and leaves them.
 | `install.ps1` | Writes the registry keys, copies the files, makes the Start menu shortcut |
 | `uninstall.ps1` | Removes all of it. Copied into the install directory, because Add/Remove Programs points at it and a checkout may be gone |
 | `slipcase.ico` | The icon, nine sizes. Built from the Linux SVG, not drawn separately |
-| `make-ico/` | The tool that builds it |
+| `assets/` | The five PNGs `AppxManifest.xml` names, from the same SVG. Committed for the same reason the `.ico` is |
+| `make-ico/` | The tool that builds both |
+| `AppxManifest.xml.in` | The MSIX manifest, with the identity and the version left as placeholders |
+| `identity.psd1` | What Partner Center assigned when the name was reserved. The one place those values live |
+| `build-msix.ps1` | Builds the package from a release binary, and optionally signs it and runs the certification kit |
 
 ## Two scripts rather than an installer
 
@@ -129,7 +133,27 @@ into a binary's resource table — `@C:\path\thing.dll,-123` — which needs
 refuses those rather than show a person the reference. Registering one would
 have meant `src/opens_with.rs` could not read what the installer wrote.
 
-## Three things that were measured rather than assumed
+## Things that were measured rather than assumed
+
+<!-- This heading said "Three" until a fourth arrived. `CLAUDE.md` has a
+     paragraph about a count in prose that was wrong for three days and could
+     not be checked, so the number is gone rather than incremented. -->
+
+**Windows PowerShell 5.1 reads a script with no byte order mark as ANSI, and an
+em dash in a string literal is then a syntax error.** The UTF-8 bytes of `—`
+decode under Windows-1252 to `â€"`, and that last character is `U+201D`, which
+PowerShell accepts as a *string delimiter* — so the string ends in the middle of
+a sentence and the parser reports a missing terminator two hundred lines later.
+`build-msix.ps1` hit this on its first run.
+
+The repair is that every string a script prints is ASCII, which it should have
+been anyway: these messages go to a console whose code page is nobody's to
+predict, and an em dash there is mojibake even when it parses. Comments keep
+theirs, because a comment is never parsed as a string — which is why
+`install.ps1` has carried one at line 183 from the beginning without anybody
+noticing. Adding a byte order mark was the other repair available and was not
+taken: none of the three scripts here has one, and one file that differs is a
+trap of its own.
 
 **`assoc` and `ftype` do not see any of this.** They report `.slpc` as having no
 association at all after a successful install, because they read and write the
@@ -225,6 +249,27 @@ for the appx spelling. What is still missing is `build-msix.ps1`. The MSIX that
 answered the three questions in `CHECKLIST.md` was built by hand at a prompt and
 nothing in the tree rebuilds it.
 
+**Amended: `build-msix.ps1` landed on 2026-08-28 and the tree rebuilds it now.**
+It takes a release binary, stages the executable, the manifest and the assets,
+substitutes the identity and the version, and calls `makeappx`.
+`packaging/macos/build-app.sh` is the model, and so is its rule: it refuses
+rather than producing something subtly wrong. Four refusals were verified by
+breaking what each one guards.
+
+Two of the four are read out of the PE header, because neither is visible in a
+finished package. The architecture, because the manifest declares x64. And the
+subsystem, because `src/main.rs` carries `windows_subsystem = "windows"` only
+when `debug_assertions` is off — so a debug binary packaged by mistake is a
+console subsystem one, and *a console window behind the application* is a defect
+this platform's walkthrough already found by hand once. Packaging
+`target\debug\slipcase-desktop.exe` is refused, which was measured rather than
+reasoned about.
+
+The other two are the manifest's: a placeholder that survived substitution, and
+a `Publisher` that is not an X.500 string. The second is the display name typed
+into the wrong field, which is the identity mistake that gets rejected at upload
+rather than at review.
+
 **The manifest names image assets that do not exist yet.** `StoreLogo.png`,
 `Square150x150Logo.png`, `Square44x44Logo.png`, `Wide310x150Logo.png` and
 `slipcase.png`, all under `Assets\`. `packaging/windows/slipcase.ico` is the
@@ -234,6 +279,26 @@ produce PNGs at the sizes the Store asks for, and that belongs in the build
 script beside everything else mechanical. The `.ico` generator in
 `packaging/windows/make-ico` is the model: committed output, checked in CI
 against a rebuild.
+
+**Amended: they exist, and the model was taken rather than imitated.** The
+paragraph above put the work in the build script and then named `make-ico` as
+the model, and those are two different places. `make-ico` won, because a build
+script that rasterizes has to carry a rasterizer, and nothing on Windows does
+that from a shell: the argument that gave this directory an icon converter in
+the first place gives it these five PNGs too. It writes `../assets` beside the
+`.ico` now, `windows.yml` compares the whole directory against a rebuild, and
+`build-msix.ps1` only copies. The `.ico` is byte-identical across the change,
+which is the check that the shared renderer did not quietly alter it.
+
+**One thing about those assets is guidance rather than measurement.** The
+dimensions are the Store's and are not a choice. How much of each canvas the
+drawing occupies is: a tile is drawn on a coloured plate and Microsoft's tile
+guidance leaves the icon about two thirds of it, where an icon-shaped asset is
+drawn at the size it is given and wants all of it — which is also what
+`slipcase.ico` does at every size it holds. So the two square tiles and the wide
+one are at two thirds and the rest fill their canvas. **Nobody has looked at a
+real tile**, and until somebody has, that split is a reading of a document.
+`CHECKLIST.md` is where the look goes.
 
 **The association in the manifest mirrors `install.ps1` deliberately.** Same
 extension, same content type, same friendly name. If the packaged application
@@ -246,6 +311,34 @@ when the name is reserved and must appear in `AppxManifest.xml` exactly as
 Partner Center gives them; a package whose identity disagrees is rejected at
 upload rather than at review. Reserving the name is cheap and blocks the listing
 work, so it is worth doing before the manifest is written rather than after.
+
+**Done: `Slipcase` was reserved on 2026-08-28 and the three values are in
+`identity.psd1`.** They went there rather than into `AppxManifest.xml.in`
+because `RELEASE.md` asked for one place, and because more than the manifest
+wants them: the package family name is what `Get-AppxPackage` is asked for when
+checking an install, and `build-msix.ps1 -SelfSign` builds a certificate subject
+out of `Publisher` rather than having it typed a second time — `signtool`
+refuses a package whose manifest publisher and certificate subject differ, and
+the throwaway certificate left over from the 2026-08-26 measurement carries a
+subject invented before the reservation existed and cannot sign this.
+
+**`identity.psd1` is not committed and `identity.psd1.example` is.** None of
+those values is a credential — `Publisher` appears in the manifest of every
+package the Store distributes and the store id is in the public listing URL —
+and the first version of this file was committed on exactly that reasoning. It
+is still true and it was still the wrong call: these are an account's
+identifiers on a public record, which is the judgement
+`packaging/macos/SUBMITTING.local.md` already got, and *not secret* is a weaker
+claim than *belongs in public*. The commit was rewritten before it was pushed so
+the values were never published — `CLAUDE.md` records what taking an identifier
+back out of this history has cost twice, once after pushing, and neither time
+was it cheap.
+
+What is committed is the template. `build-msix.ps1` names it in the refusal
+rather than reporting a missing path, because a build script whose first failure
+is *no such file* teaches nothing to the checkout that hit it. The MSA
+application id on the same Partner Center page is needed by nothing here and is
+recorded nowhere.
 
 **The self-signed certificate does not carry forward, and that is fine.**
 `New-SelfSignedCertificate` and `signtool` were how the questions got answered
@@ -263,3 +356,16 @@ worth deciding once rather than per platform.
 **Unrun: the Windows App Certification Kit.** Certification runs it and a
 submission that fails it comes back. It has never been run here, and it is
 mechanical, so it belongs in a build script rather than in somebody's memory.
+
+**It is in the build script now, behind `-Certify`, and it is still unrun.**
+`appcert.exe` is stock on this machine at `C:\Program Files (x86)\Windows Kits\
+10\App Certification Kit\`, so nothing has to be installed. What it needs is
+elevation, and it installs the package it tests, so it needs a signed one as
+well — `-Certify` refuses without `-SelfSign` rather than producing a kit run
+against nothing.
+
+The verdict is read out of the report's `OVERALL_RESULT` rather than out of an
+exit code, and a report with no verdict in it is a refusal too. A kit that ran
+and failed and a kit that never ran are different things, and the second must
+never be reported as a pass — which is the same failure `preflight.sh` found in
+its own CI check, where a run still in progress was being counted as a result.

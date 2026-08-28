@@ -188,30 +188,87 @@ package, and its final paragraphs say which of it a CI step could take over.
 
 ### Once
 
-- **Reserve the name in Partner Center**, which is `Slipcase` — the section on
-  the name below says why it is that and not `slipcase-desktop`. Do this first:
+- ~~**Reserve the name in Partner Center**~~ — done 2026-08-28. `Slipcase` was
+  available and is reserved. The section on the name below says why it is that
+  and not `slipcase-desktop`. It was done first for the reason given here:
   `Package/Identity/Name`, `Publisher` and `PublisherDisplayName` are assigned
   at reservation, and a package whose identity disagrees with them is rejected
-  at upload rather than at review. Everything below wants those three values.
-- **Fill them into `AppxManifest.xml.in`** — or rather into whatever the build
-  script substitutes from, so that they live in one place.
+  at upload rather than at review. Everything below wanted those three values.
+- ~~**Fill them into `AppxManifest.xml.in`**~~ — done 2026-08-28, and into
+  `packaging/windows/identity.psd1` rather than into the template, which is what
+  *or rather into whatever the build script substitutes from* asked for. The
+  manifest keeps its four placeholders and nothing is edited per build.
+
+  It holds two values beyond the three, and they earn their place: the package
+  family name, which is what `Get-AppxPackage` is asked for to check an install,
+  and the store id, which the listing URL is built from. Both are otherwise only
+  findable by logging in. The MSA application id on the same page is needed by
+  nothing and is recorded nowhere.
+
+  **The file is not committed; `identity.psd1.example` beside it is.** None of
+  it is a credential — `Publisher` is in the manifest of every package the Store
+  distributes and the store id is in a public URL — and it was committed on that
+  reasoning first. The reasoning was true and the call was wrong: an account's
+  identifiers on a public record is the judgement
+  `packaging/macos/SUBMITTING.local.md` already got. Caught and rewritten before
+  the commit was pushed, so nothing was published and nothing had to be taken
+  back out. `build-msix.ps1` refuses by naming the template, so a fresh checkout
+  learns what it needs instead of failing at `makeappx`.
 
 ### Every time
 
-- **`packaging/windows/build-msix.ps1`**, which does not exist and is the single
-  thing standing between this platform and a submission. `packaging/macos/build-app.sh`
-  is the model: take a release build, assemble a staging tree, substitute the
-  version and the identity, call `makeappx`, and refuse loudly rather than
-  produce something subtly wrong. It should also run the **Windows App
-  Certification Kit** and fail on it, because certification runs it anyway and
-  finding out here is cheaper.
+- ~~**`packaging/windows/build-msix.ps1`**~~ — done 2026-08-28, and it built
+  `Slipcase-0.1.0.0-x64.msix` from the release binary on the first run that
+  parsed. `build-app.sh` was the model as intended: it takes a release build,
+  stages the executable and the assets, substitutes the identity and the version
+  — asking `version.sh --appx` rather than parsing `Cargo.toml` a second time —
+  calls `makeappx`, and refuses rather than producing something subtly wrong.
+
+  **Four refusals, each verified by breaking what it guards.** Two are read out
+  of the PE header, because neither is visible in a finished package: the
+  architecture, and the subsystem. The subsystem one is the interesting one.
+  `src/main.rs` carries `windows_subsystem = "windows"` only when
+  `debug_assertions` is off, so a debug binary packaged by mistake is a console
+  subsystem one — and *a console window behind the application* is a defect the
+  Windows walkthrough already found by hand. Handing it `target\debug\` is
+  refused. The other two are the manifest's: a placeholder that survived
+  substitution, and a `Publisher` that is not an X.500 string, which is the
+  display name typed into the field that gets a package rejected at upload.
+
+  The five images the manifest names exist now too, built by `make-ico` from the
+  same SVG every platform's icon comes from and committed beside the `.ico`,
+  with `windows.yml` comparing the whole directory against a rebuild. The `.ico`
+  is byte-identical across that change, which is what says the shared renderer
+  did not quietly alter it. `packaging/windows/README.md` records the one part
+  of them that is a reading of Microsoft's guidance rather than a measurement.
 - Note that the self-signed certificate from the MSIX sitting **does not carry
   forward** — the Store signs what it distributes. Local signing stays in the
   script for testing an install, but no certificate from it goes near a
   submission.
 
+  **And it did not carry forward in a second sense, which was not foreseen.**
+  The certificate from 2026-08-26 cannot sign this package at all: `signtool`
+  refuses one whose certificate subject and manifest `Publisher` differ, and
+  that certificate's subject was invented before a reservation existed.
+  `-SelfSign` builds the subject out of `identity.psd1` instead of having it
+  typed a second time, and makes a fresh throwaway.
+
 ### By hand, because no script can
 
+- **One administrator action, and it gates the three below it.** The throwaway
+  signing certificate has to reach `LocalMachine\TrustedPeople`; the per-user
+  store is not read for this and importing there leaves deployment failing
+  `0x800B0109` just the same, which `CHECKLIST.md` measured on 2026-08-26.
+  `build-msix.ps1 -SelfSign` prints the two commands and does not attempt them.
+- **The Windows App Certification Kit.** `build-msix.ps1 -Certify` runs it and
+  fails on its verdict, and `appcert.exe` is stock on this machine — but the kit
+  needs an elevated session and installs the package it tests, so it is a
+  person's to start. **It has still never been run.** Certification runs it
+  anyway, so anything it says is cheaper to hear here.
+- **The tiles, looked at.** How much of each asset the drawing occupies is a
+  reading of Microsoft's tile guidance and not a measurement;
+  `packaging/windows/README.md` says which is which. A Start menu tile and an
+  application list entry settle it in one look.
 - **The stale `UserChoice` sequence.** `CHECKLIST.md` has it under *Not yet done
   by hand*, and it is unautomatable by design: the key carries a hash Windows
   validates and denies the user write access, precisely so that a default is
