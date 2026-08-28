@@ -94,11 +94,19 @@ reserved rather than after, which is the only timing that matters.
   resubmitted after a rejection — unchanged, as a rejection often warrants —
   would have been refused for carrying a build number it had already seen. The
   template now takes `@BUILD@` as well, and `--build` is the commit count.
-- **`packaging/preflight.sh`** — refuses to proceed when the tree is dirty, the
-  version and the changelog disagree, CI is not green on `HEAD`, or the corpus
-  has not been run. This exists because the same seven checks were done by hand
-  for `slpc` 0.3.5 and doing them by hand is what will be skipped on the patch
-  nobody thinks is risky.
+- ~~**`packaging/preflight.sh`**~~ — done 2026-08-28. Nine checks: a clean tree,
+  nothing unpushed, both changelogs naming the version, a version the Appx
+  spelling can represent, silent clippy, a passing suite, the corpus agreeing,
+  and CI green on `HEAD` rather than on some commit.
+
+      ./packaging/preflight.sh --corpus /path/to/slipcase/conformance --ci
+
+  It refuses and never repairs, and each check was verified by breaking the
+  thing it guards. The CI check in particular: its first version reported two
+  failures on a green commit, because `gh` writes an empty string rather than
+  null for a run still in progress and the grep matched it. It asks `jq` now,
+  and distinguishes three states — a run still going is neither a pass nor a
+  failure, and a release cut mid-flight is one nobody has checked.
 - ~~**`CHANGELOG.md`**~~ — done 2026-08-28, with a 0.1.0 entry marked
   *unreleased* until a tag exists. It is written so the store listing text can
   be generated from it rather than written a second time and left to drift, and
