@@ -203,6 +203,26 @@ file rather than the directory holding it, so Save stops with *Operation not
 permitted* on the temporary file. `NSFileManager.replaceItemAt…` is the route
 out, and it needs no sibling.
 
+**Amended 2026-08-28: it extracts and it opens, and the paragraph below is kept
+because the reasoning in it was right about the platform and wrong about what
+the library would do next.** Measured against the signed sandboxed bundle with a
+container marked the way Safari marks a download: the card said it arrived from
+elsewhere, Open put the payload in front of Preview, and nothing refused. `slpc`
+gained `Mark::AlreadyMarked` after this was written — the platform's own mark on
+the file this process wrote *is* a mark, so `carry` reports that rather than
+failing, and `src/lib.rs` no longer tears down the extraction. **`DESIGN.md` §5
+does not have to be reopened for this.**
+
+What is true, and is the part worth carrying forward, is that the mark on the
+payload is the platform's rather than the container's:
+`0086;…;slipcase-desktop;` where the container said
+`0083;…;Safari;<uuid>`. The payload is gated; it no longer says where it came
+from, and it is indistinguishable from a payload extracted from a container that
+was never downloaded. That is a Store-build-only difference — unsandboxed,
+`carry` writes the source's value — and `CHECKLIST.md`'s *What a downloaded
+container did under the sandbox* holds the measurement and its consequence for
+the store listing.
+
 Carrying provenance does not either, and that is the expensive one. The
 platform marks whatever a sandboxed process writes, so `xattr::set` of
 `com.apple.quarantine` is then refused, and `src/lib.rs` fails the whole

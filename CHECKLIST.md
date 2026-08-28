@@ -110,11 +110,15 @@ anyway, which is item 6.
 
 ### Not yet done by hand
 
-- **All six items, on all three platforms.** Written the day the lines landed
+- **Items 1 to 4, on all three platforms.** Written the day the lines landed
   and run on none of them. The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it
   is not the check.
+- **Items 5 and 6 are done on macOS**, 2026-08-28, and the run is under *What
+  the sandboxed handover found* below. Item 6 exists only on this platform. Item
+  5 still wants Linux and Windows, which ask different questions of a different
+  directory.
 
 ---
 
@@ -1338,6 +1342,220 @@ matching what the same-volume run found in the sandbox sitting: the original's
 mode is kept — 0600 on APFS, and 0700 on FAT32 and exFAT because those have no
 POSIX permissions and the mount forces the execute bit — and `com.apple.macl`
 and the last-used date survive while `com.apple.quarantine` does not.
+
+### What the sandboxed handover found
+
+**Item 6 passes.** Run 2026-08-28 against `dist-sandboxed/Slipcase.app`: today's
+release binary, signed with an Apple Development certificate, its signature
+carrying `com.apple.security.app-sandbox`, and the only bundle Launch Services
+held for `com.excelano.slipcase` — the unsigned August 25 one was unregistered
+first, because a stale bundle answering the door would have made the whole
+measurement worthless.
+
+Opening a container and pressing Open brings Preview forward showing the PDF.
+The card's *Opens with* line reads Preview, which is the association section's
+item 6 answered in the same glance. Launch Services does grant the launched
+application a scope for the URL it was launched with, and a 0700 directory
+inside this application's container is no obstacle to it.
+
+That was the question worth being afraid of. It was raised because
+`tests/handover.rs` proves the Linux case by reading the payload back from a
+separate process running as the same user, and under the sandbox the handler is
+a different application with a container of its own — so the Linux proof did not
+transfer and nothing on that platform could take the measurement. **Open works
+on the Store build.** No `DESIGN.md` §5 decision is owed.
+
+Four things measured around it, while the process was still alive, because the
+handover directory goes when it does:
+
+- **The payload lands inside the container**, at
+  `~/Library/Containers/com.excelano.slipcase-desktop/Data/tmp/slipcase-XXXXXX`,
+  and nothing was written to `/tmp` or to the per-user temporary area outside
+  it. This is also the only trustworthy runtime proof that the process really
+  was sandboxed: `ps eww` cannot answer it. macOS refuses to expose another
+  process's environment, so it echoes the *caller's* `HOME` and `TMPDIR` back
+  and reads exactly like a process that was never sandboxed. Checked against
+  Safari, which is certainly sandboxed and returns nothing at all for the same
+  query. Anybody reaching for `ps eww` here will get a false negative.
+- **The directory is 0700 and the payload inside it 0644**, which is what
+  2026-08-27 asked for and what item 5 wanted looked at on this platform.
+- **The extraction is byte for byte.** The payload's SHA-256 matches the file
+  that went into the container.
+- **The platform marks what a sandboxed process writes, and the disregard
+  works.** The container carries no `com.apple.quarantine` — it was made on this
+  machine — and the extracted payload carries
+  `0086;6a91c46e;slipcase-desktop;` anyway, written by the platform rather than
+  by this application. The agent field is the executable's own filename, not the
+  display name `Slipcase`, and `slpc::provenance::this_process_wrote` compares
+  against `current_exe().file_name()` rather than a string spelled out anywhere
+  — so it matches, and a binary renamed keeps agreeing with itself. That
+  confirms on the extraction path what the library's comment measured on
+  2026-08-25. Preview opened the marked payload without a prompt, a flags field
+  of `0086` being a mark the shell records rather than one it gates on.
+
+**What this run does not settle is item 4**, which is the save path rather than
+the extraction path, and is the one place `slpc` 0.3.7's provenance fix meets
+`src/staging.rs`. It stays below.
+
+### What a downloaded container did under the sandbox
+
+Run 2026-08-28, immediately after the above and against the same bundle, because
+`packaging/macos/README.md` claimed a container that arrived from elsewhere could
+be **neither extracted nor opened** under a sandbox and named that as the reason
+`DESIGN.md` §5 had to be reopened before the Mac App Store could be taken. A copy
+of the walkthrough container was marked the way a download leaves one —
+`xattr -w com.apple.quarantine '0083;68ae0000;Safari;9C1A2B3C-…'` — opened in the
+signed bundle, and Open pressed.
+
+**It extracts and it opens.** The card carried *This container arrived from
+elsewhere, and the payload will carry that.* in the warning colour, Open put the
+PDF in front of Preview, and nothing refused anything. That README paragraph
+predates `Mark::AlreadyMarked` and is stale; the note there is amended rather
+than deleted.
+
+**What the payload carries is not what the container carried, and that is the
+finding.** Measured on the extracted file:
+
+    container:  0083;68ae0000;Safari;9C1A2B3C-4D5E-6F70-8192-A3B4C5D6E7F8
+    payload:    0086;6a91cfe4;slipcase-desktop;
+
+The platform marks whatever a sandboxed process writes and then refuses to have
+that mark replaced, so `slpc::provenance::carry` returns `AlreadyMarked` rather
+than `Carried` and the source's value is lost. The gate the mark exists for is in
+place. The origin it recorded is not.
+
+**Set beside the unmarked run half an hour earlier, the two are the same shape:**
+
+    from an unmarked container:   0086;6a91c5c5;slipcase-desktop;
+    from a downloaded container:  0086;6a91cfe4;slipcase-desktop;
+
+Only the timestamp differs. So under the sandbox a payload extracted from a
+container that arrived from elsewhere and one extracted from a container made on
+this machine are indistinguishable by their marks. Unsandboxed — Linux, Windows,
+and a Developer ID build — `carry` writes the source's own value and they are
+not. **This is a difference between the Store build and every other build**, and
+it is a property of the platform rather than a defect in either repository.
+
+**The gate is not weakened, and that was measured before today.** *What the
+provenance sitting found* above, 2026-08-25, put an extracted script carrying
+`…;slipcase-desktop;` in front of the system and it was refused outright —
+*damaged and can't be opened* — denied in the kernel, naming this application,
+with no way past, where Safari's `0083` goes through Gatekeeper's assessment and
+is offered an override. The counterfactual was run in the same sitting: the same
+extracted disk image with `com.apple.quarantine` stripped and nothing else
+changed mounts and runs an unsigned application. **So the sandbox mark gates at
+least as hard as the one it replaced, and harder for anything that executes.**
+Nothing here is laundered.
+
+One discrepancy between that sitting and this one, left as a discrepancy rather
+than edited away. It records the three extracted payloads as carrying
+`0082;…;slipcase-desktop;`, and both extractions measured here on 2026-08-28
+read `0086`, as did the file `Probe.app` created. Nothing in either run's
+conclusion turns on it — both are the sandbox marking its own process's output,
+and the refusal that sitting measured is the behaviour either way — but one of
+the two transcriptions is wrong and it should be somebody's next reader who
+finds out which, rather than nobody.
+
+**It still reaches the store listing, which is a public claim.**
+`packaging/store-listing.md` says the payload *carries that marking onward, so
+whatever opens it next raises the same warning the container would have*. The
+first half holds. The second is not false so much as **not the same warning**:
+the next application is warned by this application's mark rather than the
+container's, and where the container would have produced an explicable
+Gatekeeper prompt the payload produces a blunter kernel refusal. `RELEASE.md`'s
+readiness review names this class — a sentence written before anybody looked —
+and this is one it has to catch.
+
+Preview opened both marked payloads with no Gatekeeper prompt, which is expected
+for a PDF and says nothing either way about an executable payload. That is not
+tested here.
+
+**Asked afterwards whether that is a defect rather than a constraint, and
+measured rather than argued.** The suspicion was reasonable: this application
+sets the mark with a raw `setxattr`, and Apple's supported route is the Launch
+Services property dictionary — `NSURL`'s `quarantinePropertiesKey`, carrying
+`LSQuarantineAgentName`, `LSQuarantineOriginURL` and `LSQuarantineDataURL`.
+Sandboxed downloaders mark their downloads, so the sandbox plainly permits some
+path to it, and the library might simply have been using the wrong one.
+
+A throwaway bundle — `Probe.app`, signed with this application's own
+entitlements so the sandbox is the same one — created a file, read the mark the
+platform gave it, and then tried both routes with a foreign value:
+
+    1. as created by a sandboxed process : 0086;6a91d108;probe;
+    2. raw setxattr of a foreign value   : rc=-1 errno=1 (Operation not permitted)
+       value now                         : 0086;6a91d108;probe;
+    3. setResourceValue(quarantineProperties): OK
+       value now                         : 0087;6a91d108;probe;E31A5F7D-…
+    4. dictionary reads back            : LSQuarantineAgentName = probe
+                                          LSQuarantineEventIdentifier = E31A5F7D-…
+                                          LSQuarantineIsOwnedByCurrentUser = 1
+
+**Both routes refuse, and the second refuses more quietly than the first.** The
+raw write fails outright with `EPERM`, which is what `provenance::carry` catches
+and what `AlreadyMarked` exists for. The supported route *succeeds* — the flags
+move from `0086` to `0087` and an event identifier is added — and then macOS
+substitutes its own agent: `Safari` was asked for and `probe` was written. The
+supplied origin and data URLs are absent from the readback, and the event
+identifier never reached `~/Library/Preferences/com.apple.LaunchServices.QuarantineEventsV2`,
+whose modification time still predates the run, so the origin was not recorded
+anywhere rather than merely being hidden from the readback.
+
+**So a sandboxed process cannot attribute a file's origin to anyone but
+itself.** That is the platform's guarantee rather than this library's shortfall,
+`Mark::AlreadyMarked` is the correct and only available behaviour, and there is
+nothing to file against `excelano/slpc-rust`. The consequence stands where it
+was: the payload is gated, the origin is lost, and it is the *wording* of the
+Mac App Store listing that has to change, because the behaviour cannot.
+
+### What saving a downloaded container under the sandbox found
+
+**Item 4. The save succeeds, the file stays gated, and the card stops saying
+where the container came from.** Run 2026-08-28 against the signed sandboxed
+bundle, predicted in full before the button was pressed, and the prediction was
+right — which is worth recording because it means the mechanism below is
+understood rather than guessed at.
+
+    before:  0083;68ae0000;Safari;9C1A2B3C-4D5E-6F70-8192-A3B4C5D6E7F8
+    after:   0083;6a91d265;slipcase-desktop;
+
+The edit landed — `title` reads what was typed, and the other keys came back in
+the order they were written. `com.apple.macl` and the last-used date survived.
+The flags stayed `0083`, so **the container is still gated exactly as hard as it
+was**; what changed is the agent, the timestamp, and the event identifier, which
+is now absent.
+
+`arrived_from_elsewhere` reads that agent, recognises it as this executable's own
+filename, and answers false. So the card's *This container arrived from
+elsewhere, and the payload will carry that.* was there before the save and gone
+after it, on a container whose history did not change. `RELEASE.md` named this
+failure in advance and in these words: *a save that quietly turns arrived from
+elsewhere into nothing is the failure, even though the file stays gated.*
+
+**The mechanism, and why no test could have caught it.** `src/staging.rs` calls
+`carry(original, staged)` to put the container's mark on the rewrite before it
+becomes the container. The staged file was written by this sandboxed process, so
+the platform had already marked it, so the write is refused with `EPERM` — the
+probe above measured that directly — and the refusal is deliberately non-fatal,
+so the save proceeds. `replaceItemAtURL:` then swaps them.
+
+`tests/handover.rs:246`, `saving_an_edit_keeps_where_the_container_came_from`,
+asserts the opposite and **passes**, on this machine, today, through this same
+macOS arm. It runs unsandboxed, where `carry` succeeds and the mark is preserved
+intact. The test is not wrong and the code it guards is not broken: no test in
+either repository can enter the App Sandbox, and the sandbox is the only place
+this happens. **A green suite and a Store build that launders the card are
+consistent with each other**, which is the whole argument for this file.
+
+**This is a `DESIGN.md` §5 decision and it is open.** The file is not less safe;
+the report is. Three ways out were put to David, and what was decided is
+recorded above the code that implements it once it is.
+
+Not measured, and worth knowing before the decision is taken: whether a *second*
+save behaves differently now that the container's mark is already this
+application's, and what a person sees if they close and reopen the container
+afterwards — the line will stay gone, because the file genuinely no longer
+records Safari.
 
 ### What looking at the Dock found
 

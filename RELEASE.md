@@ -262,16 +262,28 @@ Most of these are already in `CHECKLIST.md` under *Not yet done by hand*, and
 they are not paperwork — this platform has a history of the sandbox costing more
 than anybody expected.
 
-**The first two come before any of the packaging work.** Both ask whether the
+**These come before any of the packaging work.** Both ask whether the
 App Sandbox breaks something this application did to itself in the days before,
 and both have answers that are decisions about `DESIGN.md` §5 rather than
 repairs. Taking a decision like that after a bundle is signed and a listing is
-written around it is the expensive order.
+written around it is the expensive order. The first is now answered; the second
+is not.
 
-- **Can a launched application read the payload at all, under the sandbox?**
-  `CHECKLIST.md` item 6, and **the very first thing** — it is one open, one
-  button, and one look at the screen, and it is the cheapest way to find out
-  whether the Store build works at all.
+- ~~**Can a launched application read the payload at all, under the sandbox?**~~
+  **Answered 2026-08-28: yes, and Open works on the Store build.** Preview came
+  forward showing the PDF, the card's *Opens with* line read Preview, the
+  payload landed at 0700 inside this application's container and byte for byte,
+  and nothing outside it was written. `CHECKLIST.md`'s *What the sandboxed
+  handover found* holds the run, including the two things it settled on the way:
+  that `ps eww` cannot tell you whether a process is sandboxed and will lie in
+  the reassuring direction, and that the platform marks what a sandboxed process
+  writes while `slpc::provenance` correctly disregards its own agent. **No
+  `DESIGN.md` §5 decision is owed.** The question and its reasoning are kept
+  below because the answer is only worth as much as the doubt it settled.
+
+  It was `CHECKLIST.md` item 6, and **the very first thing** — one open, one
+  button, and one look at the screen, and the cheapest way to find out whether
+  the Store build works at all.
 
   On 2026-08-27 the handover directory became mode 0700, to stop every payload
   somebody pressed Open on being readable by every account on the machine. On
@@ -283,13 +295,26 @@ written around it is the expensive order.
   the URL it was launched with, which ought to be enough — but *ought* is not a
   measurement, and nothing on Linux can take it.
 
-  **If it fails, Open fails for every container on the Store build.** The fix is
-  a decision rather than a repair: the mode that keeps a payload private from
-  other accounts on the machine is the mode that would be hiding it from the
-  program meant to open it. Preview showing the PDF is a pass; anything else is
-  the finding.
-- **Saving an edit to a downloaded container, under the sandbox.** `CHECKLIST.md`
-  item 4, and **also before the packaging work**: if the sandbox breaks
+  **If it had failed, Open would have failed for every container on the Store
+  build**, and the fix would have been a decision rather than a repair: the mode
+  that keeps a payload private from other accounts on the machine is the mode
+  that would have been hiding it from the program meant to open it. It did not
+  fail.
+- ~~**Saving an edit to a downloaded container, under the sandbox.**~~
+  **Answered 2026-08-28, and it is the failure this entry was afraid of.** Save
+  succeeds and the edit lands. The container stays gated — the flags are
+  unchanged at `0083` — but the agent becomes `slipcase-desktop`, so
+  `arrived_from_elsewhere` answers false and the card's *arrived from elsewhere*
+  line is there before the save and gone after it. `CHECKLIST.md`'s *What saving
+  a downloaded container under the sandbox found* holds the measurement and the
+  mechanism. **A `DESIGN.md` §5 decision is owed, and it is the only thing on
+  this platform still blocking the packaging work.** It is a reporting failure
+  rather than a safety one, and the probe above establishes that no change of API
+  avoids it — a sandboxed process cannot attribute a file to anyone but itself.
+  The original entry is kept below because its reasoning was right.
+
+  `CHECKLIST.md`
+  item 4, and it was **the first thing left**: if the sandbox breaks
   the provenance carry the way it once broke Save, that is a decision about
   `DESIGN.md` §5 rather than a repair, and it is cheaper to take before a bundle
   has been signed and a listing written around it.
@@ -388,6 +413,25 @@ platforms together, which no platform session can do. What it covers:
 - **Every claim in the store listings is true of the built artefacts**, which is
   the class of error this project has caught most often — a sentence written
   before anybody looked.
+
+  **One is already known to need rewording, found 2026-08-28.** The description
+  says a payload *carries that marking onward, so whatever opens it next raises
+  the same warning the container would have.* The first half holds. The second
+  is not the same warning: under the sandbox the platform marks what this process
+  writes and refuses to have that mark replaced, so the payload reaches its
+  handler carrying `slipcase-desktop` rather than the container's own value.
+
+  **This is a wording problem and not a safety one, and the difference was
+  measured before it was assumed.** `CHECKLIST.md`'s *What the provenance
+  sitting found* established on 2026-08-25 that the sandbox's own mark gates at
+  least as hard as the one it displaces and harder for anything that executes —
+  a kernel refusal with no way past, where Safari's mark gets an explicable
+  Gatekeeper prompt — and that stripping the attribute is the difference between
+  an unsigned application from the internet running and being stopped. So the
+  listing promises the wrong *shape* of warning rather than promising protection
+  that is absent. Unsandboxed it behaves exactly as written, so this is a Mac App
+  Store wording problem and not a Microsoft Store one, and it joins the
+  executable-payload sentence as the second paragraph that differs per store.
 - **The version is the same number in all three spellings**, and the changelog
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with
