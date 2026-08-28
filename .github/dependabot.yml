@@ -1,0 +1,51 @@
+# Dependabot keeps Cargo and GitHub Actions dependencies current, so a security
+# fix arrives as a pull request rather than as something nobody noticed. Each
+# ecosystem's bumps are grouped into one weekly PR, so they share a lockfile
+# change instead of stacking conflicting ones.
+#
+# **An `slpc` bump is the one to read rather than merge on green.** Every rule
+# this application enforces about what a container is comes from that library:
+# the bound on what identifying one costs, the refusal of an archive that names
+# its members twice, the escaping of a name before it is shown, the mark carried
+# onto an extracted payload. A version of it is a change to what this window
+# says about somebody's file, and `CHANGELOG.md` there is written to be read.
+#
+# **An `eframe` bump is the other one.** It carries `egui`, which draws the card
+# and lays out every name on it — including, one day, in an order this
+# application does not choose. `epaint` has a standing to-do to heed the
+# bidirectional formatting characters `DESIGN.md` §3 discusses, and the day that
+# lands is the day a payload name can be made to read backwards on the card.
+# `src/main.rs` escapes them already, so nothing breaks; but the comment there
+# says the immunity is somebody else's omission, and this is where the omission
+# ends.
+#
+# What this cannot see: the conformance corpus is fetched by `git clone` inside
+# a `run:` block in the three platform workflows, pinned to a commit of
+# `excelano/slipcase`. Dependabot does not read shell, so that pin is bumped by
+# hand when the corpus changes. Each workflow carries a `SPEC-PIN:` line to make
+# it findable.
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      cargo:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
