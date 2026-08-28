@@ -1339,6 +1339,49 @@ mode is kept — 0600 on APFS, and 0700 on FAT32 and exFAT because those have no
 POSIX permissions and the mount forces the execute bit — and `com.apple.macl`
 and the last-used date survive while `com.apple.quarantine` does not.
 
+### What looking at the Dock found
+
+**The Dock showed the egui logo instead of this application's icon**, on every
+macOS build ever made here, and it was found on 2026-08-28 by a person glancing
+at the Dock while doing something else. Nothing else in this project could have
+found it, and several things that look like they should have did not.
+
+What was checked and came back clean, before the Dock itself was looked at:
+
+- `Contents/Resources/slipcase-desktop.icns` holds the card-in-a-case at all ten
+  sizes, and `build-app.sh` already verifies each rendering's dimensions.
+- `CFBundleIconFile` names it.
+- `NSWorkspace.icon(forFile:)` on the bundle returns the correct drawing.
+- `NSRunningApplication(processIdentifier:).icon` for the live process returns
+  the correct drawing.
+
+Two Cocoa APIs answering correctly while the Dock shows something else is the
+whole shape of this defect. The cause is `eframe`: `epi_integration.rs:209`
+substitutes its own `data/icon.png` for any viewport that names no icon, and
+`app_icon.rs` hands that to `-[NSApplication setApplicationIconImage:]`, which
+outranks the bundle. `src/main.rs` called `with_icon` only under
+`#[cfg(target_os = "windows")]`, on the correct reasoning that macOS takes its
+icon from the bundle — correct about macOS, and silent about eframe.
+
+The repair is to decline rather than to supply: `AppTitleIconSetter::new` turns
+an `IconData::default()` into `None`, and the macOS arm calls
+`setApplicationIconImage:` only where there is an image, so an empty icon leaves
+the bundle's alone. Handing over the drawing a second time would also work and
+would carry a redundant copy in the binary in order to overwrite the bundle's
+with a worse-scaled equal.
+
+**The before and after are both captured**, which is this defect's substitute for
+a test that bites: the Dock tile was a white hexagon on black, and after the
+rebuild it is the card-in-a-case, in the same tile position with the same running
+dot.
+
+Worth knowing for anyone repeating any of this: `screencapture` works on this
+machine now. `What the first run found` above records it returning the desktop
+with every window omitted, and two byte-identical empty captures as the only
+tell. Screen Recording was granted to the terminal on 2026-08-28 and captures now
+show windows, the Dock, and dialogs. That is what made the icon measurable from a
+session rather than only describable by a person.
+
 ### Not yet done by hand
 
 - **A high-density display, half done.** The `@2x` entries have now been

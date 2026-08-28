@@ -241,6 +241,26 @@ fn main() -> eframe::Result {
         None => viewport,
     };
 
+    // **Saying nothing here is not neutral on macOS, and it cost the Dock its
+    // icon.** The bundle carries `slipcase-desktop.icns` and `CFBundleIconFile`
+    // points at it, which is where a macOS application's icon comes from — so
+    // this arm looked like it had nothing to do. It does. `eframe`'s
+    // `epi_integration.rs` substitutes its own `data/icon.png` — the egui logo,
+    // a white hexagon on black — for any viewport that names no icon, and
+    // `app_icon.rs` then hands that to `-[NSApplication
+    // setApplicationIconImage:]`, which outranks the bundle. Measured
+    // 2026-08-28 against the signed bundle: the Dock showed the egui logo while
+    // `NSWorkspace` and `NSRunningApplication` both still resolved the correct
+    // drawing, which is why nothing short of looking at the Dock found it.
+    //
+    // An empty `IconData` is how the icon is declined rather than replaced:
+    // `AppTitleIconSetter::new` turns one into `None`, and the macOS arm only
+    // calls `setApplicationIconImage:` where there is an image. Handing over
+    // the drawing again would also work and would carry a second copy of it in
+    // the binary to overwrite the bundle's with a worse-scaled equal.
+    #[cfg(target_os = "macos")]
+    let viewport = viewport.with_icon(egui::IconData::default());
+
     // Before `eframe`, because macOS dispatches the document that launched this
     // application before `eframe`'s creation closure is reached, and AppKit's
     // own handler refuses it there. Measured both ways: registering later
