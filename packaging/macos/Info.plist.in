@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The bundle's property list. `build-app.sh` substitutes @VERSION@ from
+  The bundle's property list. `build-app.sh` substitutes @VERSION@ and @BUILD@ from
   Cargo.toml, the way `packaging/debian/control.in` is substituted.
 
   Two declarations do the association, and they are not the same thing.
@@ -57,8 +57,15 @@
 
 	<key>CFBundleShortVersionString</key>
 	<string>@VERSION@</string>
+	<!--
+	  Not @VERSION@. App Store Connect deduplicates uploads by this key: it must
+	  increase on every upload of a bundle, including a rejected one resubmitted
+	  with nothing changed. The release version cannot do that, so this is the
+	  commit count, which only rises. `packaging/version.sh --build` is where it
+	  comes from and says why.
+	-->
 	<key>CFBundleVersion</key>
-	<string>@VERSION@</string>
+	<string>@BUILD@</string>
 	<key>CFBundleIconFile</key>
 	<string>slipcase-desktop</string>
 	<key>LSApplicationCategoryType</key>

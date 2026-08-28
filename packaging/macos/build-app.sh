@@ -104,8 +104,15 @@ fi
     exit 1
 }
 
-version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "${root}/Cargo.toml" | head -1)
-[ -n "$version" ] || { echo "build-app.sh: no version in Cargo.toml" >&2; exit 1; }
+# Two numbers, not one, and that is the whole reason `version.sh` takes an
+# argument. `CFBundleShortVersionString` is what a person sees in the About box
+# and is the release version. `CFBundleVersion` is what App Store Connect
+# deduplicates uploads by: it must increase on *every* upload, including a
+# rejected one resubmitted with no change, so it cannot be the release version.
+# This template used `@VERSION@` for both, which would have been refused on the
+# second upload of any version.
+version=$("${here}/../version.sh" --short)
+build=$("${here}/../version.sh" --build)
 
 app="${outdir}/Slipcase.app"
 rm -rf "$app"
@@ -152,7 +159,8 @@ do
 done
 iconutil --convert icns "$iconset" --output "${app}/Contents/Resources/slipcase-desktop.icns"
 
-sed "s/@VERSION@/${version}/g" "${here}/Info.plist.in" > "${app}/Contents/Info.plist"
+sed -e "s/@VERSION@/${version}/g" -e "s/@BUILD@/${build}/g" \
+    "${here}/Info.plist.in" > "${app}/Contents/Info.plist"
 # A malformed property list is not an error Finder reports; it is a bundle that
 # quietly does not associate. Parsed here so the failure is loud.
 plutil -lint "${app}/Contents/Info.plist" >/dev/null

@@ -45,8 +45,9 @@ fi
     exit 1
 }
 
-version=$(sed -n 's/^version *= *"\([^"]*\)".*/\1/p' "${root}/Cargo.toml" | head -1)
-[ -n "$version" ] || { echo "build-deb.sh: no version in Cargo.toml" >&2; exit 1; }
+# Through `version.sh`, which is the only thing here that reads Cargo.toml. It
+# exits non-zero and says why if there is no version to read.
+version=$("${here}/../version.sh")
 # The changelog names the version being built, or the package ships release
 # notes for something else. This check is what lets the changelog be
 # hand-written: the one thing generating it from `git log` would buy is that it

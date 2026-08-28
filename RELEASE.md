@@ -83,10 +83,17 @@ reserved rather than after, which is the only timing that matters.
 
 ### Every time
 
-- **`packaging/version.sh`** — prints the version in whichever spelling is asked
-  for, so that the three above cannot drift and no script re-implements the
-  parsing. Consumed by `build-deb.sh`, `build-app.sh`, and whatever builds the
-  MSIX.
+- ~~**`packaging/version.sh`**~~ — done 2026-08-28. Prints the version in
+  whichever spelling is asked for, and `build-deb.sh` and `build-app.sh` both
+  ask rather than parsing `Cargo.toml` themselves. Whatever builds the MSIX
+  should ask it for `--appx`.
+
+  It found something on the way in. `Info.plist.in` used one `@VERSION@` for
+  both `CFBundleShortVersionString` and `CFBundleVersion`, and those must not be
+  equal: App Store Connect deduplicates uploads by the second, so a bundle
+  resubmitted after a rejection — unchanged, as a rejection often warrants —
+  would have been refused for carrying a build number it had already seen. The
+  template now takes `@BUILD@` as well, and `--build` is the commit count.
 - **`packaging/preflight.sh`** — refuses to proceed when the tree is dirty, the
   version and the changelog disagree, CI is not green on `HEAD`, or the corpus
   has not been run. This exists because the same seven checks were done by hand
