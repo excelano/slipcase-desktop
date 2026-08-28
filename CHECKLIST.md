@@ -819,7 +819,14 @@ with the shell reading only the five the manifest names by literal path.
 `build-msix.ps1` runs `makepri` now, and `makepri dump` confirms the unplated
 qualifier is indexed rather than merely present.
 
-Unlooked-at: the taskbar after that change. It is the item below.
+**Looked at after the change, the same day: the plate is gone.** David, at the
+machine, against the rebuilt package installed from `build-msix.ps1 -SelfSign`.
+So the repair is measured from both sides rather than reasoned about from one —
+which matters here more than usual, because two of its three parts were changes
+whose absence looked exactly like their presence. The images were in the package
+before `makepri` ran, and the scale variants were in `resources.pri` before the
+`autoResourcePackage` elements came out of the configuration; in both states the
+package built, installed, launched, and drew a purple square.
 
 ### What the certification kit found, first run
 
@@ -884,9 +891,11 @@ but taking it is a `DESIGN.md` §2 decision and not this section's.
 
 ### Not yet done by hand
 
-- **The taskbar, after the unplated assets.** The plate is what the change was
-  for, and the change has not been looked at. Needs the package reinstalled and
-  one glance at the taskbar.
+- **A double-click from Explorer**, on the packaged install. Everything above
+  reached the shell through `ShellExecute`, which is what a double-click
+  performs and is not the same as somebody performing one: only Explorer settles
+  what a person actually sees, and this project has twice found that the two
+  descriptions of a thing differ.
 - **The certification kit, against a package carrying the assets.** The run
   above tested five images and no `resources.pri`. Both changed the same day.
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
