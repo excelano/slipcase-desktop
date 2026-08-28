@@ -99,10 +99,18 @@ reserved rather than after, which is the only timing that matters.
   has not been run. This exists because the same seven checks were done by hand
   for `slpc` 0.3.5 and doing them by hand is what will be skipped on the patch
   nobody thinks is risky.
-- **`CHANGELOG.md`** — this repository has none. Both stores show release notes
-  per version and there is nowhere to write them from; `packaging/debian/changelog`
-  is Debian-shaped and not that. The store text should be generated from it
-  rather than written twice.
+- ~~**`CHANGELOG.md`**~~ — done 2026-08-28, with a 0.1.0 entry marked
+  *unreleased* until a tag exists. It is written so the store listing text can
+  be generated from it rather than written a second time and left to drift, and
+  every factual claim in it was checked against the built artefact rather than
+  against memory: the three buttons, the verdict vocabulary, the escaping, the
+  unchanged-save, the read-back-before-replace, and `ldd` naming only libc,
+  libgcc and libm.
+
+  `packaging/debian/changelog` still says the same things in Debian's shape,
+  because `dpkg` will not read the other one, and `build-deb.sh` already refuses
+  to build a package whose version that file does not name — which is what keeps
+  the two from parting.
 
 ### Once
 
