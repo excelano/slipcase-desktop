@@ -137,6 +137,37 @@ unrun is a *distribution*-signed bundle carrying a provisioning profile, which
 is a different sandbox context from the development-signed one every
 measurement was taken against.
 
+**Windows: should the origin note be written here too, and does an unknown
+stream survive anything?** Raised by the macOS session on 2026-08-28 and
+unanswerable from either of the other two platforms.
+
+Under the App Sandbox macOS marks whatever the process writes and refuses to
+have that mark replaced, so `slpc::provenance::carry` could keep the file gated
+and still lose the answer to *where did this come from*. `slpc` 0.3.10 fixes it
+by keeping the source's value verbatim in an attribute of its own,
+`com.excelano.slipcase.origin`, which `arrived_from_elsewhere` consults and
+`carries_a_mark` deliberately does not.
+
+**The Windows arm can reach the same branch and does nothing there.** `carry`'s
+fallback fires whenever the zone write fails over a copy that already carries a
+gating stream, so it is not dead code the way the Linux arm's is. A second
+stream beside `Zone.Identifier` would hold a note perfectly well — a stream is
+addressed by appending `:name` and `std::fs` reaches it, which is how the zone
+write already works. What is missing is a measurement, and three things need
+one:
+
+- What the shell does with a stream it does not recognise. Nothing established.
+- Whether it survives the copies and the archivers that strip `Zone.Identifier`.
+  If it does not, a note is worth less than it looks; if it survives *more* than
+  the zone stream does, that is worth knowing too and in the other direction.
+- Whether a packaged install sees it at all. An MSIX-packaged application is the
+  case that matters, and it is the one only this platform can try.
+
+Writing the note here on the strength of the macOS result would be exactly the
+inference this project keeps refusing to make, so the arm is a documented stub
+rather than a guess. If the measurement says a note is useless on Windows, that
+is an answer and the stub stays with the reason recorded beside it.
+
 **Everyone: a conformant container can name its payload something that is not
 a file, and extraction hung on it. Settled.** Found on Windows on 2026-08-26, the first
 time the conformance corpus had been run on that platform, and it is here
