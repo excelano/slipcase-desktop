@@ -1547,9 +1547,34 @@ either repository can enter the App Sandbox, and the sandbox is the only place
 this happens. **A green suite and a Store build that launders the card are
 consistent with each other**, which is the whole argument for this file.
 
-**This is a `DESIGN.md` §5 decision and it is open.** The file is not less safe;
-the report is. Three ways out were put to David, and what was decided is
-recorded above the code that implements it once it is.
+**Resolved the same day, and not by any of the three ways out first proposed.**
+Two of them made the card remember within a session and the third warned before
+the save; all three accepted the loss and argued about how to narrate it. The
+question that unstuck it was whether information could be *added* to the mark
+rather than substituted into it.
+
+It can — just not to the platform's mark. Measured inside a signed sandboxed
+bundle: the refusal is specific to `com.apple.quarantine`, an attribute of this
+project's own goes on without complaint, and it survives
+`-[NSFileManager replaceItemAtURL:]`, which is the operation that destroys the
+attribution in the first place. So the source's value is kept beside the
+platform's under `com.excelano.slipcase.origin`, and the fact is on the file
+rather than in a window.
+
+That fixes the case none of the three reached. The card is right after a save
+**and after a close and reopen**, because `Opened::open` re-deriving provenance
+from disk now gets the right answer — so there is no sticky flag, no session
+state, and nothing for the interface to remember. The work is in
+`excelano/slpc-rust` as `Mark::Recorded`, which is where `CLAUDE.md` says
+behaviour the library lacks belongs, and **this repository needs no code change
+at all**: `arrived_from_elsewhere` is already what the card asks and `carry` is
+already what the save calls. It needs the dependency bumped when 0.3.10 ships.
+
+Proven end to end on 2026-08-28 before the library change was committed, through
+a path override that was reverted afterwards: a downloaded container edited and
+saved kept its card line, kept it across a quit and reopen, and the file carried
+`0083;…;slipcase-desktop;` as the gate with
+`0083;68ae0000;Safari;…` beside it as the record.
 
 Not measured, and worth knowing before the decision is taken: whether a *second*
 save behaves differently now that the container's mark is already this

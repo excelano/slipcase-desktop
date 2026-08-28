@@ -307,10 +307,17 @@ is not.
   `arrived_from_elsewhere` answers false and the card's *arrived from elsewhere*
   line is there before the save and gone after it. `CHECKLIST.md`'s *What saving
   a downloaded container under the sandbox found* holds the measurement and the
-  mechanism. **A `DESIGN.md` §5 decision is owed, and it is the only thing on
-  this platform still blocking the packaging work.** It is a reporting failure
-  rather than a safety one, and the probe above establishes that no change of API
-  avoids it — a sandboxed process cannot attribute a file to anyone but itself.
+  mechanism.
+
+  **Fixed the same day, in the library, and this repository needs no code
+  change.** A sandboxed process cannot attribute a file to anyone but itself,
+  which the probe settles — but it can write an attribute of its own beside the
+  platform's, and that one survives the replacement that destroys the
+  attribution. `slpc` gained `Mark::Recorded` and
+  `com.excelano.slipcase.origin`, and `arrived_from_elsewhere` consults it. The
+  card is right after a save and after a reopen, proven end to end through a
+  signed sandboxed bundle. **What is left here is a version bump when 0.3.10
+  ships**, which belongs with the release rather than with this platform's work.
   The original entry is kept below because its reasoning was right.
 
   `CHECKLIST.md`
