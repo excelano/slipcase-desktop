@@ -216,3 +216,43 @@ every offset resolving to the object it names.
 **What the script will not do is decide whether a screenshot is any good**, and
 it says so when it finishes. It guarantees the size, which is the part that gets
 an upload refused, and nothing about the composition.
+
+## Screenshots (Mac App Store)
+
+**1440 x 900, PNG**, taken 2026-08-29 by `packaging/macos/screenshot.sh` against
+`dist-devid/Slipcase.app` built from `7d38b4f`, using the same two containers
+`demo-container.sh` builds. App Store Connect accepts four sizes for macOS —
+1280x800, 1440x900, 2560x1600 and 2880x1800 — and 1440x900 is the largest
+reachable here: the other two need a backing scale of 2 and no Retina display
+has been available on any machine this project has run on.
+
+| Order | File | What it shows |
+| --- | --- | --- |
+| 1 | `03-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
+| 2 | `04-light-arrived.png` | The same container carrying `com.apple.quarantine`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| 3 | `01-dark.png` | The first again, in dark mode |
+| 4 | `02-dark-arrived.png` | The second again, in dark mode |
+
+The ordering follows Windows' and for the same reason turned the other way up: a
+Mac ships light by default, so light leads. Both pairs are the same two
+containers and the same script, so the only difference between 1 and 3 is the
+desktop's theme.
+
+**These cannot be of the artefact that gets uploaded, and no macOS screenshot
+ever will be.** A Mac App Store package cannot be launched anywhere but the Store
+or TestFlight — `CHECKLIST.md`'s *What a Store-signed build did when it was
+launched* has the kernel refusing it — so the closest available is a bundle
+signed with a different certificate and built from the same commit. Windows can
+photograph its packaged application and this platform cannot, and a reader
+comparing the two sections should know the difference is the platform's rather
+than an inconsistency in how the two were done.
+
+**The pointer is parked before the shutter**, which Windows established the
+expensive way: a shot came back 2292 pixels different from its predecessor with
+none of the difference being the change it was taken for, because the pointer was
+resting on a field and egui drew it hovered and focus-ringed with the scroll bar
+showing.
+
+**The window is photographed by its id rather than by its rectangle**, so
+whatever happens to be in front of it stays out of the picture. The first
+attempt here used a region and came back as a screenful of terminal.

@@ -2732,6 +2732,25 @@ tell. Screen Recording was granted to the terminal on 2026-08-28 and captures no
 show windows, the Dock, and dialogs. That is what made the icon measurable from a
 session rather than only describable by a person.
 
+
+**A postscript, 2026-08-29, because the fix has a visible consequence and it
+reads like a defect.** Run the *bare executable* rather than the bundle —
+`./target/release/slipcase-desktop`, which is what a developer testing a layout
+change does all day — and the Dock shows a black square marked `exec`. That is
+macOS's generic icon for a Unix executable with no bundle, and it is correct:
+declining the icon is what stops eframe substituting the egui logo, so where
+there is no bundle to supply one there is now nothing.
+
+Before the fix the same command showed a white hexagon on black, which looked
+like an icon and was the wrong one. Checked here rather than reasoned about: the
+bundle launched beside it draws the card-in-a-case correctly with the running
+dot beneath it.
+
+Handing the drawing over programmatically would restore an icon for the bare
+case, at the price of a second copy of it inside the binary whose only job is to
+overwrite the bundle's with a worse-scaled equal. `src/main.rs` says so where the
+decision is, and this is the note for whoever sees the Dock before they see the
+comment.
 ### What a Store-signed build did when it was launched
 
 **It was killed by the kernel, and that is the correct answer rather than a
