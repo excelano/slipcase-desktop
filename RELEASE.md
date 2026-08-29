@@ -394,8 +394,11 @@ package, and its final paragraphs say which of it a CI step could take over.
   day after. `OVERALL_RESULT="PASS"`, `Blocked executables` failing as recorded,
   the gate recognising it and passing the run — the first time the rebuilt gate
   has been exercised by a run it should not refuse. It also traced the one
-  message nobody had explained: `CSi` is three bytes of an address in a table in
-  `.rdata`, not a string, which is why it appears in some builds and not others.
+  message nobody had explained: `CSi` is three bytes of an address, not a string,
+  which is why it appears in some builds and not others. Certified a second time
+  the same day after the macOS row fix, and passed again — that is the run the
+  submission rests on, and it came back with `Csi` and `REg` instead, both of
+  them three bytes of a RIP-relative displacement in `.text`.
   Twenty-four tests, twenty-two passing.
   `CHECKLIST.md` holds all of it. What it left was two findings, both decisions
   rather than repairs, and **both have since been taken** — one by a repair that

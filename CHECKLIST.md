@@ -1000,7 +1000,9 @@ different statement from *it was matched and we do not know why*.
 
 **It comes and goes between builds, and that is the corroboration.** The report
 kept from 2026-08-28 carries four messages for this test and no `CSi`; the
-2026-08-29 run of the same code at 0.1.1 carries five and has it. Nothing about
+2026-08-29 run of the same code at 0.1.1 carries five and has it; and the run
+after the macOS row fix, later the same day, carries six — `CSi` back as `Csi`
+and a `REg` beside it. Three builds, three different sets. Nothing about
 the source changed to cause that — the addresses in that table move when the
 binary is relaid out, so whether the three bytes `43 53 69` fall next to each
 other is chance. A finding that appears and disappears with a rebuild is exactly
@@ -1191,9 +1193,39 @@ CHECKLIST.md)* — and passed the run, which is the first time the rebuilt gate 
 been exercised by a real run it should not refuse.
 
 The five messages are `CreateProcessW`, `ShellExecuteW`, `cmd.exe`, `\cmd.exe`
-and `CSi`, all traced above. This is the certification run that matters for the
-submission: the three from 2026-08-28 were against a binary that no longer
-exists, since `src/tree.rs` changed the day after.
+and `CSi`, all traced above.
+
+**Run again the same day after the macOS row fix, and it passed again** —
+`OVERALL_RESULT="PASS"`, the gate recognising the finding. That is the run the
+submission rests on, since the tree changed twice in a day and the three runs of
+2026-08-28 were against a binary that no longer exists.
+
+**It came back with six messages rather than five, and the two extra ones finish
+the `CSi` argument.** They are `Csi` — the same three letters, differently
+capitalised — and `REg`, which was not there before. Located in the new binary,
+one occurrence each, and both in `.text`:
+
+    Csi   0x474e76   ... 48 8d 05  43 73 69 00  48 89 85 ...
+    REg   0x49eb30   ... 48 8d 05  52 45 67 00  41 b8 0d ...
+
+`48 8d 05` is `lea rax, [rip+disp32]`, so in both cases the matched bytes are
+three of the four bytes of a RIP-relative displacement: 0x00697343 and
+0x00674552. Not strings, not data the compiler put there to be read, but the
+operand of an instruction — and the previous run's `CSi` was in an address table
+in `.rdata` instead, which is the same accident landing somewhere else.
+
+**And the capitalisation is the tell.** `csi` is the C# interactive compiler and
+`reg` is `reg.exe`; the kit is matching blocked executable *names*
+case-insensitively and echoing back whatever bytes it found, which is why the
+same finding reads `CSi` in one run and `Csi` in the next. Three letters against
+a six-megabyte binary will keep hitting by chance, and which ones hit changes
+whenever the code is relaid out.
+
+So the honest summary of this task, for whoever reads the report next: two of the
+messages are real and understood — `ShellExecuteW` is the Open button and
+`CreateProcessW` and the `cmd.exe` strings are the Rust standard library — and
+the rest are noise from a substring scan. Nothing about them changes between runs
+except which random three bytes happen to spell an executable's name.
 
 ### What taking the screenshots found
 
