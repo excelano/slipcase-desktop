@@ -119,8 +119,11 @@ anyway, which is item 6.
 
 ### Not yet done by hand
 
-- **Items 1 to 4 still want Linux and Windows.** Written the day the lines
-  landed and run on neither. The Linux build launches against both fixtures
+- **Items 1, 2, 3 and 5's first half are done on Linux** as of 2026-08-29,
+  under *What the card's three lines looked like here* in the Linux section.
+  What is left there is items 4 and 5's second half, both of which need a
+  button pressed. Windows has had none of them.
+- **Items 1 to 4 were written the day the lines landed and run on neither.** The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it
   is not the check.
@@ -1438,6 +1441,48 @@ actually has:
 The macOS figures to the digit, on a second platform and a different display.
 So the contrast repair was not dead code on this arm after all — it was correct
 and unreachable, and it is now both.
+
+### What the card's three lines looked like here
+
+Run 2026-08-29 against the release build, GNOME 48.7 on Wayland, in the dark
+theme — the light one having been looked at and measured the night before, under
+*What looking for the light card found*.
+
+**Item 1 passes, and in the place the item specifies.**
+`payload-setuid-external-attributes.slpc`, whose payload records 04755, draws
+*The payload is an executable file; the extracted copy will not be executable.*
+below the size and the *Opens with Document Viewer* line and above the three
+buttons. Sampled off the screen rather than judged: the line is rgb(255, 143, 0)
+at 7.53:1 against the card, which is `warn_fg_color` and the recorded dark
+figure to the digit.
+
+**Item 2 passes, both halves, and this is the first time anywhere that its
+second half has been runnable from the corpus.**
+`accept/payload-no-mode-recorded` went into `excelano/slipcase` this morning for
+exactly this; before it, the item named a fixture recording 0644 and tested
+`minimal.slpc` twice. Both containers draw no executable line, and that was
+measured rather than looked at, because "I do not see it" is a weak assertion
+about a line that is one row of text: **zero warning-coloured pixels inside the
+card region**, against 1193 for item 1. The first count was taken over the whole
+screen and found hundreds in both, which was the terminal's own amber text and
+not the card — the region matters and the first measurement was wrong.
+
+**Item 3 passes.** `payload-name-bidi-override.slpc` reads
+`report\u{202E}fdp.exe` on the card, ending in `.exe`, so the escape shows the
+character that was always there. As on macOS there is **no *Opens with* line**,
+which is correct and for the same reason: nothing here is registered for `.exe`
+and `DESIGN.md` §3 says nothing rather than guessing.
+
+**Item 5's first half passes.** The probe directory `opens_with` makes while the
+card works out what would open the payload is `drwx------`, owned by the user.
+Catching it took a poll loop: it exists for a fraction of a second and the
+listing raced its own removal — `stat` reported *No such file or directory* on
+the same directory it had just described, which is the disappearance the privacy
+entry claims and nothing had watched happen.
+
+**Items 4 and 5's second half still want a hand**, because both need a button
+pressed and nothing here can press one: item 4 wants Save on a marked container,
+and item 5's handover directory is not made until Open is. Item 6 is macOS only.
 
 ### Not yet done by hand
 
