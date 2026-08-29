@@ -289,6 +289,32 @@ re-run either way; only a *published* number costs a bump as well. Ask
   | Age rating | Every answer None. |
   | Export compliance | **No encryption.** Slipcase makes no network request and implements no cryptography; it *reads* containers whose members may be encrypted and refuses those, which is not the same claim. |
 
+- **A sixth, added 2026-08-29: a container for the reviewer to open.**
+  `https://excelano.com/slipcase/quarterly-report.pdf.slpc` — **live**, and it
+  goes in Partner Center's *Notes for certification* telling the tester to open
+  it. Windows raised it and it is not Windows's: a reviewer who launches
+  Slipcase with nothing to open sees an empty window on either store, neither
+  notes field takes an attachment, and the page offered no container. So it
+  lives here with the other five rather than under a platform.
+
+  It is `packaging/demo-container.sh`'s output, unmodified, and the same
+  container the page's own screenshots show — read out of the capture rather
+  than assumed, the gallery predating the download. Verified end to end: the
+  bytes served hash to the bytes built, the type is served as
+  `application/x.slipcase+zip` through a new `.htaccess` line, and the
+  downloaded copy was opened in the release build and reads *conformant* with
+  the card and the whole tree, which is what the reviewer will do.
+
+  **The script had to change first, and the reason is worth keeping.** It
+  recorded the moment of the build, so every machine that ran it made a
+  different file — which makes *this is the container in the screenshots* a
+  claim nobody could check. Timestamps are pinned now and it reproduces
+  byte for byte in any timezone. What the page does **not** say is that this is
+  byte-identical to the store screenshots' copies: those were taken before the
+  pinning, so they differ in two DOS fields that appear nowhere on screen. Same
+  container to anybody looking at it, not the same file, and the sentence on the
+  page claims only the first.
+
 - ~~**Two pages on `excelano.com` are now submission blockers.**~~ **Both are
   live, checked 2026-08-29, and neither blocks anything.** `/slipcase/` answers
   200 and is the product page the pattern below asked for, carrying the install
