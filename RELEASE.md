@@ -178,6 +178,39 @@ reserved rather than after, which is the only timing that matters.
   payload, and the directory is removed before the question is answered. It is
   disclosed, because a privacy statement that omits a write is the same failure
   as one that overstates.
+- **The five answers neither store will let you past, decided 2026-08-28.** None
+  of these had been written down anywhere, and all five are asked by a form
+  rather than by a build, which is why a repository full of measurements had
+  nothing to say about them. Both stores ask for all five, so they live here
+  rather than under a platform.
+
+  | | |
+  | --- | --- |
+  | Price | **Free.** |
+  | Support URL | `https://excelano.com/slipcase/` — **does not exist yet**, see below. |
+  | Privacy policy URL | `https://excelano.com/legal/#slipcase` — **not live yet**, see below. |
+  | Age rating | Every answer None. |
+  | Export compliance | **No encryption.** Slipcase makes no network request and implements no cryptography; it *reads* containers whose members may be encrypted and refuses those, which is not the same claim. |
+
+- **Two pages on `excelano.com` are now submission blockers.** Both are website
+  work rather than repository work, and both were found by asking the live site
+  rather than by reading this file.
+
+  The privacy entry is written, in `packaging/privacy-entry.html`, and has never
+  been pasted in: `/legal/` today carries xinglet, Blick and Zirbe and no
+  Slipcase, so `#slipcase` resolves to the top of the page. A store listing
+  linking to an anchor that is not there is worse than no anchor.
+
+  The support page does not exist at all — `/slipcase/` is a 404. The pattern is
+  a page per application, `/blick/`, `/blick-cli/`, `/zirbe/`, and that pattern
+  raises a question this file cannot answer: **Blick has separate pages for the
+  application and its command-line tool, and Slipcase has a desktop application,
+  a command-line tool, and a format.** Whether that is one page or several is a
+  decision, and the support URL above assumes one.
+
+  Either can be typed into a store form before it resolves. Neither may still be
+  unresolved at submission.
+
 - ~~**Store listing text**~~ — done 2026-08-28, in `packaging/store-listing.md`.
   Every field measured against both stores' real limits, and one paragraph
   marked as differing per store: the executable-payload sentence is cut for the
