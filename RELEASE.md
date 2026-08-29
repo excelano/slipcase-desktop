@@ -720,14 +720,16 @@ platforms together, which no platform session can do. What it covers:
   `CHECKLIST.md`'s *What the card's three lines looked like on macOS* holds the
   run.
 
-  **One of the six cannot be run as written and this review should not accept a
-  tick for it.** Item 2 asks for the silence on a container recording *no* mode,
-  which is the reason `payload_mode` reads external attributes rather than
-  asking the ZIP crate — and the fixture it names records 0644, as does every
-  other `accept` case in the corpus. Followed literally the item tests
-  `minimal.slpc` twice. A container written by an MS-DOS tool has to be made;
-  macOS made one and the section says how. Linux and Windows will hit the same
-  wall.
+  ~~**One of the six cannot be run as written and this review should not accept
+  a tick for it.**~~ **Fixed at the source on 2026-08-29.** Item 2 asks for the
+  silence on a container recording *no* mode, and the fixture it named recorded
+  0644 like every other `accept` case, so followed literally it tested
+  `minimal.slpc` twice. Rather than a third platform building one by hand, the
+  case went into the corpus — `accept/payload-no-mode-recorded`,
+  `excelano/slipcase` `996dcca`, `2.0 fat` with external attributes `0x20`. The
+  corpus is 88 cases and the three workflows are pinned to it. The item now runs
+  from the corpus everywhere, and this review should expect a tick with a
+  fixture name beside it.
 - **The three CI workflows are green**, the corpus agrees on every case on every platform
   that has run it, and `preflight.sh` passes.
 

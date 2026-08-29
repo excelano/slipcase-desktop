@@ -32,11 +32,20 @@ Both fixtures are in the conformance corpus, so nothing has to be built by hand:
    all — a mode bit is not what makes a file executable there, and `DESIGN.md`
    §5 gates the line to Unix for that reason.
 2. **It is absent for an ordinary container.** Open `accept/minimal.slpc`, which
-   records mode 0644. No line. Then open any container a Windows tool wrote, or
-   `accept/name-cp437-bit11-clear.slpc`, and check there is still no line: the
-   silence for a container that records no mode is the whole reason
-   `payload_mode` reads the external attributes rather than asking the ZIP crate,
-   which would have invented `0o664` and answered confidently.
+   records mode 0644. No line. Then open
+   `accept/payload-no-mode-recorded.slpc`, which records none, and check there
+   is still no line: that silence is the whole reason `payload_mode` reads the
+   external attributes rather than asking the ZIP crate, which would have
+   invented `0o664` and answered confidently.
+
+   **This item named the wrong fixture until 2026-08-29 and could not be run as
+   written.** It said `accept/name-cp437-bit11-clear.slpc`, which `unzip -Z`
+   reports as `3.0 unx` with mode 0644 — so followed literally it tested
+   `minimal.slpc` twice, and would have been ticked for the case it exists for.
+   macOS found that, built a container by hand, and wrote that it belonged in
+   the corpus rather than on one machine. It is there now, as
+   `excelano/slipcase` `996dcca`: creator system 0 at version 2.0, external
+   attributes `0x20`, which `unzip -Z` reports as `2.0 fat`.
 3. **The payload name is escaped, and the card does not lie about it.** Open
    `accept/payload-name-bidi-override.slpc`, whose `payload.file` carries U+202E
    RIGHT-TO-LEFT OVERRIDE. The card should read `report\u{202E}fdp.exe`, ending
@@ -120,11 +129,16 @@ anyway, which is item 6.
   under the sandbox found*, and items 1 to 3 under *What the card's three lines
   looked like on macOS*. Item 6 exists only on this platform. Item 5 still wants
   Linux and Windows, which ask different questions of a different directory.
-- **Item 2 cannot be run as written on any platform**, and whoever picks it up on
-  Linux or Windows should read the macOS run first: the fixture it names records
-  a mode like `minimal.slpc` does, so following the item literally tests the same
-  thing twice. A container recording no mode has to be made, and the macOS
-  section says how.
+- ~~**Item 2 cannot be run as written on any platform.**~~ **Fixed at the source
+  on 2026-08-29 rather than worked around a third time.** The fixture it named
+  records a mode like `minimal.slpc` does, so following the item literally
+  tested the same thing twice; macOS built one by hand and wrote that it
+  belonged in the corpus. It is there now — `accept/payload-no-mode-recorded`,
+  `excelano/slipcase` `996dcca` — so the item runs from the corpus on all three
+  platforms and nobody builds a container to run it. Verified to discriminate
+  rather than assumed: `payload_mode` returns the high sixteen bits of the
+  external attributes and refuses a zero, and this case records `0x20`, whose
+  high half is zero.
 
 ---
 
