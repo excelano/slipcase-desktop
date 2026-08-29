@@ -1195,6 +1195,16 @@ been exercised by a real run it should not refuse.
 The five messages are `CreateProcessW`, `ShellExecuteW`, `cmd.exe`, `\cmd.exe`
 and `CSi`, all traced above.
 
+**Run a third time after the macOS scale test landed, and passed again.** That
+one is the run the submission rests on, and its package is the one kept: the
+source change was inside `#[cfg(test)]` and could not reach the binary, yet a
+rebuild produced a different file all the same — 24 bytes, being the COFF
+timestamp at `0x108`, the three debug directory timestamps, and the 16-byte
+CodeView PDB GUID. Same code, different link identity. **So the artefact is a
+file and not a commit**, and what gets uploaded is the file the kit passed rather
+than a fresh build of the same source. It also reported the same six messages as
+the run before it, which is what identical code should do.
+
 **Run again the same day after the macOS row fix, and it passed again** —
 `OVERALL_RESULT="PASS"`, the gate recognising the finding. That is the run the
 submission rests on, since the tree changed twice in a day and the three runs of

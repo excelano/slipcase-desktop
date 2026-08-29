@@ -519,9 +519,60 @@ a repair, and this one by a decision to submit with it failing. The heading says
   **The kit is satisfied: it no longer reports the finding, and the package now
   passes overall.** This item is closed.
 
+### Queued up to the submit button, 2026-08-29
+
+Everything a machine can do is done, and `packaging/windows/SUBMITTING.local.md`
+holds the walkthrough — local rather than committed, for the reason
+`packaging/macos/SUBMITTING.local.md` is, since it names the store id.
+
+**Two packages, and only one of them is the upload.**
+`dist\submit\Slipcase-0.1.1.0-x64.msix` is unsigned, which is what the Store
+wants because the Store signs what it distributes.
+`dist\Slipcase-0.1.1.0-x64-signed-certified.msix` is the throwaway-signed copy
+the kit passed and is for installing here. Both were made from one staging tree
+with no rebuild between, so the binary inside them is the same bytes.
+
+**Do not rebuild before uploading**, which is a rule this platform learned by
+measuring rather than by being told. A rebuild of *identical* source produces a
+different file: 24 bytes, being the COFF timestamp, the three debug directory
+timestamps and the CodeView PDB GUID. The code is byte-identical and the file is
+not, so the artefact that gets uploaded has to be the artefact the certification
+kit passed, not a fresh build from the same commit.
+
+**The submission API cannot do this submission, and that is Microsoft's rule
+rather than a limitation of ours.** MSIX apps use the Microsoft Store submission
+API at `manage.devcenter.microsoft.com` — the newer `api.store.microsoft.com` is
+for MSI and EXE installers — and its prerequisites say that before the API can
+create a submission for an app, *one submission must first be created in Partner
+Center, including answering the age ratings questionnaire*. So the first one is
+a form job on both stores for different reasons: App Store Connect's API took
+the whole listing but would not answer the privacy questionnaire or set the
+price, and Partner Center's will not take a first submission at all.
+
+**What the API is worth here is the second submission onward**, which is the
+number this file exists to keep small, and the setup is one-time: an Entra
+directory associated with the account, an Azure AD application in *Users* with
+the **Manager** role, and its tenant id, client id and key. The walkthrough has
+the steps and the token call. One rule in it is worth repeating because it bites
+silently: **a submission created through the API must be edited only through the
+API** — touching it in Partner Center afterwards can leave it uncommittable, and
+the recovery is to delete it and start over.
+
+That is also the honest answer to *is Windows scripted end to end*: no, and the
+first release could not have been. `packaging/windows/store-metadata.ps1` is the
+thing to write once a submission exists to read back, exactly as
+`packaging/macos/store-metadata.sh` is on the other side.
+
 ### Do not
 
 Submit. Reserve the name, build the package, run WACK, and stop.
+
+**Still current, and it is the last thing standing.** Everything above this line
+is done: the package is built, certified at the version it will be submitted
+under, and sitting beside a walkthrough that names every field. What has not
+happened is step 4, and the reason for waiting has not changed — a submission is
+an event with a queue behind it, and the point is that the thing in the queue is
+one somebody looked at across all three platforms.
 
 ---
 

@@ -31,3 +31,9 @@ dist-devid/
 # a public record, which is the same judgement the macOS file above got.
 # `identity.psd1.example` beside it is committed and says what goes in.
 /packaging/windows/identity.psd1
+
+# The Microsoft Store submission walkthrough, which names the store id and the
+# Azure AD application the submission API will use. Same judgement as the macOS
+# file above: `packaging/windows/README.md` carries everything about the package
+# that belongs on a public record, and this one is deliberately local.
+/packaging/windows/SUBMITTING.local.md
