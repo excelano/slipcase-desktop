@@ -99,6 +99,13 @@ const ASSETS: &[Asset] = &[
     Asset { stem: "slipcase", width: 256, height: 256, fill: 1.0, icon: false },
 ];
 
+/// The sizes Partner Center's *Store logo* listing field accepts.
+///
+/// Both, rather than only the smaller: the field takes either and the larger is
+/// what survives a future listing that wants more pixels. Neither goes in the
+/// package — see the comment where they are written.
+const LISTING_SIZES: &[u32] = &[1080, 2160];
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let here = Path::new(env!("CARGO_MANIFEST_DIR"));
     let mut args = std::env::args_os().skip(1);
@@ -112,6 +119,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let assets = args
         .next()
         .map_or_else(|| here.join("../assets"), PathBuf::from);
+    let listing = args
+        .next()
+        .map_or_else(|| here.join("../listing"), PathBuf::from);
 
     let svg = std::fs::read(&source)?;
     let tree = usvg::Tree::from_data(&svg, &usvg::Options::default())?;
@@ -177,6 +187,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
     println!("wrote {} — {} images", assets.display(), written);
+
+    // The store listing logo, which is not in the package and must not be.
+    //
+    // Partner Center's *Store logo* field is a listing image rather than a
+    // package asset: it refuses anything but 1080x1080 or 2160x2160, measured
+    // 2026-08-29 against the live form after this repository had assumed the
+    // 300x300 the older documentation describes. Writing it beside the package
+    // assets rather than into them is deliberate — a file added to `assets`
+    // lands in the MSIX, and a package that gains a file has to be certified
+    // again for an image no installed copy would ever read.
+    if listing.exists() {
+        std::fs::remove_dir_all(&listing)?;
+    }
+    std::fs::create_dir_all(&listing)?;
+    for &size in LISTING_SIZES {
+        write_png(&tree, &listing, &format!("store-logo-{size}.png"), size, size, 1.0)?;
+    }
+    println!(
+        "wrote {} — {} images",
+        listing.display(),
+        LISTING_SIZES.len()
+    );
 
     Ok(())
 }

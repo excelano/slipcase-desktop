@@ -102,4 +102,4 @@ jobs:
           cd packaging/windows/make-ico
           cargo run --release
           cd ../../..
-          git diff --exit-code -- packaging/windows/slipcase.ico packaging/windows/assets
+          git diff --exit-code -- packaging/windows/slipcase.ico packaging/windows/assets packaging/windows/listing
