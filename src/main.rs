@@ -26,6 +26,12 @@
 #[allow(unsafe_code)]
 mod opened_document;
 
+// Which way the desktop's light and dark setting points. A module rather than a
+// few lines here because only one of the three platforms needs any of it, and
+// the one value that is a judgement rather than a reading wants somewhere to be
+// argued and tested.
+mod system_theme;
+
 use std::path::PathBuf;
 use std::sync::mpsc;
 
@@ -287,8 +293,12 @@ fn main() -> eframe::Result {
             // why the binding has to be spent explicitly on them.
             #[cfg(target_os = "macos")]
             opened_document::wake_with(&cc.egui_ctx);
-            #[cfg(not(target_os = "macos"))]
-            let _ = cc;
+
+            // Where the toolkit will not say whether the desktop is light or
+            // dark, ask the desktop. Empty on the two platforms where `winit`
+            // answers; on Linux it reads the portal and then follows it.
+            // `DESIGN.md` §3.
+            system_theme::follow(&cc.egui_ctx);
 
             // A container handed over on the command line, or double-clicked,
             // gets the same focus a container opened through the dialog does.

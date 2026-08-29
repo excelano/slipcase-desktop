@@ -67,6 +67,14 @@ read back and checked before it replaces anything, so a save that would produce
 a container the library will not accept changes nothing on disk. A container
 nothing was changed in is not rewritten at all.
 
+### How it looks
+
+The window follows the light or dark setting the desktop is using, and changes
+with it while it is open rather than waiting to be restarted. The two coloured
+lines on the payload card — the one that says where a container came from, and
+the one that says why a payload cannot be opened here — are chosen per theme so
+that both stay readable on a light window and a dark one.
+
 ### What it is built on
 
 Every read, every write, and every verdict comes from `slpc`, the library in

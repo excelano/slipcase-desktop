@@ -179,6 +179,17 @@ where the Windows and macOS arms both return a real answer, so egui falls back
 to dark and no desktop setting reaches it. `CHECKLIST.md`'s *What looking for
 the light card found, and why there was none* has the table and the trace.
 
+**Fixed the same day, and this section has nothing left in it.** David's answer
+was that all three platforms should respect the setting. `src/system_theme.rs`
+asks the portal and follows it, the three settings now produce dark, light and
+light, a change made while the window is open is picked up without a relaunch,
+and the light card was then looked at and measured here: 6.72:1 and 5.18:1, the
+macOS figures to the digit. `DESIGN.md` §3 carries the reasoning and
+`CHECKLIST.md` holds the run.
+
+What follows is what the question looked like before it was answered, kept
+because the way it was diagnosed is the useful part.
+
 So the light card is unreachable on this platform rather than unlooked-at, and
 the two questions that leaves are David's: whether the application should read
 the theme itself — the portal's `org.freedesktop.appearance color-scheme`, which

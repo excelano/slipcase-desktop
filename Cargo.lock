@@ -2909,6 +2909,7 @@ dependencies = [
  "tempfile",
  "windows-registry",
  "xattr",
+ "zbus",
 ]
 
 [[package]]

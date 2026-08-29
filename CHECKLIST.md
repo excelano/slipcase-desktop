@@ -1396,10 +1396,34 @@ the test in `src/main.rs` holding both themes to 4.5:1 goes on passing, because
 it constructs `Visuals::light()` directly and never asks how a window would get
 there.
 
-**What was not established.** Whether the light card *reads* on Linux is still
-unanswered, and cannot be answered until something can select it. The macOS
-figures are the nearest evidence and they are that platform's, measured on that
-platform's display.
+**Fixed the same day, and then both questions were answered.**
+`src/system_theme.rs` reads the portal and follows it, `DESIGN.md` §3 carries
+the reasoning, and the run below is what the repair produced.
+
+| Setting | Portal | Card |
+| --- | --- | --- |
+| `prefer-dark` | 1 | dark |
+| `prefer-light` | 2 | **light** |
+| `default` — what GNOME's Light actually sets | 0 | **light** |
+
+Then the setting was changed *while the window was open*, from `prefer-dark` to
+`prefer-light`, with no relaunch: the card went light. That is the case the
+watch thread exists for, and it is what the other two platforms get from
+`ThemeChanged` without anybody being involved.
+
+**And the light card reads here, which is what the item originally asked.**
+Sampled off the screen at `color-scheme=default`, the setting a GNOME user
+actually has:
+
+| | On screen | Recorded |
+| --- | --- | --- |
+| Card fill | rgb(248, 248, 248) | grey 248 |
+| Error line | rgb(180, 0, 0) — 6.72:1 | 6.72:1 |
+| Warning line | rgb(180, 70, 0) — 5.18:1 | 5.18:1 |
+
+The macOS figures to the digit, on a second platform and a different display.
+So the contrast repair was not dead code on this arm after all — it was correct
+and unreachable, and it is now both.
 
 ### Not yet done by hand
 

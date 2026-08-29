@@ -204,6 +204,7 @@ build that only a hand can check, run it, and write down what it found.
     src/tree.rs         the metadata tree, one renderer per TOML type
     src/opens_with.rs   what the platform says would open a payload
     src/staging.rs      where a rewrite waits, and how it lands on the original
+    src/system_theme.rs which way the desktop's light and dark setting points
     src/opened_document.rs
                         the document macOS delivers by Apple Event rather than
                         argv — the crate's only unsafe, and the rule above says

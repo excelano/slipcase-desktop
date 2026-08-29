@@ -83,6 +83,20 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 # three are features of a crate already here, so none adds anything to the tree.
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "NSFileManager", "NSPathUtilities", "NSError", "block2", "objc2-core-services"] }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# What the desktop says about light and dark. `winit` answers this on the other
+# two platforms and returns a hardcoded `None` here, so egui falls back to dark
+# and no desktop setting reaches the window — measured 2026-08-28, with the
+# titlebar following the setting while the card ignored it. `DESIGN.md` §2 and §3.
+#
+# The answer lives on D-Bus, in the XDG desktop portal. zbus is pure Rust with
+# no build script, and it is already compiled on this target under
+# `accesskit_unix`, which arrives through `egui-winit`; `blocking-api` is a
+# feature of that same crate and adds no crate to the tree. `default-features`
+# is off so that `async-io` is named rather than taken, which is what
+# `accesskit` already turns on.
+zbus = { version = "5", default-features = false, features = ["async-io", "blocking-api"] }
+
 [target.'cfg(target_os = "windows")'.dependencies]
 # Reading the window's icon out of the `.ico` the installer also registers.
 # Windows takes a window icon from a resource compiled into the executable, and
