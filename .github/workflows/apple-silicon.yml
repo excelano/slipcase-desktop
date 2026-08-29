@@ -124,6 +124,18 @@ jobs:
 
           container="${RUNNER_TEMP}/slipcase/conformance/cases/accept/minimal.slpc"
           [ -f "$container" ] || { echo "no container at $container" >&2; exit 1; }
+
+          # Opening a container records its folder for the Open dialog, whether
+          # it was chosen in that dialog or double-clicked, because to a person
+          # it is the same act. That makes it the cheapest proof that the Apple
+          # Event delivered a *document* rather than merely launching the
+          # application — the refusal this guards against produced an empty
+          # window, which a window check alone would have called a pass.
+          # Cleared first so a stale one cannot answer for this run.
+          state="${HOME}/.local/state/slipcase-desktop/last-folder"
+          sandboxed="${HOME}/Library/Containers/com.excelano.slipcase-desktop/Data/.local/state/slipcase-desktop/last-folder"
+          rm -f "$state" "$sandboxed"
+
           open -a "$PWD/dist/Slipcase.app" "$container"
 
           # Cold launch, a window server, and a first frame. Polled rather than
@@ -153,6 +165,25 @@ jobs:
               echo "::error::No window appeared for a container opened through Launch Services on arm64. This is src/opened_document.rs, the only unsafe in this crate."
               exit 1
               ;;
+          esac
+
+          # An unsigned bundle is not sandboxed, so this lands in the real HOME
+          # here. Both are checked anyway: signed, the sandbox redirects HOME
+          # into the application's container, which is where a Store build
+          # writes it and which took a measurement to discover.
+          remembered=""
+          for f in "$state" "$sandboxed"; do
+            [ -f "$f" ] && remembered=$(cat "$f") && break
+          done
+          if [ -z "$remembered" ]; then
+            echo "::error::A window appeared but no container was opened in it: nothing recorded a folder, so the Apple Event launched the application without delivering the document. That is the refusal this step exists to catch." >&2
+            exit 1
+          fi
+          echo "the container's folder was remembered: ${remembered}"
+          case "$remembered" in
+            *"/conformance/cases/accept") echo "which is the folder the container came from" ;;
+            *) echo "::error::A folder was remembered and it is not the container's: ${remembered}" >&2
+               exit 1 ;;
           esac
 
       # For eyes, not for the verdict. The step above is what passes or fails.
