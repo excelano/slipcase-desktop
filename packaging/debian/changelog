@@ -1,3 +1,12 @@
+slipcase-desktop (0.1.1) unstable; urgency=medium
+
+  * Show a payload name escaped in the metadata tree as well as on the card.
+    A payload called report<U+202E>fdp.exe read report\u{202E}fdp.exe on the
+    card and reportfdp.exe in the tree below it, the character that reorders
+    text taking no space of its own.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Sat, 29 Aug 2026 12:50:34 -0500
+
 slipcase-desktop (0.1.0) unstable; urgency=medium
 
   * First release. Opens a .slpc container, shows its metadata as an editable

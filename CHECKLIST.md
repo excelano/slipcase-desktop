@@ -1194,6 +1194,36 @@ of each thing `src/tree.rs` has a renderer for. The second shot is the same
 container carrying a `Zone.Identifier`, so the card's provenance line is in it.
 `packaging/store-listing.md` records both.
 
+**Retaken 2026-08-29, and the reason is the reason the script exists.** The
+containers above were built by hand on this machine and were in no repository,
+so the four pictures could not be reproduced anywhere — and when Linux wrote
+`packaging/demo-container.sh` to fix that, `store-listing.md` gained a sentence
+saying the shots were of what the script builds, which they were not. All four
+were taken again from the script's container, against the packaged 0.1.1, both
+themes: 1366 x 768, and the light pair with `AppsUseLightTheme` and
+`SystemUsesLightTheme` set to 1 and put back to 0 afterwards.
+
+**Two things fell out of doing it, neither of which was the point of doing it.**
+
+`Add-AppxPackage` installed 0.1.1.0 straight over 0.1.0.0 with no removal — the
+`0x80073CFB` that made *remove the installed one first* a line in the build
+script's output is about redeploying the *same* version, and an upgrade to a
+higher one is not that. That is the second upgrade this platform has run, and
+the first over a package rather than over a script install.
+
+And it answers most of the origin-note question this file was holding open. The
+packaged application read `Zone.Identifier` off a container in
+`C:\Users\david\slipcase-shots\` — a file outside the package, written by
+something else — and drew the provenance line from it, which is in shot 02 and
+in shot 04. **So an MSIX process reads an alternate data stream it did not write,
+on a user's file, unvirtualised**, and that was the part of the question anybody
+doubted: registry virtualisation covers a package's writes and not its reads, and
+nobody had asked the same of the file system. What is still strictly unmeasured
+is whether the stream's *name* matters, and nothing about NTFS suggests it could
+— `Zone.Identifier` is a stream the shell agrees to care about, not a stream the
+file system treats differently. It does not change the recommendation, which
+rests on `Unblock-File` rather than on this.
+
 ### What the card's three lines looked like on Windows
 
 Run 2026-08-29 against the release build of `d8b61d4`, in the dark theme —
@@ -1341,14 +1371,14 @@ not, and they are assumed to be one operation.
   which had never run on this platform — was walked later the same day and has
   its own section above.
 
-- **Whether a packaged application sees an alternate stream it did not write.**
-  The third of `HANDOFF.md`'s origin-note questions, and the only one this
-  platform cannot answer from outside a package. What it needs that a test
-  cannot give it is an MSIX install: registry virtualisation covers a package's
-  writes and not its reads, measured 2026-08-26, and nobody has asked the same
-  of the file system. The next sitting that rebuilds the package for screenshots
-  has it for free. The other two are measured and are above; the recommendation
-  they point at does not depend on this one.
+- ~~**Whether a packaged application sees an alternate stream it did not write.**~~
+  **Answered on 2026-08-29 by the screenshot run, which is what *for free* meant.**
+  The packaged application read a `Zone.Identifier` written by something else, on
+  a file outside the package, and drew the provenance line from it — twice, and
+  both are in the store screenshots. An MSIX process reads an alternate data
+  stream it did not write, unvirtualised. *What taking the screenshots found* has
+  it, including the one part left strictly unmeasured: whether the stream's name
+  matters, which is a question about NTFS rather than about packaging.
 
 Nothing else is waiting, including the two items 2026-08-28 added and closed:
 the certification kit, run three times, and the screenshots, which turned out to

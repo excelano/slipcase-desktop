@@ -17,6 +17,21 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.1] - 2026-08-29
+
+### Fixed
+
+A payload name is now shown escaped in the metadata tree as well as on the card.
+A container whose payload is called `report<U+202E>fdp.exe` showed
+`report\u{202E}fdp.exe` on the card and `reportfdp.exe` in the tree below it,
+because the character that reorders text takes no space of its own — so the one
+place the name could not be edited was the one place it could still pretend to
+be something else. Both now read the same.
+
+0.1.0 shipped with this, which is why there is a release the same day: the
+escaping is what stops a payload name misrepresenting itself, and it was working
+in one of the two places it is shown.
+
 ## [0.1.0] - 2026-08-29
 
 First release.

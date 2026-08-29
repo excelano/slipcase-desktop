@@ -164,7 +164,11 @@ available if a listing ever wants one — `screenshot.ps1` takes `-Width` and
 `-Height`.
 
 Taken by `packaging/windows/screenshot.ps1`, against the **packaged**
-application, on 2026-08-28. The two are:
+application. ~~2026-08-28.~~ **Retaken 2026-08-29 against 0.1.1 and against the
+container `demo-container.sh` builds**, which is what makes the paragraph below
+true: the first four were of a container that existed only on one machine, and
+the sentence claiming otherwise was written the day the script landed. Both the
+package and the pictures are of the same build now. The four are:
 
 | Order | File | What it shows |
 | --- | --- | --- |

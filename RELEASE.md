@@ -102,6 +102,22 @@ makes it monotonic without anybody remembering, and that is the recommendation.
 perception rather than any machinery, and it is settled before a name is
 reserved rather than after, which is the only timing that matters.
 
+**Amended 2026-08-29: the number the stores get is `0.1.1`, and apt has to be
+re-shipped.** `0.1.0` was tagged and went to apt that morning. That afternoon
+Windows found the tree showing a payload name unescaped where the card escapes
+it, which is shared code and therefore in the `.deb` already installed. Building
+the store packages from `HEAD` would have handed two stores a different binary
+under a number apt was already serving — exactly what the readiness review below
+says to check for.
+
+So the bump is not bookkeeping: **what apt is serving is now the older, defective
+build, and re-shipping it is Linux's work before step 4.** The store packages are
+`0.1.1` and the tag for it belongs on the commit they were built from.
+
+This is also the first exercise of the every-time path this file exists to keep
+cheap, and it cost what it claims: a version bump, two changelog entries, a
+rebuild, a reinstall, and the screenshots retaken. Nothing once-only was touched.
+
 ---
 
 ## Here (Linux) — what needs no other machine
@@ -229,14 +245,28 @@ reserved rather than after, which is the only timing that matters.
   | | |
   | --- | --- |
   | Price | **Free.** |
-  | Support URL | `https://excelano.com/slipcase/` — **does not exist yet**, see below. |
-  | Privacy policy URL | `https://excelano.com/legal/#slipcase` — **not live yet**, see below. |
+  | Support URL | `https://excelano.com/slipcase/` — **live**, checked 2026-08-29. |
+  | Privacy policy URL | `https://excelano.com/legal/#slipcase` — **live**, checked 2026-08-29. |
   | Age rating | Every answer None. |
   | Export compliance | **No encryption.** Slipcase makes no network request and implements no cryptography; it *reads* containers whose members may be encrypted and refuses those, which is not the same claim. |
 
-- **Two pages on `excelano.com` are now submission blockers.** Both are website
-  work rather than repository work, and both were found by asking the live site
-  rather than by reading this file.
+- ~~**Two pages on `excelano.com` are now submission blockers.**~~ **Both are
+  live, checked 2026-08-29, and neither blocks anything.** `/slipcase/` answers
+  200 and is the product page the pattern below asked for, carrying the install
+  instructions for all three platforms. `/legal/` carries a Slipcase section
+  whose anchor really is `id="slipcase"` — read out of the served HTML rather
+  than out of a rendering of it, because the first check said the id was
+  `#slipcase-macos-windows-linux-privacy` and it is not. The section is
+  `packaging/privacy-entry.html` as written, down to the remembered folder and
+  the two Linux placeholders.
+
+  The struck text is kept because the shape of the error is the useful part:
+  this file was measured against the live site, was right on the day, and went
+  stale as soon as somebody did the work. **Both URLs are typed into both store
+  forms, so a reader who trusts this paragraph fills in a field it says is
+  broken.** Check the site, not this file.
+
+  What follows is what the entry said before the pages existed.
 
   The privacy entry is written, in `packaging/privacy-entry.html`, and has never
   been pasted in: `/legal/` today carries xinglet, Blick and Zirbe and no

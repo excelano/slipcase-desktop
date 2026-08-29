@@ -262,10 +262,13 @@ mark over ours, and here nothing removes the information except a person choosin
 to.
 
 **So the stub stays, with this as the reason.** The third question — whether a
-packaged install sees such a stream at all — is unmeasured and is in
-`CHECKLIST.md` under Windows as the one item still wanting a hand, because it
-needs an MSIX install. It does not change the recommendation; it would only
-change how confidently the stub's comment can be written.
+packaged install sees such a stream at all — was answered the same afternoon by
+the screenshot run: the packaged application read a `Zone.Identifier` it did not
+write, on a file outside the package, and drew the provenance line from it in two
+of the four store screenshots. An MSIX process reads an alternate data stream
+unvirtualised. What is strictly unmeasured is whether the stream's *name* makes
+a difference, which is a question about NTFS rather than about packaging, and it
+does not change the recommendation — that rests on `Unblock-File`.
 
 **Everyone: the metadata tree showed a payload name unescaped, under a card that
 escaped it. Settled.** Found on Windows on 2026-08-29 while running the card's
