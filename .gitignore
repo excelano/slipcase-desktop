@@ -2,10 +2,12 @@
 .DS_Store
 *.swp
 
-# Built packages, and the signed copy the sandbox is measured against. Both are
-# assembled by `packaging/macos/build-app.sh` from what is committed.
+# Built packages, the signed copy the sandbox is measured against, and the
+# universal one a Store upload and the arm64 walkthrough both want. All three
+# are assembled by `packaging/macos/build-app.sh` from what is committed.
 dist/
 dist-sandboxed/
+dist-universal/
 
 # `make-ico` is its own package, so its build directory is its own too and the
 # root-anchored rule above does not reach it.

@@ -12,10 +12,24 @@
 # replaceItemAtURL:]`. All three are real platform calls, and the corpus drives
 # the save path 111 times through them.
 #
-# What it does not reach is the window. `src/opened_document.rs` receives a
-# double-clicked document through an Apple Event, and that needs AppKit, a
-# session, and a person. `CHECKLIST.md` is where that is recorded and a green
-# run here does not stand in for it.
+# It reaches the window now, which this file used to say it could not.
+# `src/opened_document.rs` receives a double-clicked document through an Apple
+# Event, and `open` on a container goes through Launch Services and produces the
+# same event Finder does — so the last step below opens one and asks the window
+# server whether a window appeared. That is the one piece of the arm64
+# walkthrough no test could reach, and the module it exercises is the only
+# `unsafe` in this crate.
+#
+# **It asks the window server rather than looking at a screenshot, and the
+# difference is the whole point.** `CHECKLIST.md` records `screencapture`
+# returning the desktop with every window omitted while reporting no error, so a
+# job asserting on pixels would go green against a build that drew nothing. A
+# screenshot is still uploaded, as something for a person to look at rather than
+# something this job claims anything about.
+#
+# What it still does not reach is a sandbox, which needs a signing identity no
+# runner has; a high-density display; and the Finder icon. `CHECKLIST.md` holds
+# those and a green run here does not stand in for them.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
@@ -82,3 +96,76 @@ jobs:
           git -C "${RUNNER_TEMP}/slipcase" checkout --detach 62e95424d459776c5a49b8de3a3f6177af5de050
           python3 "${RUNNER_TEMP}/slipcase/conformance/generate.py"
           cargo run --bin corpus -- "${RUNNER_TEMP}/slipcase/conformance"
+
+      # The bundle is the unit: a bare executable has no bundle identifier and
+      # Launch Services files it as a nameless foreground process, so nothing
+      # can be associated with it and no Apple Event reaches it. Built from the
+      # debug binary the steps above already produced — `--binary` exists for
+      # this — because a release build here would cost minutes to answer a
+      # question that does not depend on optimisation.
+      - name: Assemble the bundle
+        run: |
+          target=$(cargo metadata --format-version 1 --no-deps |
+              sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+          ./packaging/macos/build-app.sh --binary "${target}/debug/slipcase-desktop"
+          lipo -info dist/Slipcase.app/Contents/MacOS/slipcase-desktop
+
+      # The step this workflow was missing. `open` reaches Launch Services and
+      # delivers the Apple Event a double-click delivers, so this is
+      # `src/opened_document.rs` running on arm64 — and that module was
+      # documented as impossible before it was written, which is reason enough
+      # to watch it rather than trust it.
+      - name: A container opens, and a window appears
+        run: |
+          lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+          "$lsregister" -f "$PWD/dist/Slipcase.app"
+
+          swiftc -O packaging/macos/window-probe.swift -o "${RUNNER_TEMP}/window-probe"
+
+          container="${RUNNER_TEMP}/slipcase/conformance/cases/accept/minimal.slpc"
+          [ -f "$container" ] || { echo "no container at $container" >&2; exit 1; }
+          open -a "$PWD/dist/Slipcase.app" "$container"
+
+          # Cold launch, a window server, and a first frame. Polled rather than
+          # slept at, so a fast answer is fast and a slow one still gets its
+          # chance; 30 seconds is far past anything measured by hand.
+          for _ in $(seq 1 15); do
+            sleep 2
+            "${RUNNER_TEMP}/window-probe" Slipcase >/dev/null 2>&1 && break
+          done
+
+          set +e
+          "${RUNNER_TEMP}/window-probe" Slipcase
+          verdict=$?
+          set -e
+          case "$verdict" in
+            0)
+              echo "the arm64 build drew a window for a container opened through Launch Services"
+              ;;
+            2)
+              # Not a failure of the application, and deliberately not a pass
+              # either: a check that can quietly not check is the thing this
+              # repository keeps getting caught by.
+              echo "::error::The window server listed nothing, so this run answered nothing about the window. Decide whether this runner can host one at all before trusting a green tick here."
+              exit 1
+              ;;
+            *)
+              echo "::error::No window appeared for a container opened through Launch Services on arm64. This is src/opened_document.rs, the only unsafe in this crate."
+              exit 1
+              ;;
+          esac
+
+      # For eyes, not for the verdict. The step above is what passes or fails.
+      - name: Photograph it, for a person
+        if: always()
+        run: |
+          screencapture -x "${RUNNER_TEMP}/screen.png" || true
+          ls -l "${RUNNER_TEMP}/screen.png" || true
+
+      - name: Keep the photograph
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arm64-window
+          path: ${{ runner.temp }}/screen.png
+          if-no-files-found: warn
