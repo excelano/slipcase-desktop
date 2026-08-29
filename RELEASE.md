@@ -36,6 +36,31 @@ it is what unblocks the package identity. Submitting for review is not. Both
 stores treat a submission as an event with a queue behind it, and the point of
 step 4 is that the thing in the queue is one we have looked at together.
 
+**Amended 2026-08-29: apt is an exception, taken deliberately and once.**
+`slipcase-desktop` 0.1.0 went to the Excelano apt repository before step 4. The
+rule above is written about the two stores and its reasoning is theirs — a queue
+behind a submission, and a thing in it nobody can pull back. apt is our own
+repository: publishing is `apt-ship` and unpublishing is a prune, both one
+command, and nothing sits in anybody's review queue meanwhile.
+
+What made it worth the exception rather than merely allowable: it was found
+missing while the marketing pages were being written, so the alternative was a
+page that either claimed an install that did not work or had no Linux story at
+all. Linux is also the platform this project has tested hardest — every card
+item run, lintian clean, the corpus agreeing, CI green — and shipping through
+one channel first exercises the release path end to end before either store
+submission depends on it.
+
+**It is amd64 only, and that is stated wherever the install is.** Nothing here
+cross-compiles and no runner builds Linux arm64, so an arm64 `.deb` would be one
+nobody had ever run. The command-line tool ships both architectures through
+cargo-dist; this does not, and a page that implies otherwise sends an arm64
+reader to a command that answers *no installation candidate*.
+
+**This does not move steps 2, 3 and 4.** Neither store submission happens before
+the readiness review, and the review now has one more thing to check: that what
+apt is serving is the same version the stores are being given.
+
 ---
 
 ## One number, three spellings

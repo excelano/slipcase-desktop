@@ -17,7 +17,7 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-08-29
 
 First release.
 

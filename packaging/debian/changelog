@@ -7,4 +7,4 @@ slipcase-desktop (0.1.0) unstable; urgency=medium
   * Installs a media type, a desktop entry, and scalable icons for both the
     application and the container, so a container opens on a double-click.
 
- -- David M. Anderson <david.anderson@excelano.com>  Wed, 26 Aug 2026 12:00:00 +0000
+ -- David M. Anderson <david.anderson@excelano.com>  Sat, 29 Aug 2026 06:18:14 -0500
