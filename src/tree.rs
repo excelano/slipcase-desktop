@@ -12,6 +12,8 @@
 //! the claim the whole verdict rests on, and `Repack` refuses to write a
 //! document disagreeing with the version it implements.
 
+use std::borrow::Cow;
+
 use eframe::egui::{self, Ui};
 use slpc::toml_edit::{Array, Datetime, DocumentMut, InlineTable, Item, RawString, Table, Value};
 
@@ -188,6 +190,36 @@ fn is_protected(path: &[String]) -> bool {
         .any(|required| *required == joined || required.starts_with(&format!("{joined}.")))
 }
 
+/// What a string value reads as in the tree.
+///
+/// A protected string is a display rather than a field — [`is_protected`]
+/// disables the widget — and one of the two, `payload.file`, is a member name.
+/// SPEC §3 requires a name be shown escaped, which the card does through
+/// `slpc::display_name` and this did not: a payload called
+/// `report<U+202E>fdp.exe` read `report\u{202E}fdp.exe` on the card and
+/// `reportfdp.exe` two rows below it, because egui gives a bidirectional
+/// formatting character zero advance width. The tree was showing the spoof the
+/// escaping exists to prevent, under a card that was not.
+///
+/// Found by hand on Windows on 2026-08-29 against
+/// `accept/payload-name-bidi-override`, while running the card's item 3 — which
+/// asks about the card, so macOS and Linux had both ticked it without looking
+/// two rows down. The code is shared and all three platforms had this.
+///
+/// **An editable string is deliberately left alone**, which is why this takes
+/// the flag rather than escaping everything. Escaping a value somebody can type
+/// into is lossy: the eight characters `\u{202E}` would be written back as
+/// themselves the first time the field was touched, so a document merely
+/// mentioning such a character would gain them. `src/main.rs` records the same
+/// reasoning where the Extract-to dialog prefills a filename.
+fn displayed(value: &str, editable: bool) -> Cow<'_, str> {
+    if editable {
+        Cow::Borrowed(value)
+    } else {
+        slpc::display_name(value)
+    }
+}
+
 /// A change to a table's own entries, gathered while its rows are drawn and
 /// made once the loop over them has let go of it.
 enum Change {
@@ -237,7 +269,7 @@ fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
 
     let replacement = match &*v {
         Value::String(s) => {
-            let mut text = s.value().clone();
+            let mut text = displayed(s.value(), editable).into_owned();
             let field = egui::TextEdit::singleline(&mut text).desired_width(VALUE_WIDTH);
             ui.add_enabled(editable, field)
                 .changed()
@@ -587,8 +619,38 @@ fn joined(lines: &[String]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{array_text, comment_lines, render};
+    use super::{array_text, comment_lines, displayed, render};
     use slpc::toml_edit::DocumentMut;
+
+    /// A payload name whose bidirectional override the tree swallowed.
+    ///
+    /// Without the escape the field read `reportfdp.exe` — egui gives U+202E
+    /// zero advance width — which is a name one character short of the file on
+    /// disk, shown two rows under a card that escapes it. That is the spoof
+    /// SPEC §3's escaping exists to prevent, and it was in the one field this
+    /// application will not let anybody edit.
+    #[test]
+    fn a_protected_name_is_shown_escaped() {
+        assert_eq!(
+            displayed("report\u{202E}fdp.exe", false),
+            "report\\u{202E}fdp.exe"
+        );
+    }
+
+    /// Escaping a field somebody can type into writes the escape back.
+    ///
+    /// The eight characters `\u{202E}` are what `display_name` produces, and a
+    /// `TextEdit` bound to them returns them as themselves the moment the field
+    /// is touched. A container whose metadata merely mentions such a character
+    /// would gain them, which is a rewrite of somebody's document to make a
+    /// display safer that was already safe: nothing here is a member name.
+    #[test]
+    fn an_editable_string_is_shown_as_it_is() {
+        assert_eq!(
+            displayed("report\u{202E}fdp.exe", true),
+            "report\u{202E}fdp.exe"
+        );
+    }
 
     /// Every type DESIGN.md §4 names, and every place a comment can sit.
     ///
