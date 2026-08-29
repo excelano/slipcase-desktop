@@ -128,10 +128,11 @@ ordinary Rust crates. A check whose red is the normal state announces nothing.
 The rule means the outcome, so check the outcome:
 
     cargo build --release
-    find "$(cargo metadata --format-version 1 --no-deps |
-        sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/release/build" \
+    target=$(cargo metadata --format-version 1 --no-deps |
+        sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
+    find "${target}/release/build" \
         \( -name '*.o' -o -name '*.a' \) -print -quit    # must print nothing
-    ldd target/release/slipcase-desktop                    # libc, libgcc, libm
+    ldd "${target}/release/slipcase-desktop"               # libc, libgcc, libm
 
 Nothing is compiled today and nothing beyond those three is linked, so what
 `DESIGN.md` §2 buys still holds. The margin is one feature: `wayland-backend`
