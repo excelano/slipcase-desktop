@@ -315,6 +315,26 @@ if [ -n "$store_profile" ]; then
     # when it is made and this is part of what gets covered.
     cp "$store_profile" "${app}/Contents/embedded.provisionprofile"
 
+    # **Then strip every extended attribute off the bundle, and this is not
+    # tidying.** App Store Connect refuses a package containing any file marked
+    # `com.apple.quarantine` — ITMS-91109 — and a profile is downloaded from the
+    # developer portal in a browser, so it arrives marked. macOS `cp` preserves
+    # extended attributes, so the mark rides into the bundle, through the
+    # signature, through `productbuild`, and past `altool --validate-app`, which
+    # passed this package with no errors. The upload is then accepted, ingestion
+    # rejects it hours later by email, and nothing appears in App Store Connect
+    # at all. Measured 2026-08-29: build 165, refused, and
+    # `embedded.provisionprofile` was the only file carrying the attribute.
+    #
+    # It also carried `kMDItemWhereFroms`, holding the portal URL with the team
+    # and profile identifiers in it, which would have shipped inside the
+    # application. Clearing all of them rather than only the quarantine one is
+    # therefore the fix and not merely the convenient spelling of it.
+    #
+    # Before signing, because the signature should cover the bundle as it will
+    # be shipped rather than a version of it that is edited afterwards.
+    xattr -cr "$app"
+
     # The entitlements a Store build is signed with are not the ones a
     # development build is signed with, and this is generated rather than
     # committed so the team identifier has exactly one source: the profile.
@@ -355,6 +375,25 @@ ENTITLEMENTS
         echo "build-app.sh: the Store signature carries no app-sandbox entitlement" >&2
         exit 1
     }
+    # And refuse if anything is still marked, because the cost of finding out
+    # later is an upload, a wait, and an email. This check is cheap and its red
+    # is not the normal state: a clean build has nothing marked at all.
+    #
+    # `find -exec` rather than `xargs`: xargs answers 123 when the command it
+    # ran was false, which is the *normal* case here, and under `set -eu` that
+    # kills the substitution and the script with it — silently, exit 1, no
+    # output. Written that way first, and it broke every build including the
+    # clean ones while looking like it had worked, because the previous
+    # `dist/` was still sitting there to be measured.
+    marked=$(find "$app" -type f -exec sh -c \
+        'xattr -p com.apple.quarantine "$1" >/dev/null 2>&1 && echo "$1"' _ {} \;)
+    [ -z "$marked" ] || {
+        echo "build-app.sh: files in the bundle carry com.apple.quarantine, which" >&2
+        echo "  App Store Connect refuses as ITMS-91109:" >&2
+        printf '  %s\n' $marked >&2
+        exit 1
+    }
+
     granted=$(codesign -d --entitlements - --xml "$app" 2>/dev/null |
         plutil -extract 'com\.apple\.application-identifier' raw - 2>/dev/null)
     [ "$granted" = "$store_app_id" ] || {
