@@ -489,11 +489,23 @@ document from a bare launch, the refusal it guards against having been an empty
 window. `CHECKLIST.md`'s *What Apple silicon answered, and what it still cannot*
 holds the run and the photograph.
 
-What is left for a real arm64 machine is what a runner cannot be: **the sandbox**,
-inert without a signing identity, **a high-density display**, and **Finder** — the
-document icon, Get Info's Kind, and a warm double-click into a running window.
-That is a shorter errand than it was, and it no longer sits on the critical path
-to a submission.
+**It is not answered enough to submit on, and the paragraph above should not be
+read that way.** What the runner exercises is an unsigned, unsandboxed debug
+bundle. What a submission is, is a universal *sandboxed* bundle signed for
+distribution and wrapped in a `.pkg`, and none of that has run on Apple silicon
+at all. Every sandbox measurement this project holds — the handover, the save,
+the provenance carry, the origin note — was taken on x86_64. Sandbox policy
+ought not to depend on the architecture, and *ought* is the word that has cost
+this platform a module, a rewritten save path and a reopened `DESIGN.md` section
+already.
+
+So a real Apple silicon Mac is still required before submitting. What changed is
+the shape of the risk rather than its presence: the Objective-C event module is
+no longer unexecuted there, so what remains to be found is in the sandbox and the
+signing context, which is a narrower place to look and a shorter list to get
+through. **The distribution-signed bundle carrying a provisioning profile is
+still the run most likely to find something**, and it has happened on neither
+architecture.
 
 ### Do not
 

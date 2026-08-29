@@ -297,12 +297,19 @@ The photograph the job uploads shows what a person would have gone to see:
 *Opens with Preview*, the tree drawn, Open carrying the focus ring `DESIGN.md`
 §3's amendment gives it, and no dialog.
 
-**What still wants a real Apple silicon machine** is what a runner cannot be:
-the App Sandbox, which needs a signing identity no runner has; a high-density
-display; and Finder itself — the icon, Get Info's Kind, and a warm double-click
-into a running window. Those stay in `CHECKLIST.md`, and the sentence above is
-kept rather than deleted because it was true when written and the amendment is
-worth more than a tidy paragraph.
+**This does not retire the requirement, and the amendment must not be read as
+retiring it.** The runner builds an unsigned, unsandboxed bundle. A submission is
+a universal *sandboxed* bundle signed for distribution and wrapped in a `.pkg`,
+and none of that has run on Apple silicon. Every sandbox measurement here was
+taken on x86_64; sandbox policy ought not to vary by architecture, and *ought* is
+what cost this platform `src/staging.rs` and a reopened `DESIGN.md` §5.
+
+What a runner cannot be is the App Sandbox, a high-density display, or Finder —
+the icon, Get Info's Kind, and a warm double-click into a running window. Those
+stay in `CHECKLIST.md`. What the amendment buys is a narrower search: the
+Objective-C event module is no longer unexecuted on that architecture, so what is
+left to find lives in the sandbox and the signing context. The sentence above is
+kept rather than deleted because it was true when written.
 
 **Two things already argue well at review.** `DESIGN.md` §3 refuses to open a
 payload automatically on a double-click, which is the behaviour an autorun
