@@ -119,10 +119,9 @@ anyway, which is item 6.
 
 ### Not yet done by hand
 
-- **Items 1, 2, 3 and 5's first half are done on Linux** as of 2026-08-29,
-  under *What the card's three lines looked like here* in the Linux section.
-  What is left there is items 4 and 5's second half, both of which need a
-  button pressed. Windows has had none of them.
+- **All five that apply are done on Linux** as of 2026-08-29, under *What the
+  card's three lines looked like here* in the Linux section. Item 6 is macOS
+  only. **Windows has had none of them**, and is the only platform left.
 - **Items 1 to 4 were written the day the lines landed and run on neither.** The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it
@@ -1480,9 +1479,31 @@ listing raced its own removal — `stat` reported *No such file or directory* on
 the same directory it had just described, which is the disappearance the privacy
 entry claims and nothing had watched happen.
 
-**Items 4 and 5's second half still want a hand**, because both need a button
-pressed and nothing here can press one: item 4 wants Save on a marked container,
-and item 5's handover directory is not made until Open is. Item 6 is macOS only.
+**Item 4 passes, and the half a test cannot reach passes with it.**
+`tests/handover.rs` already drives `Opened::save` and asserts the mark survives,
+so what a hand adds is the Save *button* reaching that path and the card still
+reading afterwards. Both: the fixture went from 1090 bytes to 1093 and its
+modification time moved, so a rewrite genuinely happened, and
+`user.xdg.origin.url` came through it carrying the same URL. David looked at the
+window and the orange *This container arrived from elsewhere, and the payload
+will carry that.* line still read, in the same window, without reopening. A card
+that goes blank there would leave the file gated and the person misinformed,
+which is why the item wants eyes.
+
+**Item 5's second half passes.** Open was pressed and the handover directory
+looked at while the window was still up, which is the only time it exists:
+
+    drwx------ 2 anderix anderix 60 /tmp/slipcase-tcbcWF
+    -rw-rw-r-- 1 anderix anderix 584 quarterly-report.pdf
+
+0700 as asked rather than the 0775 the umask would have given, and gone after
+the application quit. **The payload inside it is 0664 and that is correct, not a
+gap left over**: SPEC §3 requires the permissions a newly created file would
+ordinarily receive and forbids applying the archive's bits, so the mode is the
+umask's and the privacy comes from the directory. It is also not executable,
+which is the promise item 1's line makes.
+
+**Item 6 is macOS only, so the Linux side of this section is complete.**
 
 ### Not yet done by hand
 

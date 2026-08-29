@@ -714,11 +714,13 @@ platforms together, which no platform session can do. What it covers:
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with
   what it found rather than that it passed.
-- **The executable-payload line has been seen by somebody** — on macOS, as of
-  2026-08-28, along with the escaped payload name and the silence for an ordinary
-  container. All six items are done on that platform and none on the other two.
-  `CHECKLIST.md`'s *What the card's three lines looked like on macOS* holds the
-  run.
+- **The executable-payload line has been seen by somebody** — on macOS as of
+  2026-08-28 and on Linux as of 2026-08-29, along with the escaped payload name
+  and the silence for an ordinary container. **All six are done on macOS and all
+  five that apply are done on Linux; Windows has had none of them and is the
+  only platform this item is still waiting on.** `CHECKLIST.md` holds both runs,
+  under *What the card's three lines looked like on macOS* and *…looked like
+  here*.
 
   ~~**One of the six cannot be run as written and this review should not accept
   a tick for it.**~~ **Fixed at the source on 2026-08-29.** Item 2 asks for the
