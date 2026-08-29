@@ -1238,7 +1238,29 @@ were taken again from the script's container, against the packaged 0.1.1, both
 themes: 1366 x 768, and the light pair with `AppsUseLightTheme` and
 `SystemUsesLightTheme` set to 1 and put back to 0 afterwards.
 
-**Two things fell out of doing it, neither of which was the point of doing it.**
+**Taken a third time later the same day, after the macOS row fix landed**, so
+the pictures are of the binary that was certified rather than of the one before
+it. Rebuilding at an unchanged version needed the install removed first, which is
+the `0x80073CFB` case the build script's output names.
+
+**And the retake is what found the pointer.** The first shot back differed from
+its predecessor in 2292 pixels, which was not the row fix at all: the mouse
+happened to be resting over an *add a key* field, so egui drew it hovered and
+focus-ringed, and the pointer being inside the scroll area drew the scroll bar
+as well. Neither is wrong and both read, in a store listing, as an interface
+doing something. `screenshot.ps1` now moves the pointer to the far corner of the
+virtual screen before it captures — the corner rather than a constant, because
+1900 x 1200 is off-screen on a smaller display and Windows would clamp it to an
+edge the window might be occupying. Checked by putting the pointer *over* the
+window at 600, 400 and taking a shot: it came back clean, and the pointer had
+moved.
+
+That is the second time this script has been wrong about something outside the
+window rather than inside it, the first being the sliver of console text along
+the top edge. The size is the part it guarantees; the resting state was assumed
+until it was not.
+
+**Two things fell out of the second round, neither of which was the point of it.**
 
 `Add-AppxPackage` installed 0.1.1.0 straight over 0.1.0.0 with no removal — the
 `0x80073CFB` that made *remove the installed one first* a line in the build

@@ -79,6 +79,22 @@ $NOTOPMOST = [IntPtr](-2)
 [void][Shot.Win]::SetWindowPos(
     $handle, $TOPMOST, $X, $Y, $Width + $BORDER_W, $Height + $BORDER_H + 2, 0)
 [void][Shot.Win]::SetForegroundWindow($handle)
+
+# The pointer goes somewhere the window is not, because egui draws hover state
+# and the capture keeps it. Measured 2026-08-29: a retake landed with the mouse
+# resting over an "add a key" field, which came out highlighted and focus-ringed
+# in a picture meant to show the application at rest, and with the scroll bar
+# drawn because the pointer was inside the scroll area. Neither is wrong and
+# both are noise a shopper reads as an interface doing something.
+#
+# Bottom right of the virtual screen rather than a constant: the window is
+# placed near the top left, and a fixed 1900x1200 is off-screen on a smaller
+# display, where Windows clamps it to an edge the window might occupy.
+Add-Type -AssemblyName System.Windows.Forms
+$away = [System.Windows.Forms.SystemInformation]::VirtualScreen
+[System.Windows.Forms.Cursor]::Position =
+    New-Object System.Drawing.Point(($away.Right - 2), ($away.Bottom - 2))
+
 # Long enough for the window to settle and repaint at its new size. egui draws
 # on demand, and a capture taken during the resize catches a half-laid-out frame.
 Start-Sleep -Seconds 3
