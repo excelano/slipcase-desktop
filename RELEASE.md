@@ -119,9 +119,13 @@ build, and re-shipping it is Linux's work before step 4.** The store packages ar
 0.1.1. Verified from the client side rather than from the script's own report:
 the bytes served hash to the bytes built, the `binary-amd64` index advertises
 0.1.1 beside the 0.1.0 the retention policy keeps, and `InRelease` carries a
-good signature from the repository key. The tag sits three commits after
-`7d38b4f`, and all three are tests, packaging and prose, so it marks the same
-shipped source the store packages were built from.
+good signature from the repository key. The tag sits thirteen commits after
+`7d38b4f`, and it still marks the same *shipped* source the store packages were
+built from: the only source those thirteen touch is a test module in
+`src/tree.rs` and one word of a comment in `src/main.rs`, neither of which
+reaches the binary. Counted rather than estimated — this paragraph said *three*
+until `git rev-list --count` was asked, which is the number of commits this
+platform had added and not the number since that build.
 
 This is also the first exercise of the every-time path this file exists to keep
 cheap, and it cost what it claims: a version bump, two changelog entries, a
