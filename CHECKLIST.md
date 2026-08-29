@@ -2812,6 +2812,64 @@ install it, which would have failed there, on the clock, with the machine
 already paid for. It is written down here because the next person to build a
 Store package will want to launch it for exactly the same reason.
 
+### What the first upload to App Store Connect found
+
+**Build 165 was accepted and then refused, and the refusal arrived only by
+email.** Uploaded 2026-08-29 at 14:42 with `xcrun altool --upload-app`, which
+answered `UPLOAD SUCCEEDED with no errors` and a delivery UUID. Nothing then
+appeared in App Store Connect — not a processing build, not a failed one,
+nothing at all — and twenty-five minutes later the reason was in a mail:
+
+    ITMS-91109: Invalid package contents - The package contains one or more
+    files with the com.apple.quarantine extended file attribute, such as
+    "…/Slipcase.app/Contents/embedded.provisionprofile". This attribute isn't
+    permitted in macOS apps distributed on TestFlight or the App Store.
+
+**The cause is that a provisioning profile is downloaded in a browser.** Ours
+carried `0083;6a923c60;Safari;`, macOS `cp` preserves extended attributes, and
+`build-app.sh` copied it into the bundle. Exactly one file was affected, which
+was confirmed by walking the whole bundle rather than assumed from the message's
+one example. It also carried `kMDItemWhereFroms` holding the portal URL with the
+team and profile identifiers in it, which would have shipped inside the
+application.
+
+Fixed by `xattr -cr` on the assembled bundle before signing, and a refusal
+afterwards that names any file still marked. Both directions were run: with the
+strip removed the build refuses and names the file; with it in place the bundle
+carries no extended attributes at all.
+
+**Three things this cost that are worth more than the fix.**
+
+`altool --validate-app` passed the broken package. It answered `VERIFY SUCCEEDED
+with no errors` on the bundle that ingestion then refused, so it checks
+structure, signatures and entitlements and does **not** check extended
+attributes. A validation pass is a weaker guarantee than its wording suggests,
+and this repository had been treating it as the gate before an upload.
+
+**App Store Connect showed nothing, which is the shape of this failure.** A
+delivery that is accepted and then fails ingestion leaves no trace in the
+interface — the natural reading is that processing is slow. What settled it was
+querying the App Store Connect API directly and finding zero builds for the app
+and ten for the other two apps in the account. `xcrun altool --generate-jwt`
+produces a token the general API **rejects**, because it omits `iat`; a token
+made by hand with `openssl` works. `SUBMITTING.local.md` carries the recipe.
+
+**The refusal check was written wrong and hid its own breakage.** `xargs`
+answers 123 when the command it ran was false, which is the normal case, and
+under `set -eu` that killed the command substitution and the script — silently,
+exit 1, no output, on *every* build including clean ones. It read as a success
+because the previous `dist/` was still on disk to be measured. `find -exec`
+instead. Second time in one day that a stale artefact nearly produced a false
+pass; the other was a Windows screenshot question answered against images taken
+from an earlier build.
+
+**A good build appears in about ninety seconds.** Build 167 went from
+`UPLOAD SUCCEEDED` to `processingState: VALID` inside that, which retrospectively
+makes the twenty-five minute wait on 165 diagnostic on its own. It also reported
+`usesNonExemptEncryption: False` with nobody answering a form, which is
+`ITSAppUsesNonExemptEncryption` in `Info.plist.in` doing its job on the first
+upload after it landed.
+
 ### Not yet done by hand
 
 - **A high-density display, half done.** The `@2x` entries have now been
