@@ -97,6 +97,17 @@ not a function of the release version — two uploads of `0.1.0` need different
 build numbers. Deriving it from the commit count (`git rev-list --count HEAD`)
 makes it monotonic without anybody remembering, and that is the recommendation.
 
+**It buys a second thing nobody had claimed for it, and the first submission
+demonstrated it.** The build number App Store Connect shows is a pointer back to
+a commit: the bundle submitted on 2026-08-29 carries build 167, and
+`git rev-list --count 7d38b4f` is 167 — `7d38b4f` being the commit this file
+already names as what the store packages were built from. So the number in the
+store record identifies the source without anybody having written the mapping
+down, which is worth knowing when a review comes back months later asking about
+a build. **The Appx spelling has no such property.** `0.1.1.0` is a function of
+the release version alone and its fourth part must be `0`, so on that side the
+only record of which commit was uploaded is the one a person keeps.
+
 **Decided: the first public release is `0.1.0`.** Both stores display it and
 `0.x` says *early* honestly, which is what this is. It affects listing
 perception rather than any machinery, and it is settled before a name is
