@@ -1340,6 +1340,67 @@ maintainer scripts still registered the type, and `dpkg -V` was silent against
 the installed tree. Removing it took the association with it and left no `rc`
 state, there being no conffiles to leave.
 
+### What looking for the light card found, and why there was none
+
+`HANDOFF.md` left one item for this platform: the contrast repair is shared
+code, every Windows walkthrough ran in dark mode and macOS had never looked, so
+open a container in light mode and look at the card. macOS answered on
+2026-08-28 and this was the last arm.
+
+**It cannot be run here, and the reason is the finding.** Slipcase does not
+follow the desktop theme on Linux. It is dark on a light desktop, it was dark
+after the appearance setting was moved to `prefer-light`, and no desktop setting
+reaches it.
+
+Run 2026-08-28 on GNOME 48.7, Wayland, against the release build. One container
+carrying both coloured lines at once — the `accept/encrypted-payload` case from
+the corpus, copied out and given `user.xdg.origin.url`, so the card says
+*Cannot be opened here: the member is encrypted (SPEC 2.5)* and *This container
+arrived from elsewhere, and the payload will carry that.* together.
+
+| | Portal `color-scheme` | Titlebar | Card |
+| --- | --- | --- | --- |
+| GNOME set to Light | 0, no preference | dark | dark |
+| `color-scheme` forced to `prefer-light` | 2, prefer light | **light** | **dark** |
+
+The second row is the one that settles it. The window's own frame followed the
+setting and the card did not, in the same screenshot — so this is not the
+desktop failing to say what it wants, and it is not GNOME's Light being spelled
+`default` rather than `prefer-light`. The setting arrives and the application
+never asks.
+
+**Traced rather than inferred.** `winit-0.30.13`, `src/platform_impl/linux/mod.rs`
+line 909: `system_theme()` returns `None` on Linux, unconditionally, with no
+body but that word. The Windows arm calls `should_use_dark_mode()` and the macOS
+arm reads `NSApplication`'s `effectiveAppearance`, which is why those two
+platforms could look at the light card by switching the system and this one
+cannot. `egui-winit` puts that `Option` straight into `egui_input.system_theme`,
+and egui falls back to dark when it is `None`. Nothing else in the tree reads a
+theme *for the application*: there is no `dark-light` or `ashpd` dependency, and
+the `zbus` in `Cargo.lock` arrives under `accesskit_unix` for accessibility.
+`rfd` on this target pulls no D-Bus crate at all.
+
+**The titlebar's answer comes from somewhere else in the same process**, which
+is what makes the second row of the table possible. `sctk-adwaita-0.10.1`,
+`src/config.rs`: `prefer_dark()` spawns `dbus-send` with a 100ms reply timeout,
+asks the portal for `org.freedesktop.appearance color-scheme`, and tests whether
+the output ends in `uint32 1`. A subprocess and a string match, inside the
+window that draws the card. So the portal is already consulted here; it is
+consulted for the frame and not for the contents.
+
+**So every Linux user sees the dark card, and the light one is unreachable
+here.** That is a larger statement than the item asked for and it is why this
+section exists rather than a tick. What the repair bought on this platform is
+nothing, because the theme it repairs is one no Linux desktop can select — and
+the test in `src/main.rs` holding both themes to 4.5:1 goes on passing, because
+it constructs `Visuals::light()` directly and never asks how a window would get
+there.
+
+**What was not established.** Whether the light card *reads* on Linux is still
+unanswered, and cannot be answered until something can select it. The macOS
+figures are the nearest evidence and they are that platform's, measured on that
+platform's display.
+
 ### Not yet done by hand
 
 - **A machine that has never had it.** Item 12 was run here, where every

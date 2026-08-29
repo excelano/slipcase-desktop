@@ -170,6 +170,28 @@ collapses toward the fill by construction the way every antialiased glyph does.
 The core colour is the number that travels. Linux is the last arm that has not
 looked.
 
+**Linux answered on 2026-08-28, and the answer is that it cannot look.**
+Slipcase does not follow the desktop theme on this platform: it drew the dark
+card on a light GNOME desktop, and drew it again with the appearance setting
+forced to `prefer-light` while the window's own titlebar turned light in the
+same screenshot. `winit`'s `system_theme()` is an unconditional `None` on Linux
+where the Windows and macOS arms both return a real answer, so egui falls back
+to dark and no desktop setting reaches it. `CHECKLIST.md`'s *What looking for
+the light card found, and why there was none* has the table and the trace.
+
+So the light card is unreachable on this platform rather than unlooked-at, and
+the two questions that leaves are David's: whether the application should read
+the theme itself — the portal's `org.freedesktop.appearance color-scheme`, which
+this same process already reads once — and whether the contrast repair still
+earns its place on an arm where the theme it repairs cannot be selected.
+
+That *once* is worth knowing before anybody costs the work. The titlebar's
+answer comes from `sctk-adwaita`, which spawns `dbus-send` and greps its output
+for `uint32 1`, with a 100ms timeout and a shrug if it misses. So the portal is
+already being asked inside the window that ignores it, by a subprocess, and
+whatever is decided here should not be a second copy of that.
+Neither is a packaging decision and neither blocks a release.
+
 A signature is no longer the answer to this section. `build-app.sh --sign`
 signs the bundle with an Apple Development certificate and reads the
 entitlements back out of the signature, and that settled the Spotlight
