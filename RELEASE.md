@@ -704,9 +704,16 @@ is not.
   2026-08-29**, and the answer is a rejection: `source=Unnotarized Developer ID`.
   That is about the hedge and not the Store. **If the Developer ID build is ever
   handed to anyone it must be notarized first**, which nothing here had said.
-- **A second user account, and an upgrade over an existing install.** Attempted
-  on the rented machine and abandoned for want of an admin password. Neither is
-  architecture specific, so any Mac will do.
+- ~~**an upgrade over an existing install**~~ — **done 2026-08-29 by accident and
+  none the worse for it.** TestFlight installed build 167 over a Developer ID
+  build already in `/Applications`, so the certificate changed as well as the
+  version; the association survived and so did the sandbox container and the
+  folder the previous build had remembered.
+- **A second user account** — run, and left open. It passed on copies in the
+  other account's Drop Box, which nothing outside that account can read, so the
+  attributes were never measured. Thirty seconds to redo against
+  `/Users/Shared`, whose permissions were the reason the first attempt at that
+  failed.
 - ~~**A container on a second volume, under the sandbox**~~ — **done 2026-08-29
   on Apple silicon, and it passes.** The grant does cover the replacement
   directory: the write landed, `.TemporaryItems` was left clean, the container

@@ -2968,11 +2968,35 @@ and in nothing else observable from here.
   ID`. So **the hedge must be notarized before it is handed to anyone**, which
   nothing here had said. It says nothing about the Store build, which reaches
   people through a channel that does not quarantine.
-- **A second user account**, and an upgrade over an existing install. Attempted
-  2026-08-29 on the rented machine and abandoned: both want an admin password,
-  which was on a portal the Remote Desktop session had taken the screen from.
-  Neither is architecture specific, so this is a job for any Mac and not for a
-  rented one.
+- ~~**an upgrade over an existing install**~~ — **done 2026-08-29, and nobody
+  set it up.** TestFlight installed build 167 over the Developer ID build 164
+  that had been copied into `/Applications` half an hour earlier for the
+  second-account test. It is a better upgrade than one staged on purpose would
+  have been, because the certificate changed as well as the version:
+  `Developer ID Application` to `TestFlight Beta Distribution`.
+
+  What was checked afterwards rather than assumed: the bundle is replaced in
+  place and reports 167, Launch Services still resolves the association, and the
+  per-user state survived — the sandbox container still dates from 2026-08-25
+  rather than being remade, and `last-folder` still holds the path the *previous*
+  build wrote. So an upgrade does not orphan a container or lose what a person
+  had open.
+- **A second user account.** Run 2026-08-29 on `davidanderix` against a Developer
+  ID build: the double-click reached Slipcase, Open reached Preview, and a marked
+  container kept its provenance across a save — **on copies in that account's own
+  Drop Box**, which is write-only to everybody else, so the attributes could not
+  be read back from the other side. It is a report rather than a measurement and
+  is left open for that reason.
+
+  **The run against the shared copies failed, and the cause was the staging.**
+  `/Users/Shared/slipcase-test` had been made `1777`. In a sticky directory only
+  a file's owner may rename or delete it, and `-[NSFileManager
+  replaceItemAtURL:]` replaces rather than writing in place — so the other
+  account could write the bytes and not perform the operation Save performs. The
+  directory is `0777` now. **What Slipcase showed when that save was refused has
+  not been recorded**, and it is the more interesting half: a sandboxed save that
+  cannot replace its file is a failure mode no test here provokes, and whether it
+  fails safely is a `DESIGN.md` §5 question.
 - ~~**A container on a second volume, under the sandbox.**~~ **Done 2026-08-29
   on Apple silicon**, and it passes — a marked container on a mounted APFS image,
   opened through the open panel, edited and saved, with the origin note intact
