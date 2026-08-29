@@ -1195,6 +1195,25 @@ been exercised by a real run it should not refuse.
 The five messages are `CreateProcessW`, `ShellExecuteW`, `cmd.exe`, `\cmd.exe`
 and `CSi`, all traced above.
 
+**And a fourth time, from the tagged commit, which is the build that was
+submitted.** The third artefact had been built one commit before `v0.1.1`, and
+the difference was a comment — *seven characters* corrected to *eight* in
+`src/main.rs` — so the code was identical and the provenance was not. Rebuilt
+with the checkout detached at `1370326`, the commit the tag points at, and
+certified again: PASS, `Blocked executables` failing, the same six messages.
+Both packages were made from that one staging tree with no `cargo build` between
+them, so the signed copy the kit passed and the unsigned copy that goes to the
+Store carry the same binary — checked by hash rather than by argument.
+
+**One hazard came out of doing it that way, and it is worth knowing before
+anybody repeats it.** `packaging/windows/SUBMITTING.local.md` is gitignored, and
+the rule that ignores it was added *after* the tagged commit — so while the
+checkout was detached at the tag, the file was untracked and **not** ignored. A
+`git add -A` in that state would have committed a document naming the store id
+into a public repository, which is the mistake this project has already had to
+undo twice. Checking out an older commit can un-ignore a local file, because
+`.gitignore` travels with the tree.
+
 **Run a third time after the macOS scale test landed, and passed again.** That
 one is the run the submission rests on, and its package is the one kept: the
 source change was inside `#[cfg(test)]` and could not reach the binary, yet a

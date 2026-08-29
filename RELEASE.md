@@ -556,6 +556,12 @@ wants because the Store signs what it distributes.
 the kit passed and is for installing here. Both were made from one staging tree
 with no rebuild between, so the binary inside them is the same bytes.
 
+**Rebuilt from the tag and certified again, 2026-08-29.** The first artefact was
+built one commit before `v0.1.1` and the difference was a comment, so the code
+was identical and the provenance was not; rebuilding cost one build and one
+certification run and removed a paragraph of explanation from the record. The
+packages now come from `1370326`, which is the commit the tag points at.
+
 **Do not rebuild before uploading**, which is a rule this platform learned by
 measuring rather than by being told. A rebuild of *identical* source produces a
 different file: 24 bytes, being the COFF timestamp, the three debug directory
@@ -581,6 +587,15 @@ the steps and the token call. One rule in it is worth repeating because it bites
 silently: **a submission created through the API must be edited only through the
 API** — touching it in Partner Center afterwards can leave it uncommittable, and
 the recovery is to delete it and start over.
+
+`SUBMITTING.local.md` now carries the Partner Center form section by section —
+the six pages, every value, the screenshot order, the 300x300 listing logo, and
+the notes a certification tester needs. It was written from Microsoft's own
+submission checklist rather than from memory, and writing it found one thing
+nothing else had: **the reviewer has nothing to open.** Slipcase without a
+container is an empty window, *Notes for certification* takes no attachment, and
+`excelano.com/slipcase/` offers no `.slpc` to download. A demonstration container
+has to go on the website before the notes can point at one.
 
 That is also the honest answer to *is Windows scripted end to end*: no, and the
 first release could not have been. `packaging/windows/store-metadata.ps1` is the
