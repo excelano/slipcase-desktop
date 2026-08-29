@@ -686,6 +686,14 @@ is not.
   and `DESIGN.md` §5 has the card disregarding those, so the file can stay gated
   while the card stops saying where it came from. That is the answer to look for.
 - ~~**A distribution-signed bundle carrying a provisioning profile.**~~
+  **Done 2026-08-29 through TestFlight, and it passes** — launches, Open reaches
+  Preview, provenance survives a save. It could not be done the way this entry
+  imagined; see below. What arrives from TestFlight is re-signed by Apple as
+  *TestFlight Beta Distribution* with our profile stripped, which makes it a
+  closer artefact to what the Store serves than the package we built, since the
+  Store re-signs too. *What the distribution-signed walkthrough found, through
+  TestFlight* in `CHECKLIST.md` holds it.
+
   **Struck 2026-08-29: it cannot be done by hand at all.** AMFI refuses a
   restricted entitlement without a profile covering the machine, and a Mac App
   Store profile covers none — the package was built, launched, and killed by the

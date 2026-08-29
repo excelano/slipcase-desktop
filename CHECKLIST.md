@@ -2870,6 +2870,47 @@ makes the twenty-five minute wait on 165 diagnostic on its own. It also reported
 `ITSAppUsesNonExemptEncryption` in `Info.plist.in` doing its job on the first
 upload after it landed.
 
+### What the distribution-signed walkthrough found, through TestFlight
+
+**It passes, and it is a closer artefact than the package we uploaded.** Run
+2026-08-29 against build 167 installed from TestFlight on this Intel Mac. All
+three of the questions this item existed for answered yes: it launches, Open
+brings Preview forward showing the PDF, and a container marked as a download
+keeps its *arrived from elsewhere* line across an edit and a Save.
+
+**A fourth kind of build, which nothing here had anticipated.** Apple does not
+distribute the bundle we signed. It strips the embedded profile, re-signs, and
+what arrives is:
+
+    signed:      TestFlight Beta Distribution
+    Gatekeeper:  accepted — source=Testflight
+    profile:     none
+    entitlements: app-sandbox, files.user-selected.read-write,
+                  com.apple.application-identifier, team-identifier
+
+So it carries the restricted entitlement with **no profile at all**, and AMFI
+allows it — the receipt is what authorises it instead. That is the mechanism
+that explains the section above: our locally signed Store package was killed
+because a Mac App Store profile provisions no devices, and this one is not
+relying on a profile in the first place.
+
+**It is therefore closer to what the App Store will actually serve than the
+`.pkg` is**, because the Store re-signs as well. This run is worth more than the
+one it replaced, rather than being a substitute for it, and the entry that called
+a hand-run against a distribution-signed bundle *the run most likely to find
+something* was retired on the wrong grounds — it was unreachable, and then it
+turned out to be reachable by a route that gives a better answer.
+
+`check-install.sh` gained the fourth kind. It had been written for three, said
+so in a comment, and was four within a day — so the comment now points at the
+list rather than counting it, for the same reason `CLAUDE.md` stopped counting
+conformance cases.
+
+**What this does not settle.** The receipt is not validated by this application
+and never will be, so nothing here exercises it. And App Review runs a build
+signed for the Store rather than for TestFlight; those differ in the certificate
+and in nothing else observable from here.
+
 ### Not yet done by hand
 
 - **A high-density display, half done.** The `@2x` entries have now been

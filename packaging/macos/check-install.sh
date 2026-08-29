@@ -73,15 +73,23 @@ else
     note "the running process is native" "not running — launch it and re-run"
 fi
 
-# 3. Which of the three builds this is, decided from the certificate rather
-#    than from what the caller believed. Three kinds ship out of this
-#    repository and they want *different* answers to the checks below — a Store
-#    build must carry an application identifier and a profile, and a Developer
-#    ID build must not. A script with one set of expectations reports four
-#    findings against a perfectly good bundle, which is how a checklist teaches
-#    people to ignore it.
+# 3. Which kind of build this is, decided from the certificate rather than from
+#    what the caller believed. They want *different* answers to the checks
+#    below — a Store build must carry an application identifier and a profile,
+#    a Developer ID build must carry neither, and a TestFlight build carries the
+#    identifier and no profile. A script with one set of expectations reports
+#    four findings against a perfectly good bundle, which is how a checklist
+#    teaches people to ignore it.
+#
+#    Deliberately not counted here. This comment said "three" and there were
+#    four within a day of it being written: the fourth is TestFlight, which is
+#    not a build we make at all — Apple strips our profile and re-signs as
+#    `TestFlight Beta Distribution`. The list below is the count.
 auth=$(codesign -dv --verbose=2 "$app" 2>&1)
 case "$auth" in
+    *"TestFlight Beta Distribution"*)
+        kind=testflight
+        ok "signed" "TestFlight Beta Distribution — Apple re-signed this" ;;
     *"Apple Distribution: Excelano LLC (${team})"*)
         kind=store
         ok "signed" "Apple Distribution, team ${team} — a Store build" ;;
@@ -124,12 +132,16 @@ esac
 # Restricted, and so the whole reason a Store build needs a profile and cannot
 # run without one. A Developer ID or development build must *not* carry it: it
 # would be refused at launch for exactly the reason the Store build is.
-case "$kind,$ents" in
-    store,*"${team}.${bundle_id}"*)
+case "$kind" in
+    store|testflight) wants_app_id=yes ;;
+    *) wants_app_id=no ;;
+esac
+case "$wants_app_id,$ents" in
+    yes,*"${team}.${bundle_id}"*)
         ok "the application identifier is there" "${team}.${bundle_id}" ;;
-    store,*)
+    yes,*)
         bad "the application identifier is there" "absent — the upload is refused" ;;
-    *,*"${team}.${bundle_id}"*)
+    no,*"${team}.${bundle_id}"*)
         bad "no application identifier" "present on a ${kind} build — it will not launch" ;;
     *)  ok "no application identifier" "correct for a ${kind} build" ;;
 esac
@@ -143,6 +155,9 @@ esac
 # 5. The profile has to be inside the bundle, and inside it *before* it was
 #    signed. Added afterwards, macOS calls the bundle damaged — which check 3
 #    would already have caught, so this one is about presence.
+#    A TestFlight build carries none and must not: Apple strips the profile and
+#    re-signs, and the receipt is what authorises it instead. That is also why
+#    it launches where a locally signed Store build is killed by AMFI.
 profile="${app}/Contents/embedded.provisionprofile"
 if [ "$kind" != store ] && [ ! -f "$profile" ]; then
     ok "no provisioning profile" "correct for a ${kind} build"
@@ -188,6 +203,8 @@ case "$kind,$gk" in
         note "Gatekeeper" "rejected — unnotarized, which is the hedge's own step" ;;
     dev,*rejected*)
         note "Gatekeeper" "rejected, as a development build correctly is" ;;
+    testflight,*rejected*)
+        bad "Gatekeeper" "rejected a TestFlight build, which it should accept" ;;
     *)  bad "Gatekeeper" "$(printf '%s' "$gk" | tr '\n' ' ')" ;;
 esac
 
