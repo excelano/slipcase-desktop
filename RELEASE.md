@@ -755,10 +755,50 @@ comment and pushed the control that removes the key off the window. Fixed, with
 a regression test that had to be rewritten once because the first version passed
 against the defect it was written for.
 
+### The listing itself, which turned out to be scriptable
+
+**Done 2026-08-29, and almost none of it by hand.** App Store Connect's API
+takes the whole listing, so `packaging/store-listing.md` was read and pushed
+rather than retyped into a form — which is the difference between a listing that
+can drift from this repository and one that cannot. Set this way: the version
+string, the copyright, the description, keywords, promotional text, support URL,
+subtitle, privacy policy URL, the primary category, the age rating declaration,
+the build, four screenshots, the App Review notes, and the sample container a
+reviewer needs.
+
+**Three things learned doing it, because the next release should cost minutes.**
+
+The version record was created as `1.0` and the build declares `0.1.1`. Those
+must agree, and the record was changed rather than the build — `Cargo.toml` is
+the source of the number and App Store Connect is not.
+
+The age rating declaration refuses a partial answer and **names every attribute
+it still wants**, so it is answered by sending what you have and reading the
+errors. Every content question here is `NONE` and every behaviour `false`.
+
+The review attachment refused a bare `.slpc` with a server error and accepted the
+same file inside a `.zip`. The notes say so; if that is ever retried, expect to
+wrap it.
+
+**What the API would not do**, and so is left for a person: the App Privacy
+questionnaire, which this version of the API does not expose at all, and the
+price, whose schedule exists but could not be read back through
+`appPriceSchedules`.
+
+**This is the every-time path and it is not yet a script.** Everything above was
+done from ad-hoc calls; turning them into `packaging/macos/store-metadata.sh`
+would make the listing a build product of `store-listing.md` instead of a copy
+of it, and is the obvious next reduction in what a patch costs.
+
 ### Do not
 
 Submit. Reserve the name, build and sign the package, validate it through
 Transporter if that can be done without submitting, and stop.
+
+**Amended 2026-08-29: everything short of the button is now done.** The build is
+uploaded and attached, the listing is complete, TestFlight has been walked. What
+remains before submitting is the readiness review, which is Linux's and is the
+whole reason this fence exists.
 
 ---
 
