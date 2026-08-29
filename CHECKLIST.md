@@ -982,8 +982,30 @@ std that this build never calls.
 read rather than assumed. Handing a payload to whatever the system registered
 for it is what the Open button is.
 
-`"CsI"` was not traced. It is three characters and the kit matched it in a
-binary; that is as much as is known.
+~~`"CsI"` was not traced. It is three characters and the kit matched it in a
+binary; that is as much as is known.~~ **Traced on 2026-08-29, and it is a
+coincidence in a data table.** The string is `CSi` — this file had the
+capitalisation wrong, which is worth knowing because three characters is all
+there is to go on. It occurs exactly once in the binary, at `0xa4e8e4`, inside
+`.rdata`, in the middle of a run of four-byte values that all look alike:
+
+    1c 58 69 ff   4e 58 69 ff   fe 51 69 ff   54 57 69 ff
+    43 53 69 ff   86 57 69 ff   c0 53 69 ff   c4 55 69 ff
+
+Read as little-endian words those are `0xff69581c`, `0xff69584e`, and so on, and
+`CSi` is the low three bytes of `0xff695343`. It is a table of addresses, not a
+string, and the kit's scan is a substring match over the whole file. **So the
+answer is that the binary does not contain the word at all**, which is a
+different statement from *it was matched and we do not know why*.
+
+**It comes and goes between builds, and that is the corroboration.** The report
+kept from 2026-08-28 carries four messages for this test and no `CSi`; the
+2026-08-29 run of the same code at 0.1.1 carries five and has it. Nothing about
+the source changed to cause that — the addresses in that table move when the
+binary is relaid out, so whether the three bytes `43 53 69` fall next to each
+other is chance. A finding that appears and disappears with a rebuild is exactly
+what a coincidental byte match looks like, and it is why the gate is written
+against finding names rather than message counts.
 
 **What is not known is whether the Store minds.** The kit did not escalate it,
 which is a hint and not an answer, and this is a submission policy question that
@@ -1159,6 +1181,19 @@ shape of claim this repository keeps catching. And the linker argument is
 attached to one named binary rather than to `-bins`: `corpus.exe` was checked
 and carries no manifest, which is right, since a console runner has no window to
 be aware about.
+
+### What certification said at 0.1.1
+
+Run 2026-08-29 against `Slipcase-0.1.1.0-x64.msix`, self-signed, elevated.
+**`OVERALL_RESULT="PASS"`**, with `Blocked executables` failing as recorded and
+nothing else. The gate recognised it — *FAIL Blocked executables (known - see
+CHECKLIST.md)* — and passed the run, which is the first time the rebuilt gate has
+been exercised by a real run it should not refuse.
+
+The five messages are `CreateProcessW`, `ShellExecuteW`, `cmd.exe`, `\cmd.exe`
+and `CSi`, all traced above. This is the certification run that matters for the
+submission: the three from 2026-08-28 were against a binary that no longer
+exists, since `src/tree.rs` changed the day after.
 
 ### What taking the screenshots found
 

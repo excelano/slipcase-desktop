@@ -374,7 +374,14 @@ package, and its final paragraphs say which of it a CI step could take over.
   `0x800B0109` just the same, which `CHECKLIST.md` measured on 2026-08-26.
   `build-msix.ps1 -SelfSign` prints the two commands and does not attempt them.
 - ~~**The Windows App Certification Kit**~~ — run 2026-08-28, three times, the
-  middle one void. Twenty-four tests, twenty-two passing.
+  middle one void, and **again on 2026-08-29 against 0.1.1, which is the run that
+  counts**: the three earlier ones tested a binary that `src/tree.rs` changed the
+  day after. `OVERALL_RESULT="PASS"`, `Blocked executables` failing as recorded,
+  the gate recognising it and passing the run — the first time the rebuilt gate
+  has been exercised by a run it should not refuse. It also traced the one
+  message nobody had explained: `CSi` is three bytes of an address in a table in
+  `.rdata`, not a string, which is why it appears in some builds and not others.
+  Twenty-four tests, twenty-two passing.
   `CHECKLIST.md` holds all of it. What it left was two findings, both decisions
   rather than repairs, and **both have since been taken** — one by a repair that
   the kit then stopped reporting, one by a decision to submit with it failing.
