@@ -135,9 +135,17 @@ reserved rather than after, which is the only timing that matters.
   `packaging/linux/icons/` — so nothing has to be drawn, but producing them at
   the Store's sizes belongs in `build-msix.ps1`. `packaging/windows/README.md`
   says so where the Windows session will read it.
-- **`SECURITY.md`** — `slpc-rust` has one and this repository does not. It is a
-  public repository shipping an application that opens files people were sent,
-  so a disclosure path is worth having before a store listing points at it.
+- ~~**`SECURITY.md`**~~ — done in `46dad19`, and this entry went on saying it was
+  not for as long as it took somebody to check. It is a public repository
+  shipping an application that opens files people were sent, so a disclosure
+  path was worth having before a store listing points at it, and there is one:
+  GitHub Security Advisories with an email fallback and a stated response time.
+
+  **Left as a struck entry rather than deleted, because the drift is the
+  lesson.** This file is the live document and it listed a finished thing as
+  outstanding. That is the same class of error as a listing sentence written
+  before anybody looked, arriving from the opposite direction, and it is what
+  the readiness review below is for.
 - **A privacy policy at `excelano.com/legal/#slipcase`.** Decided, and the
   address follows what is already there: `/legal/` carries one page with a
   per-application anchor, `#blick` and `#zirbe` being the existing two. Both
