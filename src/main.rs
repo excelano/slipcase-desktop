@@ -738,7 +738,7 @@ impl App {
                 // file on disk: the comment above says the payload's own name
                 // is offered and that renaming it is the person's choice, so
                 // what goes in has to be a name. `display_name` renders a name
-                // for reading — it turns U+202E into the seven characters
+                // for reading — it turns U+202E into the eight characters
                 // `\u{202E}` — and prefilling that meant Extract-to defaulted
                 // to writing a file literally called `report\u{202E}fdp.exe`,
                 // where `\` is a path separator on Windows. The handover path

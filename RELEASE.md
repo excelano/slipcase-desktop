@@ -955,6 +955,51 @@ platforms together, which no platform session can do. What it covers:
 - **The three CI workflows are green**, the corpus agrees on every case on every platform
   that has run it, and `preflight.sh` passes.
 
+### What the review found, 2026-08-29
+
+Run here after Windows and macOS reported ready. The code was read rather than
+the commit messages: `src/tree.rs` is the only source change in the twenty
+commits, both of its fixes were verified by breaking them and watching the two
+new tests fail, clippy is silent, 87 tests pass, and the corpus agrees on all 88
+cases. The version is `0.1.1` in all three spellings, both changelogs name it,
+and CI is green on `HEAD`.
+
+**Two claims were false, both of them the class this review exists to catch, and
+both on the page the stores link to rather than in the listing that had already
+been corrected.**
+
+**The provenance sentence was corrected in one document of three.** macOS
+established on 2026-08-28 that a payload does not carry *the same warning the
+container would have* under a Mac App Store build, and `store-listing.md` was
+reworded that day. `CHANGELOG.md` and `packaging/privacy-entry.html` were not,
+and the listing's own header says it is generated from the changelog and that
+*if the two ever disagree, the changelog is right and this is stale* — so the
+rule pointed at the sentence that had been established as untrue, and the next
+regeneration would have put it back. Both now say what the listing says.
+
+**The privacy page told a reader to check something that is no longer there.**
+Its verification list said *no HTTP client, no socket, no URL is contacted*, and
+`src/system_theme.rs` had by then given the Linux build a D-Bus client. Measured
+on the running 0.1.1 binary rather than argued: no INET socket of any kind, and
+five connected Unix sockets, of which `ss -xp` names two as peers of
+`dbus-daemon`, one of `gnome-shell` and one of `Xwayland`. The privacy substance
+is unchanged — nothing leaves the machine, and what crosses those sockets is a
+light-or-dark setting — but the instruction invited a reader to falsify it, on a
+page both store forms point at. The bullet now says what is true and what those
+sockets are for, and the dependency enumeration names the D-Bus client.
+
+**The sentence was true when it was written**, which is the part worth keeping.
+`a276654` drafted the page before `21ae8f4` added the portal call, on the same
+day. Nothing was written carelessly: a claim went stale in the hours between two
+commits, and it shipped in 0.1.0 and went live on the site. That is the same
+shape as the `SECURITY.md` entry struck above and as the tree escaping that
+Windows found, arriving a third time.
+
+**One consequence is not ours to close.** `excelano.com/legal/#slipcase` is
+serving the old text, so `packaging/privacy-entry.html` has to be pasted in
+again before either submission. The page is a submission blocker under *Once*
+above, and it is one again.
+
 Then, and only then, both submissions go in.
 
 ---

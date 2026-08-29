@@ -66,9 +66,10 @@ the system either way. What you get is information, not a verdict on whether
 something is safe:
 
 - **Where the container came from.** If it was downloaded, the card says so, and
-  the payload you extract carries that mark onward — so whatever opens it next
-  raises the same warning the container would have. Editing and saving a
-  downloaded container keeps the mark too.
+  the payload you extract is marked too, so your computer treats it with the
+  caution it gives anything that came from outside rather than opening it as
+  though you had made it yourself. Editing and saving a downloaded container
+  keeps the mark.
 - **Whether the payload was stored as an executable file**, on macOS and Linux,
   and that the copy you extract will not be. That is read out of the container
   rather than guessed from the name.
