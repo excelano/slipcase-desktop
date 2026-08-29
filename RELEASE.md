@@ -51,11 +51,21 @@ item run, lintian clean, the corpus agreeing, CI green — and shipping through
 one channel first exercises the release path end to end before either store
 submission depends on it.
 
-**It is amd64 only, and that is stated wherever the install is.** Nothing here
-cross-compiles and no runner builds Linux arm64, so an arm64 `.deb` would be one
-nobody had ever run. The command-line tool ships both architectures through
-cargo-dist; this does not, and a page that implies otherwise sends an arm64
-reader to a command that answers *no installation candidate*.
+**Both architectures, and the second one is built where it can be run.**
+Nothing here cross-compiles and no runner builds Linux arm64, so for an hour
+this said amd64 only on the grounds that an arm64 `.deb` would be one nobody had
+ever executed. That reasoning was right and its premise was wrong: there is an
+arm64 machine, and supporting the architecture is why the command-line tool
+ships for it.
+
+So the arm64 package is built natively on that machine rather than
+cross-compiled here — `dpkg-architecture` reports `arm64` there and
+`build-deb.sh` needs no argument to do the right thing. What it gained is a
+guard rather than a flag: it now reads `e_machine` out of the ELF header and
+refuses where that disagrees with the architecture the package would declare,
+which is the check `build-msix.ps1` already makes against the PE header. A
+`.deb` declaring one architecture and carrying another installs perfectly and
+then does not run, and nothing about the finished file says so.
 
 **This does not move steps 2, 3 and 4.** Neither store submission happens before
 the readiness review, and the review now has one more thing to check: that what

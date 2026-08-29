@@ -61,6 +61,37 @@ changelog_version=$(sed -n '1s/^[^(]*(\([^)]*\)).*/\1/p' "${here}/changelog")
 }
 
 arch=$(dpkg-architecture -qDEB_HOST_ARCH)
+
+# The architecture the package declares has to be the architecture the
+# executable actually is. `dpkg-architecture` answers about this machine, which
+# is right for a native build and says nothing about a binary handed over with
+# `--binary` — and a package declaring amd64 while carrying an arm64 executable
+# installs perfectly and then does not run. `build-msix.ps1` reads the PE header
+# for this exact reason and this is the same check in ELF's shape.
+#
+# `e_machine` is two little-endian bytes at offset 18, after the four magic
+# bytes have said this is an ELF at all. 62 is x86-64 and 183 is AArch64.
+magic=$(od -An -tx1 -N4 "$binary" | tr -d ' \n')
+[ "$magic" = "7f454c46" ] || {
+    echo "build-deb.sh: $binary is not an ELF executable" >&2
+    exit 1
+}
+lo=$(od -An -tu1 -j18 -N1 "$binary" | tr -d ' ')
+hi=$(od -An -tu1 -j19 -N1 "$binary" | tr -d ' ')
+machine=$((lo + hi * 256))
+case "$arch" in
+    amd64) want=62 ;;
+    arm64) want=183 ;;
+    *) want="" ;;
+esac
+if [ -n "$want" ] && [ "$machine" != "$want" ]; then
+    echo "build-deb.sh: this machine is ${arch}, which wants ELF machine ${want}," \
+         "and ${binary} is machine ${machine}" >&2
+    echo "build-deb.sh: build the package on the architecture it is for, or the" \
+         ".deb will declare one thing and carry another" >&2
+    exit 1
+fi
+
 name="slipcase-desktop_${version}_${arch}"
 
 stage=$(mktemp -d)
