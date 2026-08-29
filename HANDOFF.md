@@ -128,6 +128,31 @@ them.
 
 ## What is waiting on a platform
 
+**macOS and Linux: the repaired light-mode card has never been looked at.**
+Raised by the Windows session on 2026-08-28 and unanswerable from here.
+
+The contrast defect was not Windows's. `CHECKLIST.md`'s *What light mode found*
+measured the card's provenance line at 2.79:1 in light mode against a 4.5:1 bar,
+and the failure line under the bar in both themes, and the note in this file
+already says why that reaches everybody: it is egui's defaults used unchanged,
+so Linux and macOS had it too. `warn_colour` and `error_colour` in
+`src/main.rs` pick per theme now and a test holds both themes to 4.5:1.
+
+**What is missing on those two platforms is a look, not a measurement**, and the
+distinction turned out to matter here. Every Windows walkthrough had run in dark
+mode, so the light card had been seen while it was broken and not since it was
+fixed — the repair was proven by a test and by nobody's eyes. Looked at on
+2026-08-28 when David switched the desktop: it reads. The pixels were measured
+off the screenshot too, because that section is a story about figures computed
+against a colour the screen never showed, and the antialiased worst case is
+4.59:1 where the colour itself is 5.18:1. Both clear the bar, and only the first
+can be taken off a screen.
+
+So each of the other two arms wants the same thing: open a container in light
+mode and look at the card. It is one glance, it needs the platform, and the
+repair it is checking was shared code that nobody has seen work anywhere but
+here.
+
 A signature is no longer the answer to this section. `build-app.sh --sign`
 signs the bundle with an Apple Development certificate and reads the
 entitlements back out of the signature, and that settled the Spotlight
