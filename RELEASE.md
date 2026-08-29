@@ -758,11 +758,31 @@ platforms together, which no platform session can do. What it covers:
   what it found rather than that it passed.
 - **The executable-payload line has been seen by somebody** — on macOS as of
   2026-08-28 and on Linux as of 2026-08-29, along with the escaped payload name
-  and the silence for an ordinary container. **All six are done on macOS and all
-  five that apply are done on Linux; Windows has had none of them and is the
-  only platform this item is still waiting on.** `CHECKLIST.md` holds both runs,
-  under *What the card's three lines looked like on macOS* and *…looked like
-  here*.
+  and the silence for an ordinary container. ~~**All six are done on macOS and
+  all five that apply are done on Linux; Windows has had none of them and is the
+  only platform this item is still waiting on.**~~ **Done everywhere as of
+  2026-08-29**, Windows having run all five that apply that day, so this item is
+  closed and `CHECKLIST.md` holds three runs.
+
+  **The last arm to run it found something the first two had ticked past**, and
+  the review should know what that says about hand items. Item 3 says to look at
+  the card, and macOS and Linux looked at the card and were right: it escapes the
+  payload name. Two rows below it the metadata tree was rendering the same name
+  unescaped, so a payload called `report<U+202E>fdp.exe` read `reportfdp.exe`
+  there — the spoof the escaping exists to prevent, in the one field this
+  application will not let anybody edit. Shared code, so all three platforms had
+  it, and no test in either repository reached it. Fixed the same day in
+  `src/tree.rs`, `DESIGN.md` §4 amended, two tests each broken deliberately.
+
+  **It makes the first bullet concrete a second time.** `CHANGELOG.md` says
+  *names are shown with the Unicode characters that reorder text escaped*, and
+  the store descriptions are generated from it. The sentence was true of the card
+  and false of the tree — written against the built application, and checked in
+  the one place the claim already held. It is true of both now.
+
+  `CHECKLIST.md` holds all three runs, under *What the card's three lines looked
+  like* — *on macOS*, *on Windows*, and *here*, which is Linux's, the two
+  sections having briefly shared a title until the third one arrived.
 
   ~~**One of the six cannot be run as written and this review should not accept
   a tick for it.**~~ **Fixed at the source on 2026-08-29.** Item 2 asks for the

@@ -119,9 +119,18 @@ anyway, which is item 6.
 
 ### Not yet done by hand
 
-- **All five that apply are done on Linux** as of 2026-08-29, under *What the
+- ~~**All five that apply are done on Linux** as of 2026-08-29, under *What the
   card's three lines looked like here* in the Linux section. Item 6 is macOS
-  only. **Windows has had none of them**, and is the only platform left.
+  only. **Windows has had none of them**, and is the only platform left.~~
+  **Windows did all five on 2026-08-29 and this section is complete on every
+  platform.** Its own *What the card's three lines looked like here* holds them.
+  Item 6 is macOS only and was done there.
+
+  **The last platform to run it found the defect the first two had ticked past**,
+  which is the argument for running a hand item on every arm rather than on the
+  one that owns the code. Item 3 says to look at the card, and macOS and Linux
+  both looked at the card and were right. Two rows below it the tree was showing
+  the same payload name unescaped, and the item did not point anybody there.
 - **Items 1 to 4 were written the day the lines landed and run on neither.** The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it
@@ -1181,6 +1190,141 @@ of each thing `src/tree.rs` has a renderer for. The second shot is the same
 container carrying a `Zone.Identifier`, so the card's provenance line is in it.
 `packaging/store-listing.md` records both.
 
+### What the card's three lines looked like on Windows
+
+Run 2026-08-29 against the release build of `d8b61d4`, in the dark theme —
+`AppsUseLightTheme` is 0, the light desktop of the night before having been
+switched back — with the corpus at `996dcca` generated on this machine. **The
+first time any of these had been run on this platform.** macOS did all six on
+2026-08-28 and Linux all five that apply on 2026-08-29.
+
+**Items 1 and 2 are both absences here, and that is what makes them weak.**
+`DESIGN.md` §5 gates the executable line to Unix, so no fixture on this platform
+draws it and the checks have no positive control between them. The provenance
+line is drawn in the same colour by the same code, so a downloaded container
+supplied one:
+
+    payload-setuid-external-attributes        0 exact /   0 near
+    minimal                                   0       /   0
+    payload-no-mode-recorded                  0       /   0
+    payload-name-bidi-override                0       /   0
+    quarterly-report-downloaded  (control)   93       / 440
+
+rgb(255, 143, 0), which is `warn_fg_color` in the dark theme, counted exactly
+and within 12 per channel over the whole captured window — the capture is the
+application's window and nothing else, which is the region mistake Linux made
+and had to correct. Zero against a control of 93 says the line is absent rather
+than the counting broken.
+
+**The first count was taken in the light palette and returned zero for the
+control as well.** rgb(180, 70, 0) is what `warn_colour` gives in light mode and
+this desktop is dark. A measurement that returns the expected answer for the
+wrong reason is the whole argument for having a control at all.
+
+**Item 3 passes on the card and failed two rows under it, which no item asked
+anybody to look at.** The card reads `report\u{202E}fdp.exe` through
+`slpc::display_name`, ending in `.exe`, exactly as macOS and Linux recorded. The
+metadata tree below it read `reportfdp.exe`. `src/tree.rs` rendered a string
+straight into its `TextEdit`, and egui gives U+202E zero advance width — so the
+one field this application will not let anybody edit, `payload.file` being in
+`is_protected`, was showing the spoof SPEC §3's escaping exists to prevent,
+under a card that was not.
+
+`CHANGELOG.md` says *names are shown with the Unicode characters that reorder
+text escaped*. That was true of the card and false of the tree, and
+`RELEASE.md`'s readiness review calls a sentence written before anybody looked
+the class of error this project has caught most often. This is one, caught
+inside the repository rather than in a listing.
+
+**Fixed the same day**, in `displayed`: a protected string is escaped and an
+editable one is not. Escaping a field somebody can type into writes the escape
+back into their document the moment they touch it, which is the reasoning
+`src/main.rs` already records where the Extract-to dialog prefills a filename.
+Two tests, each broken deliberately — with the escape removed the protected test
+fails, with it applied to everything the editable test fails — and then looked
+at again in the window, where the `file` row reads `report\u{202E}fdp.exe` like
+the card above it.
+
+**The card carries no *Opens with* line for this payload**, as on both other
+platforms. Asked directly rather than inferred from the window:
+
+    report.exe: (the platform did not answer)
+    report.pdf: Microsoft Edge
+    notes.txt:  (the platform did not answer)
+
+`.txt` answering nothing is not new and is not a defect here: `src/opens_with.rs`
+already records that this machine's `.txt` `UserChoice` names a packaged
+application that is no longer installed, and that the arm deliberately does not
+fall back to the machine-wide `txtfile` rather than name something the platform
+would not use.
+
+**Item 4 passes, and the mark was read back rather than looked at.**
+`quarterly-report-downloaded.pdf.slpc` went from 1090 bytes to 1095 with its
+title edited, so a rewrite genuinely happened, and `Zone.Identifier` came
+through it: 26 bytes, `[ZoneTransfer]`, `ZoneId=3`. David watched the card's
+provenance line before and after in the same window without reopening.
+
+**Item 5 passes, and it asks a different question here.** There is nothing to
+ask the platform for: `%TEMP%` is inside the profile and inherits its access
+list, so the check is that the payload is not somewhere else. Explorer's
+Properties, Security tab, on the live directory while the window was up.
+
+**Its other half is the privacy entry's own sentence, measured for the first
+time.** `packaging/privacy-entry.html` says the folder is *removed when Slipcase
+exits*, and that a kill leaves it until the operating system clears its
+temporary directory. Both halves were on this machine at once:
+
+    slipcase-gMqeXG   created 2026-08-29 11:54   report.pdf, 47 bytes
+    slipcase-uPzXFR   created 2026-08-28 16:44   report.pdf, 187 bytes
+
+The first belonged to the running window and was gone after it was closed with
+its X. The second is what a kill leaves, from the screenshot sitting the day
+before, a day old and still holding a payload. The sentence is now measured on
+this platform rather than reasoned from `TempDir`. Neither is a probe directory:
+that one is inside the Linux `#[cfg]` arm and never exists here.
+
+### What an unrecognised stream is worth on this platform
+
+`HANDOFF.md` asks whether the origin note macOS added — `slpc` 0.3.10's
+`com.excelano.slipcase.origin` — should be written here too, and named three
+things needing measurement. Two were taken on 2026-08-29 and the third is
+below.
+
+**The shell ignores a stream it does not recognise, which is the answer that was
+wanted.** A `.ps1` carrying only `com.excelano.slipcase.origin` runs under
+`-ExecutionPolicy RemoteSigned`; the same script carrying `ZoneId=3` is refused
+as unsigned. A note gates nothing and cannot be mistaken for a mark, exactly as
+`carries_a_mark` deliberately disregards it on macOS.
+
+**Survival is identical to `Zone.Identifier` everywhere except one path, and
+that path goes the wrong way.**
+
+    Copy-Item, Move-Item, robocopy, xcopy   both survive
+    Compress-Archive then Expand-Archive    both stripped
+    Unblock-File                            zone removed, note survives
+
+**The last row is the finding, and it argues against writing the note here.**
+Unblocking is a person saying they have looked at a file and trust it. On macOS
+`arrived_from_elsewhere` consults the note, so porting that design would leave
+the card saying a container arrived from elsewhere after its owner deliberately
+cleared the mark, with nothing in this application's interface to clear. The
+note would survive the one erasure that is intentional and be stripped by the
+ones that are accidents.
+
+That is not the case macOS was solving. There the platform forced its own mark
+over ours and the note recovered what the sandbox destroyed; nothing here takes
+the information away except a person choosing to remove it.
+
+**Two things are unmeasured and neither changes the recommendation.** Whether a
+packaged install sees such a stream at all is the third question `HANDOFF.md`
+asks, and it belongs to the next sitting that has the MSIX installed. And a
+volume with no alternate streams — a FAT32 or exFAT stick — is where the zone
+stream is lost outright, which is also where a note could not be written; this
+machine has no second volume and no administrator to make one, so that is
+recorded as a gap rather than inferred past. `Unblock-File` is the scriptable
+form of Explorer's Unblock checkbox and was measured; the checkbox itself was
+not, and they are assumed to be one operation.
+
 ### Not yet done by hand
 
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
@@ -1192,6 +1336,15 @@ container carrying a `Zone.Identifier`, so the card's provenance line is in it.
   `DESIGN.md` §8 carries the table. The hand item it pointed at — provenance,
   which had never run on this platform — was walked later the same day and has
   its own section above.
+
+- **Whether a packaged application sees an alternate stream it did not write.**
+  The third of `HANDOFF.md`'s origin-note questions, and the only one this
+  platform cannot answer from outside a package. What it needs that a test
+  cannot give it is an MSIX install: registry virtualisation covers a package's
+  writes and not its reads, measured 2026-08-26, and nobody has asked the same
+  of the file system. The next sitting that rebuilds the package for screenshots
+  has it for free. The other two are measured and are above; the recommendation
+  they point at does not depend on this one.
 
 Nothing else is waiting, including the two items 2026-08-28 added and closed:
 the certification kit, run three times, and the screenshots, which turned out to

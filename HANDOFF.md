@@ -243,6 +243,54 @@ inference this project keeps refusing to make, so the arm is a documented stub
 rather than a guess. If the measurement says a note is useless on Windows, that
 is an answer and the stub stays with the reason recorded beside it.
 
+**Two of the three were measured on 2026-08-29, and they say the note should not
+be written here.** The shell ignores a stream it does not recognise — a script
+carrying only `com.excelano.slipcase.origin` runs under `RemoteSigned` where the
+same script carrying `ZoneId=3` is refused — which is the answer that was wanted
+and matches `carries_a_mark` disregarding the note on macOS. Survival is
+identical to `Zone.Identifier` through `Copy-Item`, `Move-Item`, `robocopy` and
+`xcopy`, and both are stripped by a `Compress-Archive` round trip.
+
+The exception is the finding: **`Unblock-File` removes the zone stream and
+leaves the note.** So a note would survive the one erasure that is deliberate —
+a person saying they have looked at a file and trust it — while being stripped
+by the ones that are accidents. `arrived_from_elsewhere` consults the note on
+macOS, so the card would go on saying a container arrived from elsewhere after
+its owner cleared the mark, with nothing in this application's interface to
+clear. That is not the case macOS was solving: there the platform forced its own
+mark over ours, and here nothing removes the information except a person choosing
+to.
+
+**So the stub stays, with this as the reason.** The third question — whether a
+packaged install sees such a stream at all — is unmeasured and is in
+`CHECKLIST.md` under Windows as the one item still wanting a hand, because it
+needs an MSIX install. It does not change the recommendation; it would only
+change how confidently the stub's comment can be written.
+
+**Everyone: the metadata tree showed a payload name unescaped, under a card that
+escaped it. Settled.** Found on Windows on 2026-08-29 while running the card's
+item 3, and it is here rather than in the Windows section because the code is
+`src/tree.rs` and all three platforms had it.
+
+`slpc::display_name` escapes the characters SPEC §3 requires be escaped wherever
+a name is shown, and `src/main.rs` puts the card's payload name through it. The
+tree rendered every string straight into a `TextEdit`, so `payload.file` —
+disabled by `is_protected`, a display rather than a field — read `reportfdp.exe`
+for a payload called `report<U+202E>fdp.exe`. egui gives the override zero
+advance width, so the tree was drawing the spoof the escaping exists to prevent,
+in the one field this application will not let anybody change.
+
+**Item 3 asks about the card, so macOS and Linux ticked it correctly and neither
+was pointed two rows down.** That is the argument for running a hand item on
+every arm even where the code is shared: the value is in what the item does not
+say, and the third pair of eyes is where that shows up.
+
+Fixed the same day in `displayed` — a protected string is escaped, an editable
+one is not, because escaping a field somebody can type into writes the escape
+back into their document the moment it is touched. `DESIGN.md` §4 is amended,
+`CHECKLIST.md` holds the run, and both tests were broken deliberately to check
+they bite.
+
 **Everyone: a conformant container can name its payload something that is not
 a file, and extraction hung on it. Settled.** Found on Windows on 2026-08-26, the first
 time the conformance corpus had been run on that platform, and it is here
