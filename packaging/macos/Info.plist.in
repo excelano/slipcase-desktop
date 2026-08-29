@@ -76,6 +76,26 @@
 	<true/>
 
 	<!--
+	  Answers the export compliance question in the bundle rather than in a
+	  web form, so it is asked once here instead of on every upload.
+
+	  Without it App Store Connect marks each build "Missing Compliance" and
+	  holds it out of TestFlight until somebody clicks through a dialog —
+	  a manual step on every patch, which is exactly what RELEASE.md exists
+	  to keep out of the every-time path. Build 165 was uploaded before this
+	  landed and had to be answered by hand; nothing after it does.
+
+	  `false` is the honest answer and not a convenience. This application
+	  implements no cryptography of its own, and `slpc` refuses a payload
+	  encrypted by a method it lacks rather than decrypting one — SPEC 2.5,
+	  and the corpus case `accept/encrypted-payload` is the card saying so.
+	  The exemption for HTTPS does not even arise: nothing here makes a
+	  network call.
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!--
 	  The role is Editor rather than Viewer. DESIGN.md 5 writes edited
 	  metadata back into the container through `Destination`, so this
 	  application does modify the documents it opens, and Viewer would be a
