@@ -598,7 +598,10 @@ written around it is the expensive order. The first is now answered; the second
 is not.
 
 - ~~**Can a launched application read the payload at all, under the sandbox?**~~
-  **Answered 2026-08-28: yes, and Open works on the Store build.** Preview came
+  **Answered 2026-08-28: yes, under the sandbox.** ~~and Open works on the Store
+  build~~ — **struck 2026-08-29**: the bundle was development-signed, and a
+  Store build will not launch on a developer's own machine at all. See *What a
+  Store-signed build did when it was launched* in `CHECKLIST.md`. Preview came
   forward showing the PDF, the card's *Opens with* line read Preview, the
   payload landed at 0700 inside this application's container and byte for byte,
   and nothing outside it was written. `CHECKLIST.md`'s *What the sandboxed

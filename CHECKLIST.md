@@ -2156,8 +2156,19 @@ That was the question worth being afraid of. It was raised because
 `tests/handover.rs` proves the Linux case by reading the payload back from a
 separate process running as the same user, and under the sandbox the handler is
 a different application with a container of its own — so the Linux proof did not
-transfer and nothing on that platform could take the measurement. **Open works
-on the Store build.** No `DESIGN.md` §5 decision is owed.
+transfer and nothing on that platform could take the measurement. ~~**Open works
+on the Store build.**~~ No `DESIGN.md` §5 decision is owed.
+
+**Corrected 2026-08-29: that last sentence was a promotion and not a
+measurement.** What ran was the bundle named four paragraphs above — signed with
+an *Apple Development* certificate — and a Store build is a different artefact
+signed with a different certificate. The measurement is sound and the conclusion
+about the sandbox holds; the sentence claimed a stronger thing than the run
+supported, in the one place a later reader would take it for the run itself.
+`RELEASE.md` had inherited the same sentence three lines from a paragraph
+correctly saying every sandbox measurement to date was development-signed, and
+the two contradicted each other. **A Store build could not have been launched
+here at all**, which the section below measures.
 
 Four things measured around it, while the process was still alive, because the
 handover directory goes when it does:
@@ -2561,6 +2572,67 @@ tell. Screen Recording was granted to the terminal on 2026-08-28 and captures no
 show windows, the Dock, and dialogs. That is what made the icon measurable from a
 session rather than only describable by a person.
 
+### What a Store-signed build did when it was launched
+
+**It was killed by the kernel, and that is the correct answer rather than a
+defect.** Run 2026-08-29 against `dist/Slipcase.pkg` built by
+`build-app.sh --store` from `b75673b` — universal, sandboxed, signed with Apple
+Distribution, wrapped by `productbuild` and signed with the installer
+certificate. The bundle inside it was launched to check it before carrying it to
+a rented Apple silicon machine. It did not start:
+
+    Exception Type:      EXC_CRASH (SIGKILL (Code Signature Invalid))
+    Termination Reason:  CODESIGNING 1 Taskgated Invalid Signature
+
+The reason is in the system log rather than the crash report, and it is exact:
+
+    taskgated-helper  Disallowing com.excelano.slipcase-desktop because
+                      no eligible provisioning profiles found
+    amfid             not valid: Code=-413 "No matching profile found"
+    kernel  (AppleMobileFileIntegrity) Code has restricted entitlements, but
+            the validation of its code signature failed.
+
+`com.apple.application-identifier` is a **restricted** entitlement: AMFI will
+not honour it without a provisioning profile that covers the machine. A Mac App
+Store profile covers none — ours carries no `ProvisionedDevices` key at all,
+which was checked by decoding it rather than assumed — because a Store build is
+authorised by having arrived from the Store. It is the same rule as iOS, where
+an App Store build will not run on a device either, and the log says so in as
+many words: *Only Development Provisioning Profiles can be installed in System
+Settings. Production Provisioning Profiles are imported within Xcode.*
+
+**Nothing is wrong with the package.** Everything checkable about it is right,
+and was checked before the launch rather than after the failure explained
+itself: `x86_64 arm64` slices, `app-sandbox` and
+`9K6W5PMFYP.com.excelano.slipcase-desktop` read back out of the signature,
+`keychain-access-groups` absent as intended, the chain reaching the Apple Root
+CA, and `0.1.1 (160)` declared. `packaging/macos/check-install.sh` asks all of
+that in one command and was written here for it.
+
+**Two things follow, and the second one costs.**
+
+`spctl -a -vvv` rejects both the app and the package, naming our own
+certificates as the origin. That is expected for this channel and must not be
+written down as a finding: `spctl` assesses the Developer ID and notarization
+policy, which a Store build is not distributed under. The script above says so
+rather than counting it.
+
+And the item this file has been carrying as *a distribution-signed bundle
+carrying a provisioning profile* — the one `RELEASE.md` calls the run most
+likely to find something — **cannot be run by hand at all.** Not on this
+machine, not on a rented one, not on any machine a developer can reach with a
+copy of the package. The only two contexts that authorise it are the Mac App
+Store and TestFlight, and TestFlight is the reachable one: an upload gives the
+build a receipt and a matching profile. `SUBMITTING.local.md` had already named
+TestFlight as the *cheapest* route to an Apple silicon machine. It is not
+cheapest, it is the only one, and that sentence should be read as a requirement.
+
+**What this cost was one launch and an hour that had not been spent yet.** The
+plan for the rented machine had been to carry the signed package over and
+install it, which would have failed there, on the clock, with the machine
+already paid for. It is written down here because the next person to build a
+Store package will want to launch it for exactly the same reason.
+
 ### Not yet done by hand
 
 - **A high-density display, half done.** The `@2x` entries have now been
@@ -2583,9 +2655,19 @@ session rather than only describable by a person.
   interface at 2x. Nothing has ever drawn a frame of it at that scale, and
   `DESIGN.md` §6's layout numbers were all measured at 1x, including the tree
   row that came to 916 pixels in a 900-pixel window and pushed a button off the
-  edge. This machine's panel is 2560x1440 at 1x; whether macOS offers it a HiDPI
-  scaled mode has not been checked, and failing that it waits for the Apple
-  silicon machine the arm64 walkthrough needs anyway.
+  edge. ~~This machine's panel is 2560x1440 at 1x; whether macOS offers it a
+  HiDPI scaled mode has not been checked~~ — **struck 2026-08-29, because a
+  display is not a property of a machine.** Monitors here get swapped, so a
+  resolution written into this file is a fact with a shelf life and the next
+  reader has no way to tell it has expired. Ask instead, at the moment it
+  matters:
+
+      system_profiler SPDisplaysDataType | grep 'UI Looks like'
+
+  What the item needs is a backing scale of 2, and no display attached to date
+  has offered one — the reading the day this was struck was *UI Looks like 1920
+  x 1080*, at 1x. So it waits for a Retina display, which is the Apple silicon
+  machine the arm64 walkthrough needs anyway.
 - **A signed bundle**, partly done. Signing with an Apple Development
   certificate answered the `mdls` question: the type is flagged `trusted`
   rather than `untrusted`, Spotlight reports `com.excelano.slipcase`, and the
