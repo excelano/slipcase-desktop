@@ -1062,10 +1062,15 @@ commits, and it shipped in 0.1.0 and went live on the site. That is the same
 shape as the `SECURITY.md` entry struck above and as the tree escaping that
 Windows found, arriving a third time.
 
-**One consequence is not ours to close.** `excelano.com/legal/#slipcase` is
-serving the old text, so `packaging/privacy-entry.html` has to be pasted in
-again before either submission. The page is a submission blocker under *Once*
-above, and it is one again.
+**One consequence reached the website, and it is closed.**
+`excelano.com/legal/#slipcase` was serving the old text, so it was corrected in
+`~/excelano.com/legal/index.html` and deployed the same day. Only the two
+sentences moved: the rest of the section was diffed against
+`packaging/privacy-entry.html` first, which turned up nothing but two curly
+quotes the page spells as entities. Checked against what is served rather than
+against what was pushed — the section fetched back over HTTPS is line for line
+the repository's file, `id="slipcase"` still resolves, and neither old sentence
+survives anywhere on the page.
 
 Then, and only then, both submissions go in.
 
