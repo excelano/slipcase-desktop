@@ -114,6 +114,15 @@ So the bump is not bookkeeping: **what apt is serving is now the older, defectiv
 build, and re-shipping it is Linux's work before step 4.** The store packages are
 `0.1.1` and the tag for it belongs on the commit they were built from.
 
+**Done 2026-08-29.** `v0.1.1` is tagged at `1370326` and the release carries
+`slipcase-desktop_0.1.1_amd64.deb`; `apt-ship` published it and apt now serves
+0.1.1. Verified from the client side rather than from the script's own report:
+the bytes served hash to the bytes built, the `binary-amd64` index advertises
+0.1.1 beside the 0.1.0 the retention policy keeps, and `InRelease` carries a
+good signature from the repository key. The tag sits three commits after
+`7d38b4f`, and all three are tests, packaging and prose, so it marks the same
+shipped source the store packages were built from.
+
 This is also the first exercise of the every-time path this file exists to keep
 cheap, and it cost what it claims: a version bump, two changelog entries, a
 rebuild, a reinstall, and the screenshots retaken. Nothing once-only was touched.
