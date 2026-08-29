@@ -412,14 +412,44 @@ and `LSApplicationCategoryType` is declared.
 
 ### Once
 
-- **Reserve the name in App Store Connect**, which is `Slipcase`, and create the
-  app record and the App ID for `com.excelano.slipcase-desktop`. Those are two
-  different reservations in two different namespaces and the section on the name
-  below says why the distinction matters.
-- **Certificates and profile**: an Apple Distribution certificate, a Mac
-  Installer Distribution certificate, and a Mac App Store provisioning profile,
-  which a Store bundle carries as `embedded.provisionprofile` and which must
-  declare the same entitlements the signature does.
+- ~~**Reserve the name in App Store Connect**~~ — done 2026-08-28, and the name
+  is **`Slipcase Desktop`** rather than `Slipcase`, which was already taken. The
+  section on the name below says by whom and why no claim was available. The App
+  ID `com.excelano.slipcase-desktop` and the three certificates and the Mac App
+  Store profile are all done and verified; those are reservations in a different
+  namespace from the storefront name and the distinction is why only one of them
+  had to move.
+- ~~**Certificates and profile**~~ — done 2026-08-28 and verified from this
+  machine rather than taken on trust. Three identities are installed with their
+  private keys, and the distribution one was used to sign a real bundle: full
+  chain to the Apple Root CA, `TeamIdentifier=9K6W5PMFYP`, entitlements intact
+  through the signature. The certificate names differ from the portal's labels
+  and a script has to use the real ones:
+
+      Apple Distribution: Excelano LLC (9K6W5PMFYP)
+      3rd Party Mac Developer Installer: Excelano LLC (9K6W5PMFYP)
+      Developer ID Application: Excelano LLC (9K6W5PMFYP)
+
+  The middle one is what Apple's portal calls *Mac Installer Distribution*, and
+  it does not appear under `security find-identity -p codesigning` because it
+  signs packages rather than code — its absence there is correct and has caught
+  people out. The third is not needed for the Store and was taken as the hedge
+  if review goes badly.
+
+  The profile is `Slipcase Mac App Store`, platform OSX, bound to exactly one
+  certificate — the Apple Distribution one actually installed here — naming
+  `9K6W5PMFYP.com.excelano.slipcase-desktop` with no wildcard, expiring
+  2027-08-28.
+
+  **It also settled what a Store build must be signed with, which is not what
+  the local builds carry.** The profile grants
+  `com.apple.application-identifier` and `com.apple.developer.team-identifier`,
+  and `packaging/macos/Slipcase.entitlements` has neither — it holds the sandbox
+  and user-selected files, which is right for a development build and is not
+  enough for an upload. The Store mode needs its own entitlements. It should
+  **not** take the third thing the profile offers: `keychain-access-groups` is
+  granted and this application touches no keychain, and a capability asked for
+  and unused is a question at review with no good answer.
 
 ### Every time
 
@@ -561,6 +591,20 @@ Asked on 2026-08-28, whether two names should be reserved — `slipcase` for the
 command-line tool and `slipcase-desktop` for this application. Decided that one
 name is reserved in each store and that it is **Slipcase**, and the reasoning is
 here because both halves of the question will come back.
+
+**Amended the same day: the two stores hold different names, because one of them
+was taken.** Partner Center accepted `Slipcase`. App Store Connect refused it —
+it belongs to an insurance and reinsurance news application by Everlution, on the
+store since 2016, and *slipcase* is a term of art in that industry. There is no
+trademark route and they have the better claim. **`Slipcase Desktop` is reserved
+on the Mac App Store**, and `packaging/store-listing.md` carries both names with
+the alternatives that were rejected.
+
+What did **not** change is everything below: the application still calls itself
+`Slipcase` in `CFBundleDisplayName` and `Package/Properties/DisplayName`, the
+format is still `slipcase` and is not this repository's to rename, and
+`slipcase-desktop` is still an identifier rather than a name. A storefront name
+was the only thing that moved.
 
 **`slipcase-desktop` is not a name.** `CLAUDE.md` has said so from the start:
 the application is presented to a person as Slipcase, and `slipcase-desktop` is

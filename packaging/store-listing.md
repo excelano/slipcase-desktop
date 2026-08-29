@@ -33,23 +33,44 @@ above anything here and is left unmeasured rather than written down wrong.
 
 ---
 
-## App name (both)
+## App name — and it differs per store
 
-    Slipcase
+    Microsoft Store   Slipcase
+    Mac App Store     Slipcase Desktop
 
-**This is the string that gets reserved, and it is the only name a shopper ever
-sees.** `CLAUDE.md` settles it: the application is presented to a person as
-Slipcase, while `slipcase-desktop` is the crate, the binary, and the reverse-DNS
-stem of the bundle identifier. Those are identifiers rather than names, and no
-store displays them — `com.excelano.slipcase-desktop` is claimed in App Store
-Connect's identifier namespace, which is a different reservation from this one.
+**The application is called Slipcase and goes on calling itself Slipcase.** This
+is the storefront name only. `Package/Properties/DisplayName` in
+`AppxManifest.xml` and `CFBundleDisplayName` in `Info.plist` both say `Slipcase`
+and neither changes: what a person sees in their Dock, their task bar and the
+window is unaffected.
 
-It is written here because it has to be typed identically into four places that
-cannot see each other: the App Store Connect reservation, the Partner Center
-reservation, `Package/Properties/DisplayName` in `AppxManifest.xml`, and
-`CFBundleDisplayName` in `Info.plist`. Until this section existed the name
-appeared in this file only inside the prose below, which is not somewhere a
-person copies a value from.
+**Why the Mac App Store name is different, so nobody rediscovers it.** `Slipcase`
+was refused by App Store Connect on 2026-08-28 — *the app name you entered is
+already being used*. It belongs to an insurance and reinsurance news application
+by Everlution, on the store since 2016, and *slipcase* is a term of art in that
+industry from the *slip* that carries a risk to market. They have the better
+claim and there is no trademark route here. Partner Center accepted `Slipcase`
+the same day, that namespace being Microsoft's, so the reservation there stands.
+
+**`Slipcase Desktop` rather than the alternatives**, and one was rejected for a
+reason worth keeping. *Slipcase Viewer* would have read well and would have been
+a lie: `CFBundleTypeRole` is `Editor` precisely because this application writes
+edited metadata back, and `packaging/macos/README.md` records that `Viewer`
+"would be a claim to the platform that is not true". Making the same claim to a
+shopper is worse than making it to Launch Services. Renaming the product
+everywhere was the other option and costs more than it buys: the Partner Center
+reservation would be surrendered, and the *format* would still be called
+slipcase, since that is `excelano/slipcase`'s name and not this application's to
+change.
+
+It is written here because it has to be typed correctly into four places that
+cannot see each other, and two of them now differ: the App Store Connect
+reservation (`Slipcase Desktop`), the Partner Center reservation (`Slipcase`),
+`Package/Properties/DisplayName` (`Slipcase`), and `CFBundleDisplayName`
+(`Slipcase`). Until this section existed the name appeared in this file only
+inside the prose below, which is not somewhere a person copies a value from.
+
+`Slipcase Desktop` is 16 characters, inside the Mac App Store's 30.
 
 ## Subtitle (Mac App Store, 30)
 
