@@ -962,7 +962,10 @@ the commit messages: `src/tree.rs` is the only source change in the twenty
 commits, both of its fixes were verified by breaking them and watching the two
 new tests fail, clippy is silent, 87 tests pass, and the corpus agrees on all 88
 cases. The version is `0.1.1` in all three spellings, both changelogs name it,
-and CI is green on `HEAD`.
+and CI is green on `HEAD`. The escaped payload name was also looked at here
+rather than taken from the tests, Windows having been the only platform to see
+the repaired tree: `CHECKLIST.md`'s Linux card section holds what the window
+showed.
 
 **Two claims were false, both of them the class this review exists to catch, and
 both on the page the stores link to rather than in the listing that had already

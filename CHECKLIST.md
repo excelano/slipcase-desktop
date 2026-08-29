@@ -1779,6 +1779,22 @@ ordinarily receive and forbids applying the archive's bits, so the mode is the
 umask's and the privacy comes from the directory. It is also not executable,
 which is the promise item 1's line makes.
 
+**Added 2026-08-29 after the fix Windows found: the tree was looked at here
+too.** Item 3 asks about the card, and this platform ticked it while the
+metadata tree two rows below was rendering the same payload name unescaped —
+which is what Windows caught and `src/tree.rs` fixed in shared code. The repair
+carries two tests and both were broken deliberately here to watch them fail, but
+the light-card entry above is this file's own argument for why a test is not the
+same as a look: what a test proves is that `displayed` returns the escaped
+string, and what nobody had checked on this platform is that egui then draws it.
+
+`accept/payload-name-bidi-override` opened in the release build, captured
+through the desktop portal. The card reads `report\u{202E}fdp.exe` and the
+`file` row under `payload` reads `report\u{202E}fdp.exe`, the same twenty-one
+characters ending in `.exe` in both places, over a `conformant` verdict. Before
+the fix that row read `reportfdp.exe`. The window was drawing dark against a
+dark desktop, which is the theme this ran in and not a second finding.
+
 **Item 6 is macOS only, so the Linux side of this section is complete.**
 
 ### Not yet done by hand
