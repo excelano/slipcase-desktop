@@ -19,8 +19,11 @@
 #   & "$env:ProgramFiles\Git\bin\bash.exe" packaging/demo-container.sh
 #
 # It needs `zip`, which is on macOS and every Linux desktop and comes with Git
-# for Windows. Nothing here is generated randomly, so two platforms building it
-# get the same bytes apart from the archive's timestamps.
+# for Windows. Nothing here is generated randomly and the archive's timestamps
+# are pinned, so two platforms building it get the same bytes — checked by
+# building under two timezones and comparing, not asserted. That matters now
+# that the file is downloadable from excelano.com and a store submission tells a
+# certification reviewer it is the container the screenshots show.
 #
 # **The subject is invented.** No real person, organisation, matter or date
 # appears in it, because it goes in two store listings and on a website.
@@ -146,10 +149,30 @@ TOML
 
 out="${outdir}/quarterly-report.pdf.slpc"
 rm -f "$out"
+
+# **The archive's two timestamps are pinned, so this is the same file
+# everywhere.** Without this the container records the moment it was built, and
+# the Windows screenshots, the macOS screenshots, the website download and a
+# certification tester's copy would be four files with four hashes — which the
+# header above claimed was fine and it is not, now that the store submission
+# points a reviewer at a URL and says it is what the pictures show.
+#
+# Measured rather than assumed, because the first check said reproducible and
+# was wrong: two builds a few seconds apart matched, DOS timestamps having
+# two-second granularity, and the same test with a minute between them did not.
+#
+# Both halves are needed. `touch` fixes the instant, and `TZ=UTC` fixes what
+# ZIP writes for it: the DOS timestamp field is local time with no zone, so the
+# same instant in Houston and in Tokyo is two different fields. The date is the
+# one the metadata already gives as `dates.issued`, so the archive agrees with
+# the document it carries rather than naming some arbitrary epoch.
+touch -d '2026-04-30T09:15:00Z' \
+    "${stage}/slipcase.metadata.toml" "${stage}/quarterly-report.pdf"
+
 # The metadata first, which is the order every other container this project
 # builds uses, and `zip -X` so no extra fields carry this machine's identity
 # into a file that goes in two store listings.
-( cd "$stage" && zip -q -X "$out" slipcase.metadata.toml quarterly-report.pdf )
+( cd "$stage" && TZ=UTC zip -q -X "$out" slipcase.metadata.toml quarterly-report.pdf )
 
 echo "built $out"
 echo "  payload   quarterly-report.pdf ($(wc -c < "${stage}/quarterly-report.pdf") bytes)"
