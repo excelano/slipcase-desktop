@@ -110,15 +110,21 @@ anyway, which is item 6.
 
 ### Not yet done by hand
 
-- **Items 1 to 4, on all three platforms.** Written the day the lines landed
-  and run on none of them. The Linux build launches against both fixtures
+- **Items 1 to 4 still want Linux and Windows.** Written the day the lines
+  landed and run on neither. The Linux build launches against both fixtures
   without panicking and draws a window, which is what could be checked from a
   session with no way to take a screenshot — GNOME refused the capture — and it
   is not the check.
-- **Items 5 and 6 are done on macOS**, 2026-08-28, and the run is under *What
-  the sandboxed handover found* below. Item 6 exists only on this platform. Item
-  5 still wants Linux and Windows, which ask different questions of a different
-  directory.
+- **All six are now done on macOS.** Items 5 and 6 on 2026-08-28 under *What the
+  sandboxed handover found*, item 4 under *What saving a downloaded container
+  under the sandbox found*, and items 1 to 3 under *What the card's three lines
+  looked like on macOS*. Item 6 exists only on this platform. Item 5 still wants
+  Linux and Windows, which ask different questions of a different directory.
+- **Item 2 cannot be run as written on any platform**, and whoever picks it up on
+  Linux or Windows should read the macOS run first: the fixture it names records
+  a mode like `minimal.slpc` does, so following the item literally tests the same
+  thing twice. A container recording no mode has to be made, and the macOS
+  section says how.
 
 ---
 
@@ -1982,6 +1988,60 @@ save behaves differently now that the container's mark is already this
 application's, and what a person sees if they close and reopen the container
 afterwards — the line will stay gone, because the file genuinely no longer
 records Safari.
+
+### What the card's three lines looked like on macOS
+
+Items 1, 2 and 3, run 2026-08-28 against the signed universal bundle. They had
+been written, unit-tested, and rendered in front of nobody on any platform.
+
+**Item 1 passes, exactly as specified.** `payload-setuid-external-attributes.slpc`
+records 04755 and the card carries *The payload is an executable file; the
+extracted copy will not be executable.* in the warning colour, below the size and
+the *Opens with* line and above the buttons — which is where the item says it
+should be, and placement was worth checking rather than presence alone.
+
+**Item 2's first half passes.** `minimal.slpc` records 0644 and there is no line.
+
+**Item 2's second half could not be run as written, and that is the finding.**
+The item asks for the silence on a container that records *no* mode, because
+that silence is the whole reason `payload_mode` reads the external attributes
+rather than asking the ZIP crate, which would invent `0o664` and answer
+confidently. It names `name-cp437-bit11-clear.slpc` — and `unzip -Z` says that
+fixture is `-rw-r--r-- 3.0 unx`, a Unix mode of 0644. **It tests the same thing
+`minimal.slpc` tests.** Checked across the whole corpus: every `accept` fixture
+is written by a Unix tool and records a mode, so no fixture there exercises this
+at all, and the item would have been ticked twice over for the case it was
+written for.
+
+The item's other option — *any container a Windows tool wrote* — is the real
+one, so one was made: both members written with creator system MS-DOS and the
+DOS archive bit for external attributes, which `unzip -Z` reports as
+`-rw-a-- 2.0 fat`. Under MS-DOS the high sixteen bits are not a Unix mode and
+there is nothing to read. The card shows `notes.txt`, 48 bytes, *Opens with
+TextEdit*, `conformant`, and **no executable line**. That is the case the item
+exists for and it passes; it is kept at
+`~/Documents/slipcase-walkthrough/card-items/no-mode-recorded.slpc` and is four
+lines of `zipfile` to rebuild.
+
+Worth raising with `excelano/slipcase` rather than fixed here: the corpus has no
+container that records no mode, and this application is not the only reader that
+would want one.
+
+**Item 3 passes.** `payload-name-bidi-override.slpc` carries U+202E in its
+payload name — `report\256\200\256fdp.exe` in the raw bytes — and the card reads
+`report\u{202E}fdp.exe`, ending in `.exe`. The escape shows the character that
+was always there.
+
+Two things about that card beyond the item. There is **no *Opens with* line**,
+which is correct: macOS has nothing registered for `.exe`, and `DESIGN.md` §3
+says nothing rather than guessing. And Open is enabled and holds the focus ring,
+which is the item's *the Open button beside it should still work*. Pressing it
+was not done here — there is no handler for `.exe` on this machine, so what it
+would produce is a refusal from the platform rather than anything about this
+application. What the button would do with that name **is** covered: the
+conformance runner extracts every payload including this one, and all 87 cases
+agree, so the escaping is a display transformation and does not reach the file
+that gets written.
 
 ### What Apple silicon answered, and what it still cannot
 

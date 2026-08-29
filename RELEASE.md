@@ -714,12 +714,20 @@ platforms together, which no platform session can do. What it covers:
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with
   what it found rather than that it passed.
-- **The executable-payload line has been seen by somebody.** It is written and
-  unit-tested as of 2026-08-27 and has been rendered in front of nobody.
-  `CHECKLIST.md`'s *the card's new lines, what a save keeps, and where a
-  payload waits* is the run, six items, and it wants doing on each platform. The fourth is the one to run
-  first on macOS: it is the only place the provenance fix of 0.3.7 is untested. The same applies to the escaped payload name
-  beside it.
+- **The executable-payload line has been seen by somebody** — on macOS, as of
+  2026-08-28, along with the escaped payload name and the silence for an ordinary
+  container. All six items are done on that platform and none on the other two.
+  `CHECKLIST.md`'s *What the card's three lines looked like on macOS* holds the
+  run.
+
+  **One of the six cannot be run as written and this review should not accept a
+  tick for it.** Item 2 asks for the silence on a container recording *no* mode,
+  which is the reason `payload_mode` reads external attributes rather than
+  asking the ZIP crate — and the fixture it names records 0644, as does every
+  other `accept` case in the corpus. Followed literally the item tests
+  `minimal.slpc` twice. A container written by an MS-DOS tool has to be made;
+  macOS made one and the section says how. Linux and Windows will hit the same
+  wall.
 - **The three CI workflows are green**, the corpus agrees on every case on every platform
   that has run it, and `preflight.sh` passes.
 
