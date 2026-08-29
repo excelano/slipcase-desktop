@@ -1983,6 +1983,57 @@ application's, and what a person sees if they close and reopen the container
 afterwards — the line will stay gone, because the file genuinely no longer
 records Safari.
 
+### What Apple silicon answered, and what it still cannot
+
+**A machine opens a container on arm64 now, on every push.** Added 2026-08-28
+to `.github/workflows/apple-silicon.yml`, which had been building and testing
+that code natively all along without ever starting it. `open` reaches Launch
+Services and delivers the same Apple Event Finder does, so this is
+`src/opened_document.rs` — the only `unsafe` in this crate — running on the
+architecture nobody had run it on.
+
+First green run reported:
+
+    on-screen windows: 9, from 6 applications
+    owners: Control Center, Dock, Finder, Slipcase, Spotlight, Window Server
+      Slipcase window: 900 x 668 at layer 0
+    the container's folder was remembered: …/conformance/cases/accept
+
+900 by 668 is `DESIGN.md` §6's declared width, so the number is independently
+right rather than merely non-zero. The photograph the job uploads shows
+`minimal.slpc` loaded and named, the verdict `conformant`, the card reading
+*Opens with Preview* — which is `opens_with`'s `objc2` path answering on arm64 —
+the tree drawn, Open carrying the focus ring, and **no dialog**.
+
+**Two assertions, and the second exists because the first is not enough.** The
+window check asks the window server rather than looking at a screenshot, for the
+reason *What the first run found* records: `screencapture` here returned the
+desktop with every window omitted and reported no error, so a pixel assertion
+would go green against a build that drew nothing. But the refusal this whole
+item guards against — *Slipcase cannot open files in the "Slipcase container"
+format* — was written up as opening an **empty window** before anybody read the
+dialog. So the job also checks that the container's folder was remembered, which
+happens only when a document was actually opened.
+
+Both were broken deliberately. Removing the folder check leaves a launch with no
+container passing; that was run, and the window check does pass on it while the
+document check fails, which is the whole argument for having both.
+
+**A measurement that cost some confusion.** The folder is written to
+`$HOME/.local/state/slipcase-desktop/last-folder`, and under the App Sandbox it
+is not: the sandbox redirects `HOME` into the container, so a signed build
+writes it to
+`~/Library/Containers/com.excelano.slipcase-desktop/Data/.local/state/…`
+instead. The signed bundle here appeared to record nothing at all until that was
+found. `packaging/privacy-entry.html` is unaffected and was checked rather than
+assumed — it says *inside the per-application state directory your operating
+system provides*, which is true of both.
+
+**What a runner cannot be**, and what still wants a real Apple silicon machine:
+the App Sandbox, which is inert without a signing identity no runner has; a
+high-density display; and Finder itself — the document icon, Get Info's Kind,
+and a warm double-click into a running window. Those stay below.
+
 ### What the light card looked like here
 
 `HANDOFF.md` left this for the two platforms that had never seen it: the contrast

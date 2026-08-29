@@ -479,6 +479,22 @@ is not.
 - **`@2x` on a real high-density display**, which is half done.
 - **Screenshots**, at the sizes App Store Connect asks for.
 
+**The Apple silicon question is mostly answered, and by a machine.**
+`packaging/macos/README.md` said somebody had to open a container on an Apple
+silicon Mac before submission. Since 2026-08-28 the arm64 runner does it on every
+push: it opens one through Launch Services, asserts that a window appeared by
+asking the window server rather than by looking at a screenshot, and asserts that
+the container's folder was remembered — which is what distinguishes a delivered
+document from a bare launch, the refusal it guards against having been an empty
+window. `CHECKLIST.md`'s *What Apple silicon answered, and what it still cannot*
+holds the run and the photograph.
+
+What is left for a real arm64 machine is what a runner cannot be: **the sandbox**,
+inert without a signing identity, **a high-density display**, and **Finder** — the
+document icon, Get Info's Kind, and a warm double-click into a running window.
+That is a shorter errand than it was, and it no longer sits on the critical path
+to a submission.
+
 ### Do not
 
 Submit. Reserve the name, build and sign the package, validate it through

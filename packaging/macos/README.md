@@ -276,6 +276,34 @@ the one platform-specific module in the crate is the Objective-C one — exactly
 the code least safe to ship untested. Someone has to open a container on an
 Apple silicon Mac before this is submitted.
 
+**Amended 2026-08-28: a machine does it now, on every push.** The last sentence
+above was written when nothing could open a container on Apple silicon, and
+`.github/workflows/apple-silicon.yml` does. `open` on a container reaches Launch
+Services and delivers the same Apple Event Finder delivers, so the runner
+exercises `src/opened_document.rs` — the module documented as impossible before
+it was written — and the job asserts two things about the result. That a window
+exists, asked of the window server rather than of a screenshot, because
+`CHECKLIST.md` records `screencapture` returning the desktop with every window
+omitted and reporting no error while doing it. And that the container's folder
+was remembered, which is what proves the event delivered a *document* rather
+than merely launching the application: the refusal this guards against was
+written up as opening an **empty window**, so the window check alone would call
+it a pass. Both were broken deliberately and watched to fail; the second was
+broken by launching with no container at all, where the window check passes and
+the document check does not.
+
+The photograph the job uploads shows what a person would have gone to see:
+`minimal.slpc` loaded and named, the verdict `conformant`, the card reading
+*Opens with Preview*, the tree drawn, Open carrying the focus ring `DESIGN.md`
+§3's amendment gives it, and no dialog.
+
+**What still wants a real Apple silicon machine** is what a runner cannot be:
+the App Sandbox, which needs a signing identity no runner has; a high-density
+display; and Finder itself — the icon, Get Info's Kind, and a warm double-click
+into a running window. Those stay in `CHECKLIST.md`, and the sentence above is
+kept rather than deleted because it was true when written and the amendment is
+worth more than a tidy paragraph.
+
 **Two things already argue well at review.** `DESIGN.md` §3 refuses to open a
 payload automatically on a double-click, which is the behaviour an autorun
 archive would have and the behaviour review exists to catch, and `§5` carries
