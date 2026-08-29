@@ -345,8 +345,10 @@ package, and its final paragraphs say which of it a CI step could take over.
   `build-msix.ps1 -SelfSign` prints the two commands and does not attempt them.
 - ~~**The Windows App Certification Kit**~~ — run 2026-08-28, three times, the
   middle one void. Twenty-four tests, twenty-two passing.
-  `CHECKLIST.md` holds all of it. What is left of it is two findings, and both
-  are decisions rather than repairs; they are below.
+  `CHECKLIST.md` holds all of it. What it left was two findings, both decisions
+  rather than repairs, and **both have since been taken** — one by a repair that
+  the kit then stopped reporting, one by a decision to submit with it failing.
+  They are below with the reasoning for each.
 - ~~**The tiles, looked at**~~ — done 2026-08-28. The tile and the application
   list entry were right, which settles the two-thirds split that was a reading
   of Microsoft's guidance. **The taskbar was not**, and nobody had thought to
@@ -383,6 +385,10 @@ package, and its final paragraphs say which of it a CI step could take over.
 Both are about the executable rather than the package, both survived three runs
 unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
 
+**Both have now been taken, and neither is waiting on anybody**: the DPI one by
+a repair, and this one by a decision to submit with it failing. The heading says
+*decisions* because that is what the kit left, not because two are open.
+
 - **`Blocked executables`, FAIL.** The kit objects to `cmd.exe` and `\cmd.exe`
   in the binary, and to `CreateProcessW` and `ShellExecuteW`. The two `cmd.exe`
   strings are the Rust standard library's batch-file spawn — they sit beside a
@@ -416,6 +422,25 @@ unchanged, and both are **David's**. `CHECKLIST.md` has what each was traced to.
   application and passes the package in spite of, and that the application
   cannot do its job without the API it names. **That is about as settled as it
   gets short of submitting.**
+
+  **Decided 2026-08-28: submit with it failing.** David's, on the reasoning
+  above, and written here because two other places defer to this file for it —
+  `CHECKLIST.md`'s certification section and `KNOWN_FINDINGS` in
+  `build-msix.ps1` each say the decision is his and that `RELEASE.md` carries
+  it. It carried the argument and not the answer until 2026-08-29, so a reader
+  arriving at either of those pointers found an open question that had been
+  taken. That is the drift the struck `SECURITY.md` entry above is kept as a
+  lesson about, and this is the second instance in the same file.
+
+  **What it commits to is a submission and not a change.** Nothing in the binary
+  moves, `-Certify` goes on passing the package with the finding recorded, and
+  if review objects the position is the one stated above rather than removing
+  the API: `ShellExecuteW` is how the Open button hands a payload to the system,
+  and an application that cannot do that is not this application.
+
+  **It does not move the *Do not* below.** What was decided is that this finding
+  is not a reason to hold the submission back, not that the submission happens
+  now. Step 4 is still the gate, and this is one of the things it will look at.
 
 - **`DPIAwarenessValidation`, WARNING.** The kit says the application is not DPI
   aware. It is: `GetWindowDpiAwarenessContext` on the running packaged window

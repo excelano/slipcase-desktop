@@ -58,7 +58,7 @@ $ErrorActionPreference = 'Stop'
 # **This is a record of what is known, not a claim that it is acceptable.**
 # Whether to submit with `Blocked executables` failing is a decision, it is
 # David's, and `RELEASE.md` carries it. Recording a finding here does not take
-# it.
+# it. It was taken on 2026-08-28: submit with it failing.
 #
 # Traced rather than tolerated; `CHECKLIST.md` has the working for both.
 #

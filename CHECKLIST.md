@@ -1070,6 +1070,10 @@ says so: whether to submit with `Blocked executables` failing is a decision, it
 is David's, and `RELEASE.md` carries it. The list exists so that the next run
 after that decision can still be surprised by something else.
 
+**It was taken on 2026-08-28 — submit with it failing — and `RELEASE.md` did not
+say so until 2026-08-29.** Named here as well as pointed at, because a reader
+following this pointer for a day found the argument and no answer.
+
 `-ReadReport` applies the gate to a report that already exists and does nothing
 else — no elevation, no build. That is what makes the gate checkable, and it was
 checked three ways: a finding taken out of the list is refused as not in it, a
