@@ -184,14 +184,30 @@ because following the theme is worth showing and costs two slots out of ten.
 difference between 1 and 3 is the desktop's theme. That is deliberate: a shopper
 comparing them sees the application, not two different demonstrations.
 
-**The container in them is a demonstration and is not in this repository.** It
-holds a real one-page PDF and a metadata document written to exercise the tree
-rather than to be minimal — a string, two dates, an array, integers, a float, a
-boolean, nested tables and an array of tables — because the tree is the thing
-worth photographing and the walkthrough fixtures have three keys between them.
-Its subject is invented and names no real person or organisation. Rebuilding it
-is a few lines; what matters is that it is rich enough to show the renderers,
-and that is recorded here rather than left to be rediscovered.
+~~**The container in them is a demonstration and is not in this repository.**~~
+**It is now, as of 2026-08-29: `packaging/demo-container.sh` builds it.** The
+paragraph this replaces described it in prose and said rebuilding it was a few
+lines, which was true and was not enough — the four Windows screenshots could
+not be reproduced anywhere, macOS had its own still to take, and the website
+needed images too. Three people building three containers from one prose
+description is three demonstrations that do not look alike, discovered after two
+listings are live.
+
+It holds a one-page PDF and a metadata document written to exercise the tree
+rather than to be minimal — a string, three dates in two shapes, an array,
+integers, a float, a boolean, a nested table and an array of tables — because
+the tree is the thing worth photographing and the walkthrough fixtures have
+three keys between them. Its subject is invented and names no real person or
+organisation.
+
+**The PDF is generated correctly rather than approximately, and that took two
+tries.** The first version declared a stream `Length` of 92 over 87 bytes and
+carried no cross-reference table at all, and poppler rendered it regardless,
+because mainstream viewers repair a broken xref rather than refusing. A payload
+that only opens in viewers that repair is not what goes in two store listings.
+The script now measures the stream and builds the xref from where the objects
+actually landed, and both were checked: 88 declared against 88 written, and
+every offset resolving to the object it names.
 
 **What the script will not do is decide whether a screenshot is any good**, and
 it says so when it finishes. It guarantees the size, which is the part that gets
