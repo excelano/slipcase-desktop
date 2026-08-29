@@ -153,6 +153,23 @@ mode and look at the card. It is one glance, it needs the platform, and the
 repair it is checking was shared code that nobody has seen work anywhere but
 here.
 
+**macOS answered on 2026-08-28: it reads, and the screen agrees with the
+arithmetic exactly.** One container carrying both coloured lines at once, opened
+in the signed sandboxed bundle with the system switched to Light. Sampled off the
+screenshot: the card fill is rgb(248, 248, 248), the error line rgb(180, 0, 0) at
+6.72:1, and the warning line rgb(180, 70, 0) at 5.18:1 — the recorded figures to
+the digit, so on this display there is no gap between the colour computed and the
+colour shown. `CHECKLIST.md`'s *What the light card looked like here* holds it.
+
+One thing for whoever runs this on Linux, and for the entry above. **The
+*antialiased worst case* is not a figure that compares across platforms**, because
+it is a coverage threshold nobody has stated. On the warning line here it is
+4.41:1 at 90% coverage, 4.78:1 at 95% and 5.15:1 at 99%, which brackets the
+4.59:1 recorded above rather than disagreeing with it, and below half coverage it
+collapses toward the fill by construction the way every antialiased glyph does.
+The core colour is the number that travels. Linux is the last arm that has not
+looked.
+
 A signature is no longer the answer to this section. `build-app.sh --sign`
 signs the bundle with an Apple Development certificate and reads the
 entitlements back out of the signature, and that settled the Spotlight

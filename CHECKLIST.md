@@ -1983,6 +1983,43 @@ application's, and what a person sees if they close and reopen the container
 afterwards — the line will stay gone, because the file genuinely no longer
 records Safari.
 
+### What the light card looked like here
+
+`HANDOFF.md` left this for the two platforms that had never seen it: the contrast
+repair is shared code, every Windows walkthrough ran in dark mode, so the light
+card had been looked at while it was broken and not once since it was fixed.
+macOS had never looked at either. Run 2026-08-28 against the signed sandboxed
+bundle with the system switched to Light and switched back after.
+
+**It reads.** One container was made to carry both coloured lines at once — an
+encrypted payload for *Cannot be opened here: the member is encrypted (SPEC
+2.5)* in the error colour, marked as a download for *This container arrived from
+elsewhere, and the payload will carry that.* in the warning colour. Both are
+legible against the light card, and Open and Extract are correctly disabled
+beside them while Replace stays live.
+
+**Measured off the screen rather than recomputed**, which is the distinction that
+section is about. Sampled from the screenshot:
+
+| | On screen | Recorded |
+| --- | --- | --- |
+| Card fill | rgb(248, 248, 248) | grey 248 |
+| Error line | rgb(180, 0, 0) — 6.72:1 | 6.72:1 |
+| Warning line | rgb(180, 70, 0) — 5.18:1 | 5.18:1 |
+
+Exactly the figures the repair predicted, so on this display there is no gap at
+all between the colour computed and the colour shown.
+
+**The *antialiased worst case* is not a comparable number, and this is where to
+say so.** The Windows entry gives 4.59:1 against a colour computing to 5.18:1,
+without saying what counts as an ink pixel. It has to be a coverage threshold,
+and the answer moves with it — measured here on the warning line: 4.41:1 at 90%
+coverage, 4.78:1 at 95%, 5.15:1 at 99%, which brackets Windows's figure rather
+than disagreeing with it. Below about half coverage the number collapses toward
+the fill by construction and means nothing, which is true of every glyph ever
+antialiased. Anybody comparing that figure across platforms is comparing two
+unstated thresholds; the core colour is the number that travels.
+
 ### What looking at the Dock found
 
 **The Dock showed the egui logo instead of this application's icon**, on every
