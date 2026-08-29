@@ -4,6 +4,10 @@ slipcase-desktop (0.1.1) unstable; urgency=medium
     A payload called report<U+202E>fdp.exe read report\u{202E}fdp.exe on the
     card and reportfdp.exe in the tree below it, the character that reorders
     text taking no space of its own.
+  * Keep the control that removes a key inside the window when the key carries
+    a long comment. The comment took whatever width the row had left and the
+    control was laid out past the right edge, drawn nowhere and reachable only
+    by widening the window. The comment now truncates.
 
  -- David M. Anderson <david.anderson@excelano.com>  Sat, 29 Aug 2026 12:50:34 -0500
 

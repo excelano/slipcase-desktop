@@ -435,11 +435,45 @@ fn row(
             key_name(ui, name, path, siblings, change);
         });
         value(ui);
+        // The comment is capped so it cannot eat the room the remove control
+        // needs, and truncates instead.
+        //
+        // Uncapped, a comment long enough to fill the row pushed that control
+        // clean out of the window, and the only way to reach it was to widen
+        // the window. Found on Apple silicon by zooming, which shrinks the
+        // space a row has in points; then reproduced at 1x on an ordinary
+        // display with a one-line comment, which is what showed it was nothing
+        // to do with zoom or with the machine.
+        //
+        // Anchoring the control to the right edge instead — a right-to-left
+        // layout — fixes the clipping and was tried first. It spreads every row
+        // to the full window width, which `an_integer_stays_beside_its_key`
+        // forbids for its own reason, and that test caught it.
         if let Some(c) = comment {
-            ui.label(comment_text(c));
+            let room = (ui.available_width() - remove_room(ui, path)).max(0.0);
+            ui.scope(|ui| {
+                ui.set_max_width(room);
+                ui.add(egui::Label::new(comment_text(c)).truncate());
+            });
         }
         delete_button(ui, name, path, change);
     });
+}
+
+/// The width to keep clear for the control that removes a key, so a comment
+/// cannot take it.
+///
+/// Asked of the style rather than written as a number, because the button is a
+/// `small_button` and its size follows the spacing the theme sets: a constant
+/// here would be right at one text size and wrong at every other, which is the
+/// case the defect showed up in. Protected keys have no such control and get
+/// the whole row.
+fn remove_room(ui: &Ui, path: &[String]) -> f32 {
+    if is_protected(path) {
+        return 0.0;
+    }
+    let spacing = ui.spacing();
+    spacing.interact_size.y + spacing.button_padding.x * 2.0 + spacing.item_spacing.x
 }
 
 /// A section's own name and the way to remove it, drawn inside the section.
@@ -767,6 +801,79 @@ id = 2
             content < 600.0,
             "the tree spread to {content:.0} of 900 available"
         );
+    }
+
+    /// A long comment does not push the control that removes a key past the
+    /// width the row was given.
+    ///
+    /// Without the cap in `row`, a comment took every point left in the row and
+    /// the remove button was laid out beyond the right edge — off the window,
+    /// and reachable only by widening it. Found on Apple silicon by zooming,
+    /// which shrinks the points a row has; then reproduced at 1x with a
+    /// one-line comment, so it is nothing to do with zoom or with the machine.
+    ///
+    /// **Asked of the button's own position, and it has to be.** The obvious
+    /// measurement — the width the tree reports — cannot see this: egui holds
+    /// `min_rect` to the maximum it was given, so it reads the same whether the
+    /// button landed inside the row or a hundred points past the end of it.
+    /// Written that way first, this test passed with the fix deliberately
+    /// removed. So it goes through the shapes egui actually emitted and finds
+    /// the one drawing the wastebasket.
+    #[test]
+    fn a_long_comment_leaves_room_for_the_remove_button() {
+        const WIDTH: f32 = 900.0;
+
+        let long = "x".repeat(400);
+        let mut doc: DocumentMut = format!("# {long}\ntitle = \"t\"\n")
+            .parse()
+            .expect("valid TOML");
+
+        let ctx = eframe::egui::Context::default();
+        let input = eframe::egui::RawInput {
+            screen_rect: Some(eframe::egui::Rect::from_min_size(
+                eframe::egui::Pos2::ZERO,
+                eframe::egui::vec2(WIDTH, 2000.0),
+            )),
+            ..Default::default()
+        };
+
+        let mut output = ctx.run_ui(input, |ui| {
+            ui.set_max_width(WIDTH);
+            render(ui, &mut doc);
+        });
+        // The shapes are what this is about; the texture deltas belong to a
+        // painter there is not one of here, and egui panics if they are dropped
+        // unhandled rather than discarded on purpose.
+        let shapes = std::mem::take(&mut output.shapes);
+        output.drop_without_applying_deltas();
+
+        let mut found = None;
+        for clipped in &shapes {
+            if let eframe::egui::Shape::Text(text) = &clipped.shape {
+                if text.galley.text().contains(super::REMOVE) {
+                    let right = text.pos.x + text.galley.size().x;
+                    found = Some(found.map_or(right, |r: f32| r.max(right)));
+                }
+            }
+        }
+
+        // Two shapes of the same failure, and the defect produces the first:
+        // laid out past the edge, egui culls the glyph rather than drawing it
+        // somewhere unreachable, so "not found" is the finding and not a broken
+        // precondition. Both are spelled out because a reader of the failure
+        // should not have to know that to understand it.
+        match found {
+            None => panic!(
+                "the remove button was not drawn at all — laid out past the \
+                 {WIDTH:.0} points the row was given, so egui culled it. That is \
+                 the defect: a control the window offers no way to reach."
+            ),
+            Some(right) => assert!(
+                right <= WIDTH,
+                "the remove button reaches {right:.0} of {WIDTH:.0} available, so \
+                 the comment took the room it needed"
+            ),
+        }
     }
 
     /// The keys SPEC §2.2 requires are shown and not edited, and so is the

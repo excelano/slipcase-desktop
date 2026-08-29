@@ -32,6 +32,13 @@ be something else. Both now read the same.
 escaping is what stops a payload name misrepresenting itself, and it was working
 in one of the two places it is shown.
 
+A long comment beside a key no longer pushes the control that removes that key
+off the edge of the window. The comment had no width limit, so it took whatever
+space the row had left and the control after it was laid out past the right
+edge — drawn nowhere and reachable only by making the window wider. The comment
+now truncates instead. Rows without long comments are laid out exactly as
+before.
+
 ## [0.1.0] - 2026-08-29
 
 First release.

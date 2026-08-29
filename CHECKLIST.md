@@ -2492,6 +2492,112 @@ the App Sandbox, which is inert without a signing identity no runner has; a
 high-density display; and Finder itself — the document icon, Get Info's Kind,
 and a warm double-click into a running window. Those stay below.
 
+### What a hand found on Apple silicon that a runner could not
+
+Run 2026-08-29 on a rented Scaleway Mac mini — Apple M1, **macOS 26.6.1**, two
+major versions ahead of the machine everything else here was measured on. The
+article was a Developer ID signed universal sandboxed bundle rather than the
+Store package, for the reason the section above it records: a Store build cannot
+be launched off the Store. Driven over SSH for everything mechanical, with a
+person in a Remote Desktop session for everything needing eyes.
+
+**The window, and a document arriving in it.**
+
+    on-screen windows: 21, from 7 applications
+    owners: Control Centre, Dock, Finder, Notification Centre, Slipcase,
+            Terminal, Window Server
+      Slipcase window: 900 x 672 at layer 0
+    VERDICT: passed — Slipcase has 1 ordinary window(s) on screen
+
+`check-install.sh` reported `ARM64 on arm64`, so the arm64 slice is what ran
+rather than the x86_64 one under Rosetta. `last-folder` read
+`/Users/m1/slipcase-kit`, which is only written when a document was delivered —
+so `src/opened_document.rs`, the crate's only `unsafe`, works on Apple silicon
+inside a signed sandboxed bundle. CI had reached the window; it had never
+reached it signed or sandboxed.
+
+**Item 6, and item 5.** Open brought Preview forward showing the PDF. The
+handover directory was 0700 and the payload inside it 0644, at
+`~/Library/Containers/com.excelano.slipcase-desktop/Data/tmp/slipcase-MPdaTb/`,
+with the payload marked `0086;…;slipcase-desktop;` by the platform. Nothing was
+written to `/tmp`.
+
+**Item 4, which is the one worth the trip.** A container marked the way Safari
+leaves one, opened, edited and saved:
+
+    before  com.apple.quarantine:         0083;68ae0000;Safari;
+    after   com.apple.quarantine:         0083;6a93280f;slipcase-desktop;
+            com.excelano.slipcase.origin: 0083;68ae0000;Safari;
+
+The sandbox replaced the agent with our own binary's name, as it always does,
+and the origin note survived it still naming Safari. The card read *arrived from
+elsewhere* before the save and after it. That is `slpc` 0.3.10 working on Apple
+silicon, sandboxed, in a signed bundle — the fix having been written and
+measured only on x86_64.
+
+**The second volume, which no test can enter.** A 20MB APFS image was mounted and
+a marked container opened from it through the open panel, edited and saved.
+
+    before  1090 bytes, com.apple.quarantine: 0083;68ae0000;Safari;
+    after   1093 bytes, com.apple.quarantine: 0083;6a932a27;slipcase-desktop;
+                        com.excelano.slipcase.origin: 0083;68ae0000;Safari;
+
+The write landed on a volume nobody granted us, `NSItemReplacementDirectory`
+left nothing behind on it, the container is still conformant with both members,
+and the card still said the container arrived from elsewhere. **Apple's
+documented position that the sandbox grant extends to the replacement directory
+holds, and is now measured rather than believed.** `packaging/macos/README.md`
+had carried it as unresolved.
+
+**Gatekeeper, on a bundle marked the way a download leaves one.** Rejected:
+`source=Unnotarized Developer ID`. That is about the Developer ID hedge and says
+nothing about the Store, which reaches people through a channel that does not
+quarantine. **It means the hedge must be notarized before it could ever be handed
+to anyone**, which no note in this repository had said.
+
+**What the hour could not buy.** A high-density display: the instance is
+headless at 1920x1080 at 1x, so there is no backing scale of 2 to test against
+and the `@2x` item is still open. And a second user account or an upgrade over
+an existing install, which need an admin password that was on a portal the
+Remote Desktop session had taken the screen from. Neither is architecture
+specific, so nothing was lost by not doing them there.
+
+**One defect, found by eye and by nobody's test.** Zooming the window clipped
+the row carrying a comment and pushed the control that removes the key off the
+right edge. It is written up under *What a long comment does to the row it is
+on* below, because it turned out to have nothing to do with zoom, with Apple
+silicon, or with that machine.
+
+### What a long comment does to the row it is on
+
+**Found by zooming on Apple silicon, and it is not about zoom.** A row is a key,
+a value, whatever comment the document wrote beside it, and the control that
+removes the key — laid out in that order. The comment had no width limit, so it
+took every point left in the row and the control after it was laid out past the
+right edge. Zoom shrinks the points a row has, which is why zooming showed it.
+
+**Reproduced at 1x on an ordinary 1920x1080 display**, by building a container
+whose comment is one line and long, which is what established it was nothing to
+do with zoom or the machine. Both platforms saw the same thing.
+
+Two fixes, and the first one was wrong. Anchoring the control to the right edge
+with a right-to-left layout does stop the clipping, and it spreads every row to
+the full window width — which `an_integer_stays_beside_its_key` forbids, for its
+own reason, and that test caught it within a minute. The fix that landed caps the
+comment instead: it truncates into whatever is left after the room the control
+needs, and rows without long comments are laid out exactly as before.
+
+**The regression test had to be rewritten before it was worth anything.** Written
+first the obvious way — render into a 900 point width and assert the tree did not
+spread past it — it passed with the fix deliberately removed, because egui holds
+`min_rect` to the maximum it was given and it reads the same whether the control
+landed inside the row or a hundred points past the end of it. The test now goes
+through the shapes egui emitted and finds the one drawing the wastebasket. Broken
+deliberately again, it fails, and the failure it reports is that the glyph is not
+among the shapes **at all**: past the edge, egui culls it rather than drawing it
+somewhere unreachable. That is the defect stated exactly — a control the window
+offers no way to reach.
+
 ### What the light card looked like here
 
 `HANDOFF.md` left this for the two platforms that had never seen it: the contrast
@@ -2671,24 +2777,40 @@ Store package will want to launch it for exactly the same reason.
 - **A signed bundle**, partly done. Signing with an Apple Development
   certificate answered the `mdls` question: the type is flagged `trusted`
   rather than `untrusted`, Spotlight reports `com.excelano.slipcase`, and the
-  Kind reads `Slipcase container`. What is still unrun is the walkthrough
-  against a *distribution*-signed bundle carrying a provisioning profile, which
-  is a different sandbox context from the development-signed one everything
-  else here was measured against. Everything above is an unsigned bundle that never left
-  the machine that built it. `mdls` reporting the wrong type is suspected to be
-  a consequence of that and is untested either way.
-- **A downloaded bundle**, carrying `com.apple.quarantine`, to see what
-  Gatekeeper actually shows a person rather than what `spctl` reports.
-- **A second user account**, and an upgrade over an existing install.
-- **A container on a second volume, under the sandbox.** The section above
-  settles this for the plain build across four filesystems and a test now holds
-  it. What a test cannot enter is the sandbox, and the sandbox is the reason
-  this module exists. `NSItemReplacementDirectory` is documented as the
-  sandbox-safe way to do this and the directory it hands back on a second volume
-  is one nobody granted us — `/Volumes/…/.TemporaryItems/…` is not the file the
-  person chose through the open panel. Apple's position is that the grant
-  extends to it; this repository does not take documentation for a measurement.
-  Open a container from a mounted image in the signed bundle, edit a key, and
-  save. Then do it from an external drive and a network share, which are the two
-  the images here do not stand in for: a share is a different `EXDEV` story
-  again and may not permit `.TemporaryItems` at all.
+  Kind reads `Slipcase container`. Everything above it is an unsigned bundle that
+  never left the machine that built it.
+
+  ~~What is still unrun is the walkthrough against a *distribution*-signed
+  bundle carrying a provisioning profile.~~ **Struck 2026-08-29: it cannot be
+  run by hand, on any machine.** AMFI refuses a restricted entitlement without a
+  profile covering the machine, and a Mac App Store profile covers none — see
+  *What a Store-signed build did when it was launched*. The only two contexts
+  that authorise it are the Mac App Store and TestFlight. **This item is now a
+  TestFlight item and belongs to whoever does the upload**, not to somebody with
+  a Mac. What was run instead, on Apple silicon, was a *Developer ID* signed
+  sandboxed bundle, which is a real signature and a real sandbox and is not the
+  same context.
+- ~~**A downloaded bundle**, carrying `com.apple.quarantine`~~ — **done
+  2026-08-29 on Apple silicon**, against a Developer ID signed bundle marked the
+  way a download leaves one. `spctl` rejects it: `source=Unnotarized Developer
+  ID`. So **the hedge must be notarized before it is handed to anyone**, which
+  nothing here had said. It says nothing about the Store build, which reaches
+  people through a channel that does not quarantine.
+- **A second user account**, and an upgrade over an existing install. Attempted
+  2026-08-29 on the rented machine and abandoned: both want an admin password,
+  which was on a portal the Remote Desktop session had taken the screen from.
+  Neither is architecture specific, so this is a job for any Mac and not for a
+  rented one.
+- ~~**A container on a second volume, under the sandbox.**~~ **Done 2026-08-29
+  on Apple silicon**, and it passes — a marked container on a mounted APFS image,
+  opened through the open panel, edited and saved, with the origin note intact
+  afterwards and nothing left behind in `.TemporaryItems`. *What a hand found on
+  Apple silicon that a runner could not* holds the run. **Apple's position that
+  the sandbox grant extends to `NSItemReplacementDirectory` is now measured
+  rather than believed**, which is what this entry was written to refuse to take
+  on trust.
+
+  **Two of the three cases it named are still not run**, and they are the two a
+  disk image does not stand in for: an external drive, and a network share. A
+  share is a different `EXDEV` story again and may not permit `.TemporaryItems`
+  at all.

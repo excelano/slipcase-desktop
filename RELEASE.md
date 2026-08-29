@@ -118,6 +118,21 @@ This is also the first exercise of the every-time path this file exists to keep
 cheap, and it cost what it claims: a version bump, two changelog entries, a
 rebuild, a reinstall, and the screenshots retaken. Nothing once-only was touched.
 
+**Amended again 2026-08-29: 0.1.1 absorbed a second fix rather than becoming
+0.1.2, because it had never been tagged.** macOS found a row's remove control
+pushed off the window by a long comment — shared code, so all three platforms
+had it. The rule above forbids handing two stores a different binary under a
+number *something else is already serving*, and nothing was: `v0.1.0` is the only
+tag in the repository or on the remote, the apt re-ship at 0.1.1 was still owed,
+and Windows had certified a 0.1.1 build without publishing it. So 0.1.1 is what
+the fix went into, and 0.1.2 would have left a version that existed only in this
+tree.
+
+**The distinction worth keeping is between a number that has been tagged and one
+that has merely been written down.** A code change costs a Windows certification
+re-run either way; only a *published* number costs a bump as well. Ask
+`git tag --list` before deciding, which is what settled it here.
+
 ---
 
 ## Here (Linux) — what needs no other machine
@@ -500,6 +515,220 @@ a repair, and this one by a decision to submit with it failing. The heading says
 
   **The kit is satisfied: it no longer reports the finding, and the package now
   passes overall.** This item is closed.
+
+### Do not
+
+Submit. Reserve the name, build the package, run WACK, and stop.
+
+---
+
+## macOS
+
+Read `packaging/macos/README.md`, especially *What a Store build would need*,
+and `CHECKLIST.md`'s macOS sections. More is done here than on Windows: the
+bundle builds, the sandbox has been measured, the architecture is a build flag,
+and `LSApplicationCategoryType` is declared.
+
+### Once
+
+- ~~**Reserve the name in App Store Connect**~~ — done 2026-08-28, and the name
+  is **`Slipcase Desktop`** rather than `Slipcase`, which was already taken. The
+  section on the name below says by whom and why no claim was available. The App
+  ID `com.excelano.slipcase-desktop` and the three certificates and the Mac App
+  Store profile are all done and verified; those are reservations in a different
+  namespace from the storefront name and the distinction is why only one of them
+  had to move.
+- ~~**Certificates and profile**~~ — done 2026-08-28 and verified from this
+  machine rather than taken on trust. Three identities are installed with their
+  private keys, and the distribution one was used to sign a real bundle: full
+  chain to the Apple Root CA, `TeamIdentifier=9K6W5PMFYP`, entitlements intact
+  through the signature. The certificate names differ from the portal's labels
+  and a script has to use the real ones:
+
+      Apple Distribution: Excelano LLC (9K6W5PMFYP)
+      3rd Party Mac Developer Installer: Excelano LLC (9K6W5PMFYP)
+      Developer ID Application: Excelano LLC (9K6W5PMFYP)
+
+  The middle one is what Apple's portal calls *Mac Installer Distribution*, and
+  it does not appear under `security find-identity -p codesigning` because it
+  signs packages rather than code — its absence there is correct and has caught
+  people out. The third is not needed for the Store and was taken as the hedge
+  if review goes badly.
+
+  The profile is `Slipcase Mac App Store`, platform OSX, bound to exactly one
+  certificate — the Apple Distribution one actually installed here — naming
+  `9K6W5PMFYP.com.excelano.slipcase-desktop` with no wildcard, expiring
+  2027-08-28.
+
+  **It also settled what a Store build must be signed with, which is not what
+  the local builds carry.** The profile grants
+  `com.apple.application-identifier` and `com.apple.developer.team-identifier`,
+  and `packaging/macos/Slipcase.entitlements` has neither — it holds the sandbox
+  and user-selected files, which is right for a development build and is not
+  enough for an upload. The Store mode needs its own entitlements. It should
+  **not** take the third thing the profile offers: `keychain-access-groups` is
+  granted and this application touches no keychain, and a capability asked for
+  and unused is a question at review with no good answer.
+
+### Every time
+
+- ~~**`build-app.sh` gains a Store mode.**~~ — done 2026-08-28.
+  `--store PROFILE` produces what a submission is: a universal bundle carrying
+  the profile as `embedded.provisionprofile`, signed for distribution with the
+  entitlements a Store build needs, wrapped by `productbuild --component` into a
+  signed `.pkg`. Built and verified against the real certificates and the real
+  profile rather than against a description of them.
+
+  **Nothing account-specific is written down.** The team and the application
+  identifier are read out of the profile, so the profile — which is what App
+  Store Connect validates against — is the only copy and cannot drift from a
+  second one. The identities are found by prefix and team, and it refuses on
+  anything but exactly one match: two certificates of a kind in one keychain is
+  an ordinary state, an expiring one beside its replacement, and picking
+  whichever came first is how a package gets signed with the wrong one.
+
+  It refuses before it builds: no profile, a file that is not one, an expired
+  one, a profile whose application identifier does not match `CFBundleIdentifier`,
+  or `--sign` given alongside. Afterwards it reads back what the signature
+  actually carries — the sandbox and the application identifier — because
+  neither is visible by looking at the bundle and each has its own cost, a day
+  and an upload. The identifier check was broken deliberately by pointing a good
+  profile at a renamed bundle, and it refused with both names.
+
+  `keychain-access-groups` is declined although the profile grants it, for the
+  reason `AppxManifest.xml` declares only `runFullTrust`: a capability asked for
+  and unused is a question at review with no good answer.
+
+### By hand, because no script can
+
+Most of these are already in `CHECKLIST.md` under *Not yet done by hand*, and
+they are not paperwork — this platform has a history of the sandbox costing more
+than anybody expected.
+
+**These come before any of the packaging work.** Both ask whether the
+App Sandbox breaks something this application did to itself in the days before,
+and both have answers that are decisions about `DESIGN.md` §5 rather than
+repairs. Taking a decision like that after a bundle is signed and a listing is
+written around it is the expensive order. The first is now answered; the second
+is not.
+
+- ~~**Can a launched application read the payload at all, under the sandbox?**~~
+  **Answered 2026-08-28: yes, under the sandbox.** ~~and Open works on the Store
+  build~~ — **struck 2026-08-29**: the bundle was development-signed, and a
+  Store build will not launch on a developer's own machine at all. See *What a
+  Store-signed build did when it was launched* in `CHECKLIST.md`. Preview came
+  forward showing the PDF, the card's *Opens with* line read Preview, the
+  payload landed at 0700 inside this application's container and byte for byte,
+  and nothing outside it was written. `CHECKLIST.md`'s *What the sandboxed
+  handover found* holds the run, including the two things it settled on the way:
+  that `ps eww` cannot tell you whether a process is sandboxed and will lie in
+  the reassuring direction, and that the platform marks what a sandboxed process
+  writes while `slpc::provenance` correctly disregards its own agent. **No
+  `DESIGN.md` §5 decision is owed.** The question and its reasoning are kept
+  below because the answer is only worth as much as the doubt it settled.
+
+  It was `CHECKLIST.md` item 6, and **the very first thing** — one open, one
+  button, and one look at the screen, and the cheapest way to find out whether
+  the Store build works at all.
+
+  On 2026-08-27 the handover directory became mode 0700, to stop every payload
+  somebody pressed Open on being readable by every account on the machine. On
+  Linux that costs the handler nothing, because it runs as the same user, and
+  `tests/handover.rs` proves it by reading the payload back from a separate
+  process. Under the App Sandbox the handler is a *different application with a
+  container of its own*, and the payload now sits in a private directory inside
+  this one's. Launch Services normally grants the opened application a scope for
+  the URL it was launched with, which ought to be enough — but *ought* is not a
+  measurement, and nothing on Linux can take it.
+
+  **If it had failed, Open would have failed for every container on the Store
+  build**, and the fix would have been a decision rather than a repair: the mode
+  that keeps a payload private from other accounts on the machine is the mode
+  that would have been hiding it from the program meant to open it. It did not
+  fail.
+- ~~**Saving an edit to a downloaded container, under the sandbox.**~~
+  **Answered 2026-08-28, and it is the failure this entry was afraid of.** Save
+  succeeds and the edit lands. The container stays gated — the flags are
+  unchanged at `0083` — but the agent becomes `slipcase-desktop`, so
+  `arrived_from_elsewhere` answers false and the card's *arrived from elsewhere*
+  line is there before the save and gone after it. `CHECKLIST.md`'s *What saving
+  a downloaded container under the sandbox found* holds the measurement and the
+  mechanism.
+
+  **Fixed the same day, in the library, and this repository needs no code
+  change.** A sandboxed process cannot attribute a file to anyone but itself,
+  which the probe settles — but it can write an attribute of its own beside the
+  platform's, and that one survives the replacement that destroys the
+  attribution. `slpc` gained `Mark::Recorded` and
+  `com.excelano.slipcase.origin`, and `arrived_from_elsewhere` consults it. The
+  card is right after a save and after a reopen, proven end to end through a
+  signed sandboxed bundle. **Done**: `slpc` 0.3.10 shipped on
+  2026-08-28 and this repository takes it, which is all that was left here.
+  The original entry is kept below because its reasoning was right.
+
+  `CHECKLIST.md`
+  item 4, and it was **the first thing left**: if the sandbox breaks
+  the provenance carry the way it once broke Save, that is a decision about
+  `DESIGN.md` §5 rather than a repair, and it is cheaper to take before a bundle
+  has been signed and a listing written around it.
+
+  `slpc` 0.3.7 stopped an in-place rewrite stripping the mark, and CI proves that
+  on all three platforms **unsandboxed** — the Windows and macOS runners each
+  execute `tests/provenance.rs` in full, writing and reading back a real
+  `Zone.Identifier` stream and a real `com.apple.quarantine`. What no runner
+  reaches is this application's own macOS arm: `src/staging.rs` replaces the
+  container through `-[NSFileManager replaceItemAtURL:…]` rather than the rename
+  the library uses, and carries the mark itself. Sandboxed, the platform also
+  marks whatever this process writes and names this application as the agent —
+  and `DESIGN.md` §5 has the card disregarding those, so the file can stay gated
+  while the card stops saying where it came from. That is the answer to look for.
+- ~~**A distribution-signed bundle carrying a provisioning profile.**~~
+  **Struck 2026-08-29: it cannot be done by hand at all.** AMFI refuses a
+  restricted entitlement without a profile covering the machine, and a Mac App
+  Store profile covers none — the package was built, launched, and killed by the
+  kernel, and `CHECKLIST.md`'s *What a Store-signed build did when it was
+  launched* holds the log. **It is a TestFlight item now**, and belongs to
+  whoever does the upload rather than to whoever has a Mac.
+- ~~**A downloaded bundle carrying `com.apple.quarantine`**~~ — **done
+  2026-08-29**, and the answer is a rejection: `source=Unnotarized Developer ID`.
+  That is about the hedge and not the Store. **If the Developer ID build is ever
+  handed to anyone it must be notarized first**, which nothing here had said.
+- **A second user account, and an upgrade over an existing install.** Attempted
+  on the rented machine and abandoned for want of an admin password. Neither is
+  architecture specific, so any Mac will do.
+- ~~**A container on a second volume, under the sandbox**~~ — **done 2026-08-29
+  on Apple silicon, and it passes.** The grant does cover the replacement
+  directory: the write landed, `.TemporaryItems` was left clean, the container
+  is still conformant and the origin note survived. Measured rather than taken
+  from Apple's documentation, which is what the entry asked for. An external
+  drive and a network share are still unrun.
+- **`@2x` on a real high-density display**, which is half done and stayed that
+  way: the rented instance is headless at 1920x1080 at 1x, so there was no
+  backing scale of 2 to test against.
+- **Screenshots**, at the sizes App Store Connect asks for.
+
+**The Apple silicon question is answered.** ~~mostly, and by a machine~~ — the
+runner had reached the window since 2026-08-28, and on 2026-08-29 a hand reached
+everything the runner could not. A rented M1 running **macOS 26.6.1**, two major
+versions ahead of the development machine, ran a Developer ID signed universal
+sandboxed bundle: the window drew at 900x672, the process was `ARM64 on arm64`
+rather than Rosetta, a document arrived by Apple Event, Open reached Preview, a
+marked container kept its provenance across a save, and a container on a second
+volume did too. `CHECKLIST.md`'s *What a hand found on Apple silicon that a
+runner could not* holds all of it.
+
+**What that does and does not settle.** Every sandbox measurement this project
+held was taken on x86_64; they are now taken on arm64 as well, under a real
+signature, on a newer OS. What is still untested on any architecture is the
+*distribution* signing context — and the entry above says why that is not a thing
+a hand can reach. The residual risk moved from "the sandbox might behave
+differently on arm64", which is now measured, to "the Store's own signing context
+might", which only TestFlight or review can show.
+
+**It also found a defect no test had.** Zooming clipped the row carrying a
+comment and pushed the control that removes the key off the window. Fixed, with
+a regression test that had to be rewritten once because the first version passed
+against the defect it was written for.
 
 ### Do not
 

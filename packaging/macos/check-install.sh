@@ -108,10 +108,17 @@ fi
 
 # 4. The entitlements, read back out of the signature rather than off the file
 #    that was fed to it — those are different things and only one of them ships.
+#    `plutil -p` does not spell a boolean the same way on every macOS: 15.7
+#    prints `=> 1` and 26.6 prints `=> true`. Matching the older spelling made
+#    this report a correctly sandboxed bundle as unsandboxed the first time it
+#    ran on a newer machine, which is a check that fails exactly where it is
+#    being trusted most. Match the key and accept either.
 ents=$(codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p - 2>/dev/null)
 case "$ents" in
-    *'"com.apple.security.app-sandbox" => 1'*)
+    *'"com.apple.security.app-sandbox" => 1'*|*'"com.apple.security.app-sandbox" => true'*)
         ok "the sandbox is in the signature" "app-sandbox" ;;
+    *'com.apple.security.app-sandbox'*)
+        bad "the sandbox is in the signature" "present but not true" ;;
     *) bad "the sandbox is in the signature" "absent — the build is not sandboxed" ;;
 esac
 # Restricted, and so the whole reason a Store build needs a profile and cannot
