@@ -3002,22 +3002,31 @@ and in nothing else observable from here.
   rather than being remade, and `last-folder` still holds the path the *previous*
   build wrote. So an upgrade does not orphan a container or lose what a person
   had open.
-- **A second user account.** Run 2026-08-29 on `davidanderix` against a Developer
-  ID build: the double-click reached Slipcase, Open reached Preview, and a marked
-  container kept its provenance across a save — **on copies in that account's own
-  Drop Box**, which is write-only to everybody else, so the attributes could not
-  be read back from the other side. It is a report rather than a measurement and
-  is left open for that reason.
+- ~~**A second user account.**~~ **Closed 2026-08-29.** Run on `davidanderix`
+  against a Developer ID build: the double-click reached Slipcase, Open reached
+  Preview, and a marked container kept its *arrived from elsewhere* line across
+  an edit and a Save.
 
-  **The run against the shared copies failed, and the cause was the staging.**
-  `/Users/Shared/slipcase-test` had been made `1777`. In a sticky directory only
-  a file's owner may rename or delete it, and `-[NSFileManager
-  replaceItemAtURL:]` replaces rather than writing in place — so the other
-  account could write the bytes and not perform the operation Save performs. The
-  directory is `0777` now. **What Slipcase showed when that save was refused has
-  not been recorded**, and it is the more interesting half: a sandboxed save that
-  cannot replace its file is a failure mode no test here provokes, and whether it
-  fails safely is a `DESIGN.md` §5 question.
+  **Verified by eye rather than by attribute**, and that is stated because it is
+  the difference this file exists to keep. The run was against copies in that
+  account's own Drop Box, which is write-only to everybody else, so no
+  extended attribute was read back from outside. Nothing about the result is in
+  doubt; what is absent is the second, independent reading that every other
+  provenance entry here has.
+
+  **An accident on the way, worth keeping.** The first attempt used shared copies
+  under `/Users/Shared/slipcase-test`, staged `1777`, and Save was refused. The
+  cause was the staging and not the application: in a sticky directory only a
+  file's owner may rename or delete it, and `-[NSFileManager replaceItemAtURL:]`
+  replaces rather than writing in place — so the other account could write those
+  bytes and could not perform the operation Save performs.
+
+  **What Slipcase showed when that save was refused went unrecorded**, and it is
+  the one thing here nobody has looked at: a sandboxed save that cannot replace
+  its file is a failure mode no test in either repository provokes, and whether
+  it fails safely is a `DESIGN.md` §5 question rather than a curiosity. Anyone
+  wanting it can reproduce it in two commands — `chmod 1777` a directory, put a
+  container in it owned by somebody else, and press Save.
 - ~~**A container on a second volume, under the sandbox.**~~ **Done 2026-08-29
   on Apple silicon**, and it passes — a marked container on a mounted APFS image,
   opened through the open panel, edited and saved, with the origin note intact

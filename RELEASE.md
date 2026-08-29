@@ -709,11 +709,9 @@ is not.
   build already in `/Applications`, so the certificate changed as well as the
   version; the association survived and so did the sandbox container and the
   folder the previous build had remembered.
-- **A second user account** — run, and left open. It passed on copies in the
-  other account's Drop Box, which nothing outside that account can read, so the
-  attributes were never measured. Thirty seconds to redo against
-  `/Users/Shared`, whose permissions were the reason the first attempt at that
-  failed.
+- ~~**A second user account**~~ — **done 2026-08-29 and it passes**: the
+  association, Open, and provenance across a save, all on a second account.
+  Verified by eye rather than by attribute, for the reason `CHECKLIST.md` gives.
 - ~~**A container on a second volume, under the sandbox**~~ — **done 2026-08-29
   on Apple silicon, and it passes.** The grant does cover the replacement
   directory: the write landed, `.TemporaryItems` was left clean, the container
