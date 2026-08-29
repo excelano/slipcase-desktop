@@ -780,10 +780,14 @@ The review attachment refused a bare `.slpc` with a server error and accepted th
 same file inside a `.zip`. The notes say so; if that is ever retried, expect to
 wrap it.
 
-**What the API would not do**, and so is left for a person: the App Privacy
-questionnaire, which this version of the API does not expose at all, and the
-price, whose schedule exists but could not be read back through
-`appPriceSchedules`.
+**What the API would not do**, and so was left for a person — ~~and is left~~
+**all three done 2026-08-29**: the App Privacy questionnaire, which this version
+of the API does not expose at all and whose every answer here is *no data
+collected*; the price, whose schedule exists but does not read back through
+`appPriceSchedules`, confirmed Free; and availability, set to all countries.
+
+**So the macOS listing is complete and the button is the only thing left**, and
+the button waits on the readiness review below rather than on anything here.
 
 **This is the every-time path and it is not yet a script.** Everything above was
 done from ad-hoc calls; turning them into `packaging/macos/store-metadata.sh`
