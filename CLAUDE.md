@@ -202,6 +202,11 @@ build that only a hand can check, run it, and write down what it found.
     src/main.rs         the window: panels, dialogs, threading, the card
     src/tree.rs         the metadata tree, one renderer per TOML type
     src/opens_with.rs   what the platform says would open a payload
+    src/staging.rs      where a rewrite waits, and how it lands on the original
+    src/opened_document.rs
+                        the document macOS delivers by Apple Event rather than
+                        argv — the crate's only unsafe, and the rule above says
+                        what adding a second such module would mean
     src/bin/corpus.rs   the conformance runner (a command, not a test)
     examples/           the type query without a window
     packaging/          per platform, plus debian
