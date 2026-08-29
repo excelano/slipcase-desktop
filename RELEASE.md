@@ -453,11 +453,32 @@ and `LSApplicationCategoryType` is declared.
 
 ### Every time
 
-- **`build-app.sh` gains a Store mode.** It signs with an Apple Development
-  identity today; a submission needs distribution signing, the embedded profile,
-  and `productbuild --component` to produce the `.pkg` that Transporter uploads.
-  Same rule as Windows: refuse loudly rather than produce something subtly
-  wrong, and take the version from `packaging/version.sh`.
+- ~~**`build-app.sh` gains a Store mode.**~~ — done 2026-08-28.
+  `--store PROFILE` produces what a submission is: a universal bundle carrying
+  the profile as `embedded.provisionprofile`, signed for distribution with the
+  entitlements a Store build needs, wrapped by `productbuild --component` into a
+  signed `.pkg`. Built and verified against the real certificates and the real
+  profile rather than against a description of them.
+
+  **Nothing account-specific is written down.** The team and the application
+  identifier are read out of the profile, so the profile — which is what App
+  Store Connect validates against — is the only copy and cannot drift from a
+  second one. The identities are found by prefix and team, and it refuses on
+  anything but exactly one match: two certificates of a kind in one keychain is
+  an ordinary state, an expiring one beside its replacement, and picking
+  whichever came first is how a package gets signed with the wrong one.
+
+  It refuses before it builds: no profile, a file that is not one, an expired
+  one, a profile whose application identifier does not match `CFBundleIdentifier`,
+  or `--sign` given alongside. Afterwards it reads back what the signature
+  actually carries — the sandbox and the application identifier — because
+  neither is visible by looking at the bundle and each has its own cost, a day
+  and an upload. The identifier check was broken deliberately by pointing a good
+  profile at a renamed bundle, and it refused with both names.
+
+  `keychain-access-groups` is declined although the profile grants it, for the
+  reason `AppxManifest.xml` declares only `runFullTrust`: a capability asked for
+  and unused is a question at review with no good answer.
 
 ### By hand, because no script can
 

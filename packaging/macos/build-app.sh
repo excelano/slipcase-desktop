@@ -24,10 +24,12 @@ binary=""
 outdir="${root}/dist"
 universal=no
 identity=""
+store_profile=""
 
 usage() {
     cat <<'USAGE'
 usage: build-app.sh [--binary PATH] [--outdir DIR] [--universal] [--sign ID]
+                    [--store PROFILE]
 
   --binary PATH  the executable to bundle (default: the release build)
   --outdir DIR   where to write Slipcase.app (default: ./dist)
@@ -44,6 +46,17 @@ usage: build-app.sh [--binary PATH] [--outdir DIR] [--universal] [--sign ID]
                    MACOSX_DEPLOYMENT_TARGET=12.0 \
                      cargo build --release --target aarch64-apple-darwin
                    ./packaging/macos/build-app.sh --universal
+  --store PROFILE
+                 build what the Mac App Store takes: a universal bundle
+                 carrying PROFILE as embedded.provisionprofile, signed for
+                 distribution, wrapped by productbuild into the .pkg
+                 Transporter uploads. Implies --universal, chooses its own
+                 identities, and refuses rather than producing something
+                 subtly wrong. PROFILE is the .provisionprofile downloaded
+                 from the developer portal:
+
+                   ./packaging/macos/build-app.sh \
+                       --store ~/Downloads/Slipcase_Mac_App_Store.provisionprofile
 USAGE
 }
 
@@ -53,10 +66,78 @@ while [ $# -gt 0 ]; do
         --outdir) outdir="${2:?--outdir needs a directory}"; shift 2 ;;
         --universal) universal=yes; shift ;;
         --sign) identity="${2:?--sign needs an identity}"; shift 2 ;;
+        --store) store_profile="${2:?--store needs a .provisionprofile}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) echo "build-app.sh: unknown argument $1" >&2; usage >&2; exit 2 ;;
     esac
 done
+
+# One trap for everything this script makes, set before the first `mktemp` and
+# never re-armed. **A second `trap ... EXIT` replaces the first rather than
+# adding to it**, so the store temporaries were left behind by the staging
+# trap that used to be installed further down — found by looking in `$TMPDIR`
+# after a successful run rather than by reading this file.
+stage=""
+store_plist=""
+store_ents=""
+cleanup() {
+    [ -z "$stage" ] || rm -rf "$stage"
+    [ -z "$store_plist" ] || rm -f "$store_plist"
+    [ -z "$store_ents" ] || rm -f "$store_ents"
+}
+trap cleanup EXIT INT TERM
+
+# Everything --store needs is checked before anything is built, because the
+# failures here are cheap to see now and expensive to see after an upload: a
+# profile for the wrong bundle identifier, an expired one, or a certificate this
+# machine does not hold all produce a package that assembles perfectly and is
+# refused by App Store Connect.
+if [ -n "$store_profile" ]; then
+    [ -z "$identity" ] || {
+        echo "build-app.sh: --store chooses its own identities; drop --sign" >&2
+        exit 2
+    }
+    [ -f "$store_profile" ] || {
+        echo "build-app.sh: no provisioning profile at ${store_profile}" >&2
+        exit 1
+    }
+    # A Store binary runs on both architectures or half the machines that bought
+    # it cannot run it, so this is not a flag a person should have to remember.
+    universal=yes
+
+    # The profile is a CMS-signed property list. Decoding it is also the check
+    # that it is one.
+    store_plist=$(mktemp -t slipcase-profile)
+    security cms -D -i "$store_profile" > "$store_plist" 2>/dev/null || {
+        echo "build-app.sh: ${store_profile} is not a provisioning profile this can read" >&2
+        exit 1
+    }
+
+    # ISO 8601 rather than PlistBuddy's rendering, which is locale-dependent and
+    # would make this check pass or fail by what language the machine is in.
+    store_expiry=$(plutil -extract ExpirationDate raw -o - "$store_plist" 2>/dev/null)
+    store_expiry_at=$(date -j -u -f "%Y-%m-%dT%H:%M:%SZ" "$store_expiry" +%s 2>/dev/null || echo "")
+    [ -n "$store_expiry_at" ] || {
+        echo "build-app.sh: cannot read the profile's expiry date (${store_expiry:-none})" >&2
+        exit 1
+    }
+    [ "$store_expiry_at" -gt "$(date +%s)" ] || {
+        echo "build-app.sh: the profile expired on ${store_expiry}" >&2
+        exit 1
+    }
+
+    # The team and the application identifier come out of the profile rather
+    # than being written down here. The profile is the thing App Store Connect
+    # validates against, so it is the only copy that cannot drift.
+    store_app_id=$(/usr/libexec/PlistBuddy -c \
+        'Print Entitlements:com.apple.application-identifier' "$store_plist" 2>/dev/null || echo "")
+    store_team=$(/usr/libexec/PlistBuddy -c \
+        'Print Entitlements:com.apple.developer.team-identifier' "$store_plist" 2>/dev/null || echo "")
+    [ -n "$store_app_id" ] && [ -n "$store_team" ] || {
+        echo "build-app.sh: the profile carries no application-identifier or team-identifier" >&2
+        exit 1
+    }
+fi
 
 # Cargo is asked where its target directory is. `[build] target-dir` in a Cargo
 # configuration file moves it and no environment variable then says so.
@@ -129,7 +210,6 @@ mkdir -p "${app}/Contents/MacOS" "${app}/Contents/Resources"
 # is also how the Linux icon theme draws the same file. Measured both ways at
 # 16 pixels before this was written.
 stage=$(mktemp -d)
-trap 'rm -rf "$stage"' EXIT
 iconset="${stage}/slipcase-desktop.iconset"
 mkdir -p "$iconset"
 svg="${root}/packaging/linux/icons/slipcase-desktop.svg"
@@ -193,6 +273,116 @@ if [ "$universal" = yes ]; then
             exit 1
         }
     done
+fi
+
+# The Store path. Everything it needs was validated before the build; what is
+# left is to put the profile inside the bundle, sign what a submission is signed
+# with, and wrap it.
+if [ -n "$store_profile" ]; then
+    # The profile has to match the bundle it goes into. `application-identifier`
+    # is `TEAMID.bundle-identifier`, so the tail of it is what Info.plist must
+    # say — a profile for a neighbouring identifier signs perfectly and is
+    # refused at upload.
+    bundle_id=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "${app}/Contents/Info.plist")
+    [ "$store_app_id" = "${store_team}.${bundle_id}" ] || {
+        echo "build-app.sh: the profile is for ${store_app_id} and this bundle is ${bundle_id}" >&2
+        exit 1
+    }
+
+    # One identity or none, never a guess. Two certificates of the same kind in
+    # one keychain is an ordinary state — an expiring one beside its replacement
+    # — and picking whichever `grep` found first is how a package gets signed
+    # with the wrong one.
+    find_identity() {
+        matches=$(security find-identity -v 2>/dev/null |
+            grep "$1: .*(${store_team})" | sed 's/.*"\(.*\)"/\1/')
+        count=$(printf '%s' "$matches" | grep -c . || true)
+        [ "$count" = 1 ] || {
+            echo "build-app.sh: expected one \"$1\" identity for team ${store_team}, found ${count}" >&2
+            [ "$count" = 0 ] || echo "$matches" | sed 's/^/  /' >&2
+            return 1
+        }
+        printf '%s' "$matches"
+    }
+    app_identity=$(find_identity "Apple Distribution") || exit 1
+    # Apple's portal calls this Mac Installer Distribution; the certificate calls
+    # itself something else, and the certificate is what `security` reports. It
+    # also never appears under `-p codesigning`, because it signs a package
+    # rather than code, which is why nothing here filters by that policy.
+    pkg_identity=$(find_identity "3rd Party Mac Developer Installer") || exit 1
+
+    # Before the signature, because a signature covers what is in the bundle
+    # when it is made and this is part of what gets covered.
+    cp "$store_profile" "${app}/Contents/embedded.provisionprofile"
+
+    # The entitlements a Store build is signed with are not the ones a
+    # development build is signed with, and this is generated rather than
+    # committed so the team identifier has exactly one source: the profile.
+    #
+    # `keychain-access-groups` is deliberately absent. The profile grants it and
+    # this application touches no keychain, and a capability asked for and
+    # unused is a question at review with no good answer — the same rule
+    # `AppxManifest.xml` follows about declaring only `runFullTrust`.
+    store_ents=$(mktemp -t slipcase-entitlements)
+    cat > "$store_ents" <<ENTITLEMENTS
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.application-identifier</key>
+	<string>${store_app_id}</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>${store_team}</string>
+</dict>
+</plist>
+ENTITLEMENTS
+
+    codesign --force --timestamp --options runtime \
+        --sign "$app_identity" \
+        --entitlements "$store_ents" \
+        "$app"
+
+    # Read back rather than trusted, for both of them. The sandbox one is the
+    # failure that costs a day; the identifier one is the failure that costs an
+    # upload, and neither is visible by looking at the bundle.
+    granted=$(codesign -d --entitlements - --xml "$app" 2>/dev/null |
+        plutil -extract 'com\.apple\.security\.app-sandbox' raw - 2>/dev/null)
+    [ "$granted" = true ] || {
+        echo "build-app.sh: the Store signature carries no app-sandbox entitlement" >&2
+        exit 1
+    }
+    granted=$(codesign -d --entitlements - --xml "$app" 2>/dev/null |
+        plutil -extract 'com\.apple\.application-identifier' raw - 2>/dev/null)
+    [ "$granted" = "$store_app_id" ] || {
+        echo "build-app.sh: the Store signature says application-identifier ${granted:-nothing}, not ${store_app_id}" >&2
+        exit 1
+    }
+    [ -f "${app}/Contents/embedded.provisionprofile" ] || {
+        echo "build-app.sh: the signed bundle carries no embedded.provisionprofile" >&2
+        exit 1
+    }
+    codesign --verify --deep --strict "$app" || {
+        echo "build-app.sh: the signed bundle does not verify" >&2
+        exit 1
+    }
+    echo "signed ${app} for the Store with ${app_identity}"
+
+    # `--component … /Applications` is where the Store installs it. `productbuild`
+    # rather than `pkgbuild`: the first makes a distribution package, which is
+    # what Transporter takes, and the second makes a component package, which it
+    # does not.
+    pkg="${outdir}/Slipcase.pkg"
+    productbuild --component "$app" /Applications --sign "$pkg_identity" "$pkg" >/dev/null
+    pkgutil --check-signature "$pkg" | sed -n '1,3p'
+    echo "built ${pkg} signed with ${pkg_identity}"
+    echo
+    echo "upload it with Transporter, or validate without submitting:"
+    echo "  xcrun altool --validate-app -f ${pkg} -t macos -u APPLE_ID --password APP_SPECIFIC_PASSWORD"
+    exit 0
 fi
 
 # Last, so that nothing this script writes lands inside the bundle after it has
