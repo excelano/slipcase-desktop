@@ -51,21 +51,28 @@ item run, lintian clean, the corpus agreeing, CI green — and shipping through
 one channel first exercises the release path end to end before either store
 submission depends on it.
 
-**Both architectures, and the second one is built where it can be run.**
-Nothing here cross-compiles and no runner builds Linux arm64, so for an hour
-this said amd64 only on the grounds that an arm64 `.deb` would be one nobody had
-ever executed. That reasoning was right and its premise was wrong: there is an
-arm64 machine, and supporting the architecture is why the command-line tool
-ships for it.
+**It is amd64 only, and that is stated wherever the install is written.**
+Nothing here cross-compiles, no runner builds Linux arm64, and there is no
+arm64 machine to run one on — so an arm64 `.deb` would be a binary nobody had
+ever executed, which is not a thing this project ships. The command-line tool
+ships both architectures through cargo-dist; this ships one, and a page
+implying otherwise sends an arm64 reader to a command that answers *no
+installation candidate*.
 
-So the arm64 package is built natively on that machine rather than
-cross-compiled here — `dpkg-architecture` reports `arm64` there and
-`build-deb.sh` needs no argument to do the right thing. What it gained is a
-guard rather than a flag: it now reads `e_machine` out of the ELF header and
-refuses where that disagrees with the architecture the package would declare,
-which is the check `build-msix.ps1` already makes against the PE header. A
-`.deb` declaring one architecture and carrying another installs perfectly and
-then does not run, and nothing about the finished file says so.
+The question was opened and closed on 2026-08-29 on a machine that turned out
+not to be arm64. It is recorded rather than tidied away because the answer
+turns entirely on whether such a machine exists, so anybody reaching the same
+conclusion later should know the position is *no hardware*, not *no interest*.
+
+**What came out of it stays, because it was never about arm64.**
+`build-deb.sh` now reads `e_machine` out of the ELF header and refuses where it
+disagrees with the architecture the package would declare. `arch` comes from
+`dpkg-architecture`, which answers about the machine and says nothing about a
+binary handed over with `--binary`; a `.deb` declaring one architecture and
+carrying another installs perfectly, does nothing when run, and shows no sign
+of it anywhere on its face. That is the check `build-msix.ps1` already makes
+against the PE header, and it guards the day a second architecture does
+arrive.
 
 **This does not move steps 2, 3 and 4.** Neither store submission happens before
 the readiness review, and the review now has one more thing to check: that what
