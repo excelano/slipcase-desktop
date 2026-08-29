@@ -863,10 +863,18 @@ of it, and is the obvious next reduction in what a patch costs.
 Submit. Reserve the name, build and sign the package, validate it through
 Transporter if that can be done without submitting, and stop.
 
-**Amended 2026-08-29: everything short of the button is now done.** The build is
-uploaded and attached, the listing is complete, TestFlight has been walked. What
-remains before submitting is the readiness review, which is Linux's and is the
-whole reason this fence exists.
+~~**Amended 2026-08-29: everything short of the button is now done.**~~
+**Submitted 2026-08-29.** `0.1.1`, build 167, state `WAITING_FOR_REVIEW`,
+released after approval rather than automatically. The readiness review came
+back green from Linux first, `v0.1.1` was tagged at `1370326`, and apt was
+shipped, which is the order this file asked for.
+
+**The fence held and was worth having.** Between the package first being built
+and the button being pressed, this platform found: a Store build that cannot be
+launched, a row whose remove control was pushed off the window, a quarantine
+attribute that would have been refused at ingestion, a claim in `CHECKLIST.md`
+that was stronger than its measurement, and a duplicated section in this file.
+None of those would have been caught by submitting first and waiting.
 
 ---
 
