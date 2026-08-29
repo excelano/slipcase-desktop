@@ -628,16 +628,59 @@ first release could not have been. `packaging/windows/store-metadata.ps1` is the
 thing to write once a submission exists to read back, exactly as
 `packaging/macos/store-metadata.sh` is on the other side.
 
+### Submitted, 2026-08-29
+
+`Slipcase` 0.1.1 went to the Microsoft Store after the readiness review, which is
+what the *Do not* below was waiting for. What went up, so that a later reader can
+tell whether a file on disk is the one that was submitted:
+
+    dist\submit\Slipcase-0.1.1.0-x64.msix   unsigned, the Store signs what it ships
+      sha256 E02C384A96670D1EF6984400071B7A5141BD6C1F9B94C19D2059819B0A2A1056
+      binary 450E7ACA36FDA4E994812C57208CC27EC0FB6676D1F120484CFD12C22DF87E39
+      built from 1370326, which is the commit `v0.1.1` points at
+
+**Three things the live form did that no documentation said**, and they are the
+whole reason the next submission is cheaper than this one. All three are in
+`packaging/windows/SUBMITTING.local.md` where the form is walked through:
+
+- **The Store logo field takes 1080x1080 or 2160x2160**, not the 300x300 the
+  older documentation describes. `make-ico` draws both now, into
+  `packaging/windows/listing/` rather than the package assets, because a file
+  added to the assets lands in the MSIX and a package that gains a file has to
+  be certified again.
+- **The reviewer has nothing to open.** Slipcase without a container is an empty
+  window, and Partner Center's notes field takes no attachment. The container is
+  served from the website now and is the sixth store answer above.
+- **The restricted-capability justification caps at 500 characters**, counting
+  newlines, and truncates silently at the paste. The `runFullTrust` answer was
+  written at 1,449 and had to be rewritten to 494.
+
+**A fourth thing, which is not the form's fault.** Both stores needed a first
+submission made by hand for reasons that are not the same: App Store Connect's
+API took the whole listing but would not answer the privacy questionnaire or set
+the price, and Partner Center's API refuses to create a submission for an app
+that has never had one, the age-ratings questionnaire being why. So neither store
+is scripted end to end for a *first* release, and both can be for the next one.
+
+**This submission belongs to Partner Center for its whole life.** It was created
+in the form, and a submission created in the form must not later be edited
+through the API — mixing the two leaves a submission that cannot be committed.
+The API is for the submission after this one.
+
 ### Do not
 
 Submit. Reserve the name, build the package, run WACK, and stop.
 
-**Still current, and it is the last thing standing.** Everything above this line
-is done: the package is built, certified at the version it will be submitted
-under, and sitting beside a walkthrough that names every field. What has not
-happened is step 4, and the reason for waiting has not changed — a submission is
-an event with a queue behind it, and the point is that the thing in the queue is
-one somebody looked at across all three platforms.
+~~**Still current, and it is the last thing standing.**~~ **Spent, 2026-08-29.**
+Step 4 happened and the submission followed, which is the section above. This
+instruction is left standing rather than deleted because it is the only record of
+what the rule was *for*: everything above it was built, certified and written
+down while nobody was allowed to press the button, and the thing that finally
+went into the queue was one three platforms had looked at.
+
+**It comes back into force for the next release**, with one word changed —
+reserving is done, so it reads: build the package, run the kit, and stop until
+somebody has reviewed all three platforms again.
 
 ---
 

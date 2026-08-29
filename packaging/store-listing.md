@@ -106,6 +106,28 @@ Slipcase opens a container and shows what is in it: the payload's name and size,
 
 It tells you what it found and lets you decide. Where your computer will not say what opens a file, Slipcase says nothing rather than guessing. It ships no list matching filenames to file types and never inspects a payload to guess at one.
 
+## App features (Microsoft Store, up to 20 bullets of 200 characters)
+
+    Metadata travels with the document: one file holds the payload and a TOML description of it.
+    Edit the metadata in place and save. Comments, key order and whitespace you did not touch survive the rewrite.
+    Hands the payload to whatever your computer has registered for that kind of file. No preview, no guessing at types.
+    Says when a container arrived from elsewhere, and marks the payload you extract so your computer treats it with the same caution.
+    Reports the container's verdict against the specification in its own words, including undetermined and out of scope.
+    A rewrite is read back and checked before it replaces anything, and a container you did not change is not rewritten at all.
+    No network connection of any kind. No account, no telemetry, no analytics, nothing sent anywhere.
+    Open source, and so are the format it reads and the library that reads it.
+
+**Every bullet restates something the description already says**, which is the
+point rather than an oversight: the Store shows these as a summary beside the
+description, and a feature list making a claim the description does not is a
+second listing to keep true.
+
+**Written during the first submission, and it should not have been.** This
+section did not exist on 2026-08-29 and the bullets were typed into the form,
+which is exactly the drift the note at the top of this file forbids. They are
+here now so the next submission copies them. There is no Mac App Store
+equivalent of this field.
+
 ## Description (both, written to 4,000)
 
 A slipcase container is one file holding a document of any type together with a TOML description of it. Copy the container, send it, or move it to another machine and the description goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
