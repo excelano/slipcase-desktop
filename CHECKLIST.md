@@ -2929,11 +2929,32 @@ and in nothing else observable from here.
   re-encodes them. A format difference and not data loss. Written down because
   the next person to hash those files will think they have found something.
 
-  What is still not done is the part that needs a display: the application's own
-  interface at 2x. Nothing has ever drawn a frame of it at that scale, and
-  `DESIGN.md` §6's layout numbers were all measured at 1x, including the tree
-  row that came to 916 pixels in a 900-pixel window and pushed a button off the
-  edge. ~~This machine's panel is 2560x1440 at 1x; whether macOS offers it a
+  ~~What is still not done is the part that needs a display: the application's
+  own interface at 2x.~~ **Done 2026-08-29, and it never needed a display.**
+  `DESIGN.md` §6's layout numbers were measured at 1x, including the tree row
+  that came to 916 pixels in a 900-pixel window and pushed a button off the edge,
+  and the worry was that 2x would move them. It does not, and this is now
+  asserted rather than argued.
+
+  `pixels_per_point` is `native_scale × zoom_factor`. A Retina panel at 2 and
+  this panel zoomed to 2 are the same number, the same glyph rasterisation and
+  the same layout arithmetic — so a scale is something a *test* can set, and
+  `a_long_comment_leaves_room_for_the_remove_button` sets four of them: 1, 1.5,
+  2 and 3. The rightmost edge of the control that removes a key comes to 888.6
+  points at 1x, 889.1 at 2x and 889.3 at 3x, inside 900 at every one. The drift
+  is glyph metrics rounding differently per scale, which is precisely what could
+  push a borderline row over, and it is a fraction of a point rather than the
+  16 that defect cost.
+
+  Broken deliberately at all four: the failure names the scale it happened at.
+  CI runs it on every push on all three platforms, so this is now a standing
+  check rather than a thing somebody did once.
+
+  **What is left is aesthetic and not correctness.** Nobody has looked at a frame
+  of this application on a real high-density panel. Layout is asserted and every
+  icon entry was compared byte for byte against the `.icns`, so what remains is
+  whether it *looks* right, which is worth an idle five minutes on the next
+  Retina Mac anybody sits at and is not worth blocking a submission on. ~~This machine's panel is 2560x1440 at 1x; whether macOS offers it a
   HiDPI scaled mode has not been checked~~ — **struck 2026-08-29, because a
   display is not a property of a machine.** Monitors here get swapped, so a
   resolution written into this file is a fact with a shelf life and the next

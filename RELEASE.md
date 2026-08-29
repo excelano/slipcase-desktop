@@ -720,9 +720,14 @@ is not.
   is still conformant and the origin note survived. Measured rather than taken
   from Apple's documentation, which is what the entry asked for. An external
   drive and a network share are still unrun.
-- **`@2x` on a real high-density display**, which is half done and stayed that
-  way: the rented instance is headless at 1920x1080 at 1x, so there was no
-  backing scale of 2 to test against.
+- ~~**`@2x` on a real high-density display**~~ — **closed 2026-08-29 as a
+  correctness question, and by a test rather than a display.**
+  `pixels_per_point` is `native_scale × zoom_factor`, so a Retina panel at 2 and
+  any panel zoomed to 2 are the same number and the same layout path. The row
+  regression test now runs at 1, 1.5, 2 and 3 and asserts at each; CI runs it on
+  three platforms on every push. Icon entries were already compared byte for byte
+  against the `.icns`. What is left is whether it *looks* right on a high-density
+  panel, which nobody has seen and which does not block a submission.
 - **Screenshots**, at the sizes App Store Connect asks for.
 
 **The Apple silicon question is answered.** ~~mostly, and by a machine~~ — the

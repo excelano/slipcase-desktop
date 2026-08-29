@@ -819,8 +819,25 @@ id = 2
     /// Written that way first, this test passed with the fix deliberately
     /// removed. So it goes through the shapes egui actually emitted and finds
     /// the one drawing the wastebasket.
+    ///
+    /// **Run at four scales, and that is what answers the `@2x` question.**
+    /// `pixels_per_point` is `native_scale × zoom_factor`, so a Retina display
+    /// at 2 and this display zoomed to 2 are the same number and the same
+    /// rasterisation and layout path. `CHECKLIST.md` carried *the application's
+    /// own interface at 2x* as needing a high-density display nobody had; what
+    /// it needed was a scale, and a scale is something a test can set. Glyph
+    /// metrics do round differently at each — 888.6 points at 1 against 889.3
+    /// at 3 — which is exactly the drift that could push a borderline row over
+    /// the edge, and is why this asserts at each rather than at one.
     #[test]
     fn a_long_comment_leaves_room_for_the_remove_button() {
+        for ppp in [1.0_f32, 1.5, 2.0, 3.0] {
+            at_scale(ppp);
+        }
+    }
+
+    /// The body of the test above, at one `pixels_per_point`.
+    fn at_scale(ppp: f32) {
         const WIDTH: f32 = 900.0;
 
         let long = "x".repeat(400);
@@ -829,6 +846,7 @@ id = 2
             .expect("valid TOML");
 
         let ctx = eframe::egui::Context::default();
+        ctx.set_pixels_per_point(ppp);
         let input = eframe::egui::RawInput {
             screen_rect: Some(eframe::egui::Rect::from_min_size(
                 eframe::egui::Pos2::ZERO,
@@ -864,14 +882,14 @@ id = 2
         // should not have to know that to understand it.
         match found {
             None => panic!(
-                "the remove button was not drawn at all — laid out past the \
-                 {WIDTH:.0} points the row was given, so egui culled it. That is \
-                 the defect: a control the window offers no way to reach."
+                "at {ppp}x the remove button was not drawn at all — laid out past \
+                 the {WIDTH:.0} points the row was given, so egui culled it. That \
+                 is the defect: a control the window offers no way to reach."
             ),
             Some(right) => assert!(
                 right <= WIDTH,
-                "the remove button reaches {right:.0} of {WIDTH:.0} available, so \
-                 the comment took the room it needed"
+                "at {ppp}x the remove button reaches {right:.0} of {WIDTH:.0} \
+                 available, so the comment took the room it needed"
             ),
         }
     }
