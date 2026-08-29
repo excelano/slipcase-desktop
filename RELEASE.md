@@ -687,24 +687,29 @@ platforms together, which no platform session can do. What it covers:
   the class of error this project has caught most often — a sentence written
   before anybody looked.
 
-  **One is already known to need rewording, found 2026-08-28.** The description
-  says a payload *carries that marking onward, so whatever opens it next raises
-  the same warning the container would have.* The first half holds. The second
-  is not the same warning: under the sandbox the platform marks what this process
-  writes and refuses to have that mark replaced, so the payload reaches its
-  handler carrying `slipcase-desktop` rather than the container's own value.
+  ~~**One is already known to need rewording, found 2026-08-28.**~~ **Rewritten
+  the same day, and it did not become a second per-store variant.** The
+  description promised that a payload *carries that marking onward, so whatever
+  opens it next raises the same warning the container would have*. That is
+  exactly true on Windows, where the zone stream is copied verbatim and the shell
+  stops for the copy as it would have for the container. It is not true of a Mac
+  App Store build: the sandbox marks what the process writes and refuses to have
+  that mark replaced, so the payload carries this application's mark rather than
+  the container's, and no API avoids it.
 
-  **This is a wording problem and not a safety one, and the difference was
-  measured before it was assumed.** `CHECKLIST.md`'s *What the provenance
-  sitting found* established on 2026-08-25 that the sandbox's own mark gates at
-  least as hard as the one it displaces and harder for anything that executes —
-  a kernel refusal with no way past, where Safari's mark gets an explicable
-  Gatekeeper prompt — and that stripping the attribute is the difference between
-  an unsigned application from the internet running and being stopped. So the
-  listing promises the wrong *shape* of warning rather than promising protection
-  that is absent. Unsandboxed it behaves exactly as written, so this is a Mac App
-  Store wording problem and not a Microsoft Store one, and it joins the
-  executable-payload sentence as the second paragraph that differs per store.
+  **A wording problem and not a safety one**, established before it was assumed:
+  `CHECKLIST.md`'s *What the provenance sitting found* measured the sandbox's own
+  mark gating at least as hard as the one it displaces and harder for anything
+  that executes, and stripping it being the difference between an unsigned
+  application from the internet running and being stopped.
+
+  So the sentence now says the payload is marked and the computer *treats it with
+  the caution it gives anything that came from outside* — true of both stores —
+  rather than naming a warning that is only one store's. **Not splitting it was
+  the point.** The executable-payload sentence already differs per store, and a
+  listing kept in two shapes drifts in one of them; the note at the top of
+  `packaging/store-listing.md` records the reasoning where an editor will see it
+  before improving the vaguer wording back.
 - **The version is the same number in all three spellings**, and the changelog
   names it.
 - **`CHECKLIST.md` has a section for every hand-run both platforms did**, with

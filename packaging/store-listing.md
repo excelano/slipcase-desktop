@@ -11,6 +11,24 @@ bit is not what makes a file executable on Windows, and `DESIGN.md` §5 says so 
 so on Windows the sentence describes something a person will never see. Cutting
 it costs 190 characters and both descriptions still fit.
 
+**One sentence is deliberately vaguer than it could be, and this is why.** The
+provenance paragraph used to promise that a payload *carries that marking onward,
+so whatever opens it next raises the same warning the container would have*. That
+is exactly true on Windows, where the zone stream is copied verbatim and the shell
+stops for the copy as it would have for the container. It is **not** true of a
+Mac App Store build: the sandbox marks whatever the process writes and refuses to
+have that mark replaced, so the payload reaches its handler carrying this
+application's mark rather than the container's. Measured 2026-08-28, and no API
+avoids it — a sandboxed process cannot attribute a file to anyone but itself.
+
+Nothing is lost by it. `CHECKLIST.md`'s *What the provenance sitting found*
+established that the sandbox's own mark gates at least as hard as the one it
+displaces, and harder for anything that executes. So the wording says *treats it
+with the caution it gives anything that came from outside*, which is true of both
+stores, rather than *the same warning*, which is true of one. **Resisting the
+second per-store variant was the point**: the executable-payload sentence below
+already differs, and a listing maintained in two shapes drifts in one of them.
+
 **This is generated from `CHANGELOG.md`, not written beside it.** Every claim
 below appears there first, checked against the built application rather than
 against memory. If the two ever disagree, the changelog is right and this is
@@ -108,7 +126,7 @@ WHAT IT TELLS YOU, AND DOES NOT DECIDE FOR YOU
 
 Slipcase reports. It does not gate.
 
-If a container arrived from elsewhere — downloaded, or sent to you — it says so, and the payload you extract carries that marking onward, so whatever opens it next raises the same warning the container would have. Editing and saving keeps the marking too.
+If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the payload you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the metadata and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards.
 
 On macOS it tells you when a payload was stored as an executable file, and that the copy you extract will not be. That is read out of the container rather than guessed from its name.
 
