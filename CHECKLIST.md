@@ -1552,6 +1552,20 @@ same names, and the count agrees once the three the linker spells twice in two
 cases are folded. `build-msix.ps1` refuses to package a binary that fails it, and
 `windows.yml` runs it on every push against the release binary.
 
+**What was checked here at 0.1.2, and what it is worth.** The package installed
+over 0.1.1.0 with no removal — the version is higher, so this is an upgrade
+rather than the same-version redeploy `0x80073CFB` is about — and a container was
+opened by hand, which drew its card and its tree. The installed executable hashes
+`FA002812…`, the same bytes as the release build and as the binary inside both
+packages, so what was opened is what will be uploaded.
+
+**It does not test the fix and it was not run to.** This machine has the
+redistributable, so 0.1.1 would have opened that container too. What it rules out
+is the other risk in linking a different C runtime: that the heap, stdio or
+locale underneath the whole binary changed something. The corpus asks that
+question across 88 cases and answered it first; this was a person watching the
+window appear.
+
 **What is still not measured here, and it is the important one.** Everything
 above is a property of the file. Nobody on this project has yet watched 0.1.2
 start on a machine with no Visual C++ Redistributable, because there is no such
