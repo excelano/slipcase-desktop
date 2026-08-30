@@ -152,6 +152,27 @@ and Windows had certified a 0.1.1 build without publishing it. So 0.1.1 is what
 the fix went into, and 0.1.2 would have left a version that existed only in this
 tree.
 
+**Amended 2026-08-29: 0.1.3 is Linux's alone, and the rule above is why.** The
+missing `libxkbcommon-x11-0` was found after `v0.1.2` was tagged and after both
+stores had it, so unlike the 0.1.1 case there was no absorbing it: `git tag
+--list` named `v0.1.2`, which is the test this paragraph says to run. Moving the
+tag was refused for the reason `49a434b` exists — it is what the store packages
+were built from, and a tag that no longer describes the submitted artefact costs
+more than a version number does.
+
+So apt serves 0.1.3 and the stores hold 0.1.2, which is **different numbers for
+different content and not the failure this file guards against.** That failure is
+one number covering two artefacts. The readiness review's *what apt is serving is
+the same version the stores are being given* wants rewording rather than
+enforcing here: what it is protecting is that a person naming a version gets one
+answer, and they do. The next store patch realigns them.
+
+A Debian revision — `0.1.2-2`, which is the idiomatic answer for a
+packaging-only change — was the other option and was rejected as new machinery
+at the wrong moment: `version.sh` and `build-deb.sh`'s changelog check are built
+around one plain number, and introducing a second concept while two submissions
+are in review buys alignment nobody is reading.
+
 **The distinction worth keeping is between a number that has been tagged and one
 that has merely been written down.** A code change costs a Windows certification
 re-run either way; only a *published* number costs a bump as well. Ask

@@ -17,6 +17,22 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.3] - 2026-08-29
+
+### Fixed
+
+Slipcase starts on a Debian or Ubuntu machine running X11. The package did not
+declare `libxkbcommon-x11-0`, which the application opens by name whenever it
+uses the X11 display backend and which nothing else in its dependency list
+pulls in — so on a machine that did not already have it, installing Slipcase
+produced an application that exited the moment it was launched. A Wayland
+session never loads that library, and every machine this is built on had it
+already, which is why it went unseen through three releases.
+
+Nothing about the application itself changed. This is one line in the Debian
+package's dependency list, so it is a Linux release: the Windows and macOS
+builds of 0.1.3 are 0.1.2 rebuilt, and the stores were given 0.1.2.
+
 ## [0.1.2] - 2026-08-29
 
 ### Fixed
@@ -28,17 +44,8 @@ refused to open, saying *The code execution cannot proceed because
 VCRUNTIME140.dll was not found.* The runtime is now part of the application, and
 Slipcase asks the machine for nothing that is not already part of Windows.
 
-Slipcase starts on a Debian or Ubuntu machine running X11. The package did not
-declare `libxkbcommon-x11-0`, which the application opens by name whenever it
-uses the X11 display backend and which nothing else in its dependency list
-pulls in — so on a machine that did not already have it, installing Slipcase
-produced an application that exited the moment it was launched. A Wayland
-session never loads that library, and every machine this is built on had it
-already, which is why it went unseen through two releases.
-
-Nothing about the application itself changed in either case. The first is a
-Windows build setting and the second is a line in the Debian package's
-dependency list; on macOS, 0.1.2 is 0.1.1 rebuilt.
+Nothing about the application itself changed: this is a Windows build setting,
+and on Linux and macOS 0.1.2 is 0.1.1 rebuilt.
 
 ## [0.1.1] - 2026-08-29
 
