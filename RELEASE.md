@@ -100,12 +100,12 @@ suspended: the readiness review still gates both submissions, and it has one
 more thing to check — that what apt is serving is a version the stores also
 have, or a later one whose difference is understood.
 
-**Run `apt-ship -n` or `apt-ship -y`, not both.** The dry run updates the local
-pool and indices before it stops, so its prune has already removed the old
-version; the `-y` that follows finds nothing to prune while the remote deletion
-is still pending, and the deletion guard correctly refuses a removal nobody
-asked for. Verify the pool by hand and call `updatesite excelano.com.apt`, which
-is apt-ship's own last step.
+`apt-ship -n` followed by `-y` used to abort — the dry run's prune had already
+taken the old version, so the second run found nothing to prune while the remote
+deletion was still pending and the guard refused a removal nobody asked for.
+Fixed in `~/bin` `da3e961`: the record of pruned-but-undeployed files outlives
+the run and a successful deploy empties it. Both flags are safe in either order
+now, and a carried-over deletion says so in the preview.
 
 ---
 
