@@ -726,6 +726,38 @@ and none of the `.gitignore` hazard that the tagged rebuild ran into applies.
 rejected package is the same release event, and the three-platform review it asks
 for happened before 0.1.1 went in. The rule returns for the next release.
 
+### Resubmitted, 2026-08-29
+
+`Slipcase` 0.1.2 went back into the queue the same day 0.1.1 came out of it. The
+failed submission reopens for editing rather than being recreated, so the package
+was swapped and two text fields changed; pricing, age rating, description,
+screenshots, search terms and the `runFullTrust` justification all carried over
+untouched. **What that cost is the number this file exists to keep small: a
+package upload, a release note, and a paragraph of certification notes.** The
+first submission cost a day.
+
+    dist\submit\Slipcase-0.1.2.0-x64.msix
+      sha256 22591D7DBEEE62627AC6E43F73F7D89EEC629793D4A3BB614E0A4001D219A5CD
+      binary FA00281208A30C6D0C32573D9B95FC10EF00B45E84BE8D400E804182E3BDBF95
+      built from c5b1021, which is the commit `v0.1.2` points at
+
+**The rejection is worth more than the release.** It is the only defect in this
+project's history that every check passed over, and the reason is general rather
+than about Visual C++: a dependency on the toolchain is invisible from inside the
+toolchain, so no machine that can build the software can test for it. The three
+things that came out of it — `+crt-static`, `check-imports.ps1` in both the
+packaging script and CI, and the `DESIGN.md` §2 amendment that gives the Windows
+half of a measurement that was Linux's only — are what stops the next one, and
+none of them existed because nobody had thought to ask the question.
+
+**Still not measured, and it is the same gap the rejection came through.** Nobody
+here has watched 0.1.2 start on a Windows machine with no Visual C++
+Redistributable. The import table says the loader cannot ask for the DLL, which
+is conclusive about that failure and narrower than seeing the window open. It is
+in `CHECKLIST.md` under *Not yet done by hand*, with the Windows Sandbox feature
+name, and it is the thing to do before the next Windows release rather than after
+the next rejection.
+
 ### Do not
 
 Submit. Reserve the name, build the package, run WACK, and stop.
