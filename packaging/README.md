@@ -69,14 +69,13 @@ It writes `dist/slipcase-desktop_VERSION_ARCH.deb` and then prints what the
 executable links beside what the package declares, because those two lists are
 almost disjoint and that is the trap this package exists to avoid.
 
-**The executable links libc, libm, and libgcc, and nothing else.** Everything
-that draws a window — the Wayland client library, the keyboard map library, the
-EGL and Vulkan loaders, the X11 libraries — is opened by name at run time.
-`dpkg-shlibdeps` sees none of it, so a package built from the linker's answer
-alone installs cleanly on a machine with no display stack and then fails to
-start. `Depends` in `control.in` is therefore written by hand, and each entry
-was measured: the application was run, and `/proc/PID/maps` was read to find
-what it had actually loaded.
+**Why the two lists barely overlap is `DESIGN.md` §2's**, and it is not
+restated here. What follows from it is this directory's: `Depends` in
+`control.in` is written by hand rather than derived, and
+`packaging/linux/check-libraries.sh` is what keeps it honest — it runs the
+window under both display backends and refuses any library whose package
+`Depends` does not transitively reach. Run it after touching a dependency. Two
+releases shipped without `libxkbcommon-x11-0` before it existed.
 
 The package carries no maintainer scripts. `shared-mime-info`,
 `desktop-file-utils`, and `hicolor-icon-theme` own dpkg triggers on the three

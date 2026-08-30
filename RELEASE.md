@@ -200,12 +200,11 @@ packages rather than code, so it does not appear under `security find-identity
 App Store`, platform OSX, naming `9K6W5PMFYP.com.excelano.slipcase-desktop` with
 no wildcard, **expiring 2027-08-28**.
 
-**A Store-signed build cannot be launched anywhere but the Store or TestFlight.**
-AMFI refuses a restricted entitlement without a profile covering the machine,
-and a Mac App Store profile covers none. So anything needing a running
-application uses a Developer ID build, screenshots can never be of the exact
-artefact uploaded, and the walkthrough against the real article goes through
-TestFlight.
+**A Store-signed build cannot be launched off the Store**, which
+`CHECKLIST.md` explains where a person is about to try it. What follows here:
+screenshots can never be of the exact artefact uploaded, so build a Developer ID
+bundle from the same commit and say so in `packaging/store-listing.md`, and the
+walkthrough against the real article goes through TestFlight.
 
 **A rejection can arrive only by email.** An upload can answer *UPLOAD SUCCEEDED
 with no errors* and be refused afterwards with nothing in the web interface

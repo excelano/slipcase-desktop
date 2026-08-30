@@ -388,10 +388,9 @@ the machine, and a Mac App Store profile covers none. Anything needing a running
 application uses a Developer ID build; anything needing the real article goes
 through TestFlight.
 
-**The certification kit needs an elevated prompt**, and the throwaway signing
-certificate has to reach `LocalMachine\TrustedPeople` — the per-user store is
-not read for this and leaves deployment failing `0x800B0109`. That import is the
-one administrator action in the whole Windows list.
+**Installing the Windows package here needs two administrator actions**, and
+`RELEASE.md` has them: the certificate import the shell will not deploy without,
+and the elevated prompt the certification kit wants.
 
 **A dependency on the toolchain is invisible from inside the toolchain**, and a
 dependency on the desktop is invisible from inside the desktop. Two releases
