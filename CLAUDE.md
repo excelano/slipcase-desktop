@@ -141,6 +141,26 @@ pkg-config when `dlopen` is off. Cargo unifies features across the graph, so a
 new dependency can turn either on without an edit here — which is the day the
 check has to work.
 
+**That check was Linux's only, and Windows failed a store review in the gap.**
+`ldd` says nothing about the MSVC binary, which linked `VCRUNTIME140.dll` from
+the Visual C++ Redistributable — not part of Windows — so 0.1.1 installed on a
+certification tester's clean machine and would not start. Policy 10.2.4.1.
+Nothing here could see it: every machine this project builds on has Visual
+Studio, the GitHub runner included, and a dependency on the toolchain is
+invisible from inside the toolchain.
+
+`.cargo/config.toml` links the CRT in, on that target alone. The outcome check
+is the Windows half of the one above and it is a script, because it has to run
+where `dumpbin` is not:
+
+    cargo build --release
+    powershell -ExecutionPolicy Bypass -File packaging\windows\check-imports.ps1
+
+It walks the PE import table and refuses any DLL not known to ship with
+Windows. `build-msix.ps1` runs it and will not package a binary that fails, and
+`windows.yml` runs it on every push. If it names something new, that is a
+person's decision and not a line to add to the allowlist without one.
+
 **No table mapping filenames to types.** What the card says about a payload's
 type is what the platform said. Where the platform will not answer, the card
 says nothing rather than guessing. `DESIGN.md` §3.

@@ -47,6 +47,14 @@ The distinction it turns on is narrow and worth stating, because the obvious rou
 
 ---
 
+**Amended 2026-08-29: this section's check was Linux's only, and the half it did not cover is what failed a store review.** The measurement above is `ldd` naming libc, libgcc and libm, and it says nothing about what the Windows binary links. That binary linked the Visual C++ runtime as a separate DLL, which is what the MSVC target does unasked, and `VCRUNTIME140.dll` is not part of Windows — it arrives with the Visual C++ Redistributable. Slipcase 0.1.1 was therefore an application that installed on a clean machine and would not start, and it reached a Microsoft Store certification tester in that state before anybody saw it. It failed under policy 10.2.4.1, *Security — Software Dependencies*, with a screenshot of the loader's own refusal.
+
+Nothing here could have caught it. The suite passes, the corpus passes, the certification kit passed, and the application starts — on a machine with Visual Studio installed, which is every machine any of the three platforms has ever built on, the GitHub runner included. **A dependency on the toolchain is invisible from inside the toolchain**, which is the general form of it and the reason the check has to read the artefact rather than run it.
+
+So the section keeps its claim and gains the other half of its measurement. `.cargo/config.toml` sets `+crt-static` for `x86_64-pc-windows-msvc` alone, which links the Visual C++ runtime and the UCRT into the binary; `packaging/windows/check-imports.ps1` walks the PE import table and refuses any DLL not known to ship with Windows. Measured after the change: the import table lost `VCRUNTIME140.dll` and the six `api-ms-win-crt-*` entries, nineteen imports remain and every one of them is in-box, and the binary grew 223,232 bytes. `build-msix.ps1` will not package a binary that fails the check and CI runs it on every push.
+
+**What it costs is stated rather than skipped**: a CRT security fix now needs Slipcase rebuilt, where a dynamically linked one would have taken it from a serviced DLL. The alternative — declaring a `Microsoft.VCLibs.140.00.UWPDesktop` framework dependency, which is what the policy means by disclosing one — was rejected for answering the paperwork while leaving the application unable to start until the machine acquires something. Removing the dependency is a better answer to that policy than declaring it, and it is the answer that matches the sentence this section opens with.
+
 ## 3. Shape
 
 A single window.

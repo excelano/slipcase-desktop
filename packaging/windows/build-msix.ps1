@@ -252,8 +252,8 @@ if (-not (Test-Path $Binary)) {
 }
 $Binary = (Resolve-Path $Binary).Path
 
-# Two things read straight out of the PE header, because neither is visible in
-# a finished package and both are shipping defects.
+# Three things read straight out of the PE header, because none is visible in
+# a finished package and all three are shipping defects.
 #
 # The architecture, because the manifest declares x64, and a package whose
 # declaration disagrees with its executable installs and then fails to launch.
@@ -272,6 +272,18 @@ if ($machine -ne 0x8664) {
 }
 if ($subsystem -ne 2) {
     Refuse "$Binary is not a Windows GUI subsystem executable (subsystem $subsystem) - a debug build is a console one, and packaging that puts a console window behind the application"
+}
+
+# The imports, because a DLL that is not part of Windows has to already be on
+# the machine before the application will start, and the machine that matters
+# is a certification tester's rather than this one. Slipcase 0.1.1 was packaged,
+# certified, submitted and failed on exactly that: it imported VCRUNTIME140.dll
+# from the Visual C++ Redistributable, which every machine here has and a clean
+# Windows does not. The check is its own script because CI runs it too, and it
+# is here because this is the last place a bad binary can still be stopped.
+& (Join-Path $here 'check-imports.ps1') -Binary $Binary
+if ($LASTEXITCODE -ne 0) {
+    Refuse "$Binary imports a DLL that does not ship with Windows - see above"
 }
 
 # --- the tools --------------------------------------------------------------

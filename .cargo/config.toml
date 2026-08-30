@@ -1,0 +1,28 @@
+# The Visual C++ runtime is not part of Windows, and linking it dynamically is
+# how Slipcase 0.1.1 failed Microsoft Store certification on 2026-08-29. The
+# package installed on the tester's machine and then refused to start: *The code
+# execution cannot proceed because VCRUNTIME140.dll was not found.* That DLL
+# ships in the Visual C++ Redistributable, which Windows does not carry and a
+# clean machine does not have. Every machine this project builds on has Visual
+# Studio, so every machine that could have caught it had already hidden it.
+#
+# `+crt-static` links the VC runtime and the UCRT into the binary. Measured
+# after the change: VCRUNTIME140.dll and the six api-ms-win-crt-* imports are
+# gone, every remaining import is a DLL that ships with Windows, and the binary
+# grew 223,232 bytes. `packaging/windows/check-imports.ps1` is the check that
+# says so, and `build-msix.ps1` will not package a binary that fails it.
+#
+# What it costs, stated rather than skipped: a CRT security fix now needs a
+# rebuild of this application, where a dynamically linked one would have picked
+# it up from a serviced DLL.
+#
+# The alternative was to declare a `Microsoft.VCLibs.140.00.UWPDesktop`
+# framework dependency in the manifest, which is what the policy means by
+# disclosing it. Rejected: it answers the paperwork by making the application
+# depend on something the machine has to acquire before it can start, and this
+# application otherwise depends on nothing that is not already on the machine.
+# Removing the dependency is a better answer to 10.2.4.1 than declaring it.
+#
+# This key names the triple, so Linux and macOS builds are untouched.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

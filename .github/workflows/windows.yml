@@ -63,6 +63,27 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets -- -D warnings
 
+      # The check that Slipcase 0.1.1 needed and did not have. It was packaged,
+      # certified by the Windows App Certification Kit, submitted, and failed
+      # Store policy 10.2.4.1 because it imported VCRUNTIME140.dll from the
+      # Visual C++ Redistributable - so on the tester's clean machine it
+      # installed and then would not start. Nothing in this file could have
+      # caught it: a GitHub runner has Visual Studio, exactly like every
+      # machine this project has ever built on.
+      #
+      # `.cargo/config.toml` is the fix and this is the guard on it. A
+      # dependency added on any of the three platforms can pull in a DLL that
+      # is not part of Windows without anybody here noticing, and the day that
+      # happens is the day this step has to be the thing that says so.
+      #
+      # The release binary rather than the debug one, because the release
+      # binary is what ships and is the only one whose import table is the
+      # artefact's.
+      - name: Every DLL the shipped binary imports comes with Windows
+        run: |
+          cargo build --release
+          powershell -ExecutionPolicy Bypass -File packaging/windows/check-imports.ps1
+
       # The run that found the device-name defect in the first place, and the
       # only platform where `accept/payload-name-windows-reserved` is anything
       # but an ordinary filename. It hung here for ten minutes twice before the

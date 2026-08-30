@@ -1477,6 +1477,76 @@ recorded as a gap rather than inferred past. `Unblock-File` is the scriptable
 form of Explorer's Unblock checkbox and was measured; the checkbox itself was
 not, and they are assumed to be one operation.
 
+### What a clean machine found, which no machine here could
+
+Not a walkthrough. This is the one finding on this platform that nobody here
+made: a Microsoft Store certification tester made it, on 2026-08-29, against the
+0.1.1 package this repository had already certified, screenshotted, submitted and
+written up as done.
+
+**Slipcase would not start.** The report is policy 10.2.4.1, *Security — Software
+Dependencies*, *Undisclosed software: Microsoft Visual C++*, and it came with a
+screenshot: the Store page with the Open button, and in front of it the loader's
+own dialog — *slipcase-desktop.exe — System Error. The code execution cannot
+proceed because VCRUNTIME140.dll was not found. Reinstalling the program may fix
+this problem.* The package installed. The application never drew a window.
+
+`VCRUNTIME140.dll` is the Visual C++ runtime and it ships in the Visual C++
+Redistributable, which is not part of Windows. The MSVC target links it unasked.
+Measured against the exact binary that was submitted, sha256 `450E7ACA…`:
+
+    dumpbin /dependents slipcase-desktop.exe
+      ...
+      VCRUNTIME140.dll                <- not in Windows
+      api-ms-win-crt-math-l1-1-0.dll  <- these six are the UCRT, which is
+      api-ms-win-crt-runtime-l1-1-0.dll  in-box from Windows 10 onward
+      ...
+
+**Why every check this project has passed still passed.** 78 tests, the corpus at
+88 cases, clippy silent, the Windows App Certification Kit `PASS` four times, the
+association walked, the card's five hand items run, and the application launched
+by hand from a double-click more than once. All of it on machines with Visual
+Studio installed — this one, the Mac and Linux boxes that cross-check, and the
+GitHub runner. **A dependency on the toolchain is invisible from inside the
+toolchain.** The certification kit does not check it either, which is worth
+saying plainly, because this project had been reading a `PASS` from that kit as
+though it covered the question.
+
+It is the sharpest example this repository has of the thing `CLAUDE.md` opens
+with. Every artefact was measured — hashes, provenance, the commit the tag points
+at — and the one property nobody thought to measure was whether the file would
+run somewhere else.
+
+**The fix, and what says so.** `.cargo/config.toml` sets `+crt-static` for
+`x86_64-pc-windows-msvc` alone, linking the VC runtime and the UCRT into the
+binary. `packaging/windows/check-imports.ps1` walks the PE import table and
+refuses any DLL not known to ship with Windows. It was run against the submitted
+binary before it was run against the fixed one, which is this repository's rule
+about a test biting, and it named the defect exactly:
+
+    check-imports: dist\submit\msix-stage\slipcase-desktop.exe
+      26 distinct imports, 1 not known to ship with Windows
+      UNKNOWN  VCRUNTIME140.dll
+
+    check-imports: target\release\slipcase-desktop.exe
+      19 distinct imports, 0 not known to ship with Windows
+      every import ships with Windows
+
+The parse was cross-checked against `dumpbin /dependents` on the same file: the
+same names, and the count agrees once the three the linker spells twice in two
+cases are folded. `build-msix.ps1` refuses to package a binary that fails it, and
+`windows.yml` runs it on every push against the release binary.
+
+**What is still not measured here, and it is the important one.** Everything
+above is a property of the file. Nobody on this project has yet watched 0.1.2
+start on a machine with no Visual C++ Redistributable, because there is no such
+machine here — `vcruntime140.dll` and eighteen of its relatives sit in this
+one's `System32`, dated 2025-06-11. Windows Sandbox would be that machine and is
+not installed; the feature is `Containers-DisposableClientVM` and enabling it
+needs elevation and a reboot. The import table is conclusive about the loader —
+a DLL that is not named cannot be requested — and it is still not the same
+statement as having seen the window open. It is in *Not yet done by hand* below.
+
 ### Not yet done by hand
 
 - **`carries_a_mark` answered the wrong question**, and no longer does. Settled
@@ -1497,6 +1567,15 @@ not, and they are assumed to be one operation.
   stream it did not write, unvirtualised. *What taking the screenshots found* has
   it, including the one part left strictly unmeasured: whether the stream's name
   matters, which is a question about NTFS rather than about packaging.
+
+- **Whether 0.1.2 starts where 0.1.1 did not** — a Windows machine with no
+  Visual C++ Redistributable. This is the only check that reproduces what the
+  certification tester saw, and the only one that would catch the fix being
+  wrong rather than merely absent. Windows Sandbox is the cheap way to it and is
+  not installed here; `Enable-WindowsOptionalFeature -Online -FeatureName
+  Containers-DisposableClientVM -All` needs elevation and a reboot. Until it is
+  done, what stands is the import table, which says the loader cannot ask for
+  the DLL — a narrower claim than the one worth having.
 
 Nothing else is waiting, including the two items 2026-08-28 added and closed:
 the certification kit, run three times, and the screenshots, which turned out to
