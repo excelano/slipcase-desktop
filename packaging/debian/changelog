@@ -1,3 +1,12 @@
+slipcase-desktop (0.1.2) unstable; urgency=medium
+
+  * Start on a Windows machine with no Microsoft Visual C++ Redistributable.
+    0.1.1 linked the Visual C++ runtime as a separate library and would not
+    open without it. Nothing about this package changes: the fix is a Windows
+    build setting and 0.1.2 here is 0.1.1 rebuilt.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Sat, 29 Aug 2026 20:15:00 -0500
+
 slipcase-desktop (0.1.1) unstable; urgency=medium
 
   * Show a payload name escaped in the metadata tree as well as on the card.

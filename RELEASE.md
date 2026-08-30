@@ -667,6 +667,56 @@ in the form, and a submission created in the form must not later be edited
 through the API — mixing the two leaves a submission that cannot be committed.
 The API is for the submission after this one.
 
+### Failed certification, 2026-08-29, and what that was worth
+
+`Slipcase` 0.1.1 came back **Attention needed** the same day it went in. Policy
+**10.2.4.1, Security — Software Dependencies**, *Undisclosed software: Microsoft
+Visual C++*, with a screenshot attached: the Store page, and in front of it
+*slipcase-desktop.exe — System Error. The code execution cannot proceed because
+VCRUNTIME140.dll was not found.*
+
+**It was not a paperwork finding.** The package installed on the tester's machine
+and the application would not start. `VCRUNTIME140.dll` is the Visual C++ runtime
+and ships in the Visual C++ Redistributable, which is not part of Windows; the
+MSVC target links it unasked, and it is present on every machine this project has
+ever built on. So the defect was invisible from inside the toolchain that caused
+it — 78 tests, 88 corpus cases, silent clippy, four `PASS` runs of the
+certification kit, and a hand-run association walkthrough all passed over an
+application that could not start anywhere else. `DESIGN.md` §2 carries the
+amendment and `CHECKLIST.md` has the finding in full.
+
+**What is different now.** `.cargo/config.toml` links the CRT into the binary for
+`x86_64-pc-windows-msvc` alone, so nothing on the other two platforms moves.
+`packaging/windows/check-imports.ps1` walks the PE import table and refuses any
+DLL not known to ship with Windows; it was run against the rejected binary first
+and named `VCRUNTIME140.dll`. `build-msix.ps1` will not package a binary that
+fails it, and `windows.yml` runs it on every push.
+
+**0.1.2, and the bump is forced by the rule above rather than chosen.** `v0.1.1`
+is tagged, apt is serving it, and App Store Connect has it in review — a
+published number, which is the distinction this file already draws. The two other
+platforms need no re-ship: the change is a Windows build setting, so 0.1.2 on
+Linux and macOS is 0.1.1 rebuilt, and the changelogs say so.
+
+    dist\submit\Slipcase-0.1.2.0-x64.msix   unsigned, the one to upload
+      sha256 22591D7DBEEE62627AC6E43F73F7D89EEC629793D4A3BB614E0A4001D219A5CD
+      binary FA00281208A30C6D0C32573D9B95FC10EF00B45E84BE8D400E804182E3BDBF95
+
+    dist\Slipcase-0.1.2.0-x64.msix          throwaway-signed, local install only
+      sha256 452E77F322AA1ADDC6CD1652C564B1F2176DC1770297D22744D22235F42BD90F
+      the same binary, byte for byte
+
+**The provenance was got right by ordering rather than by a detached checkout
+this time.** Every file that compiles into the binary was final before
+`cargo build --release` ran, and everything edited afterwards is documentation —
+checked by comparing modification times against the binary's rather than
+asserted. So the artefacts above are the source at the commit `v0.1.2` points at,
+and none of the `.gitignore` hazard that the tagged rebuild ran into applies.
+
+**The *Do not* below is not back in force for this.** A resubmission repairing a
+rejected package is the same release event, and the three-platform review it asks
+for happened before 0.1.1 went in. The rule returns for the next release.
+
 ### Do not
 
 Submit. Reserve the name, build the package, run WACK, and stop.

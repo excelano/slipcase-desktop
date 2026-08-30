@@ -17,6 +17,21 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.2] - 2026-08-29
+
+### Fixed
+
+Slipcase starts on a Windows machine that does not have the Microsoft Visual C++
+Redistributable installed. 0.1.1 linked the Visual C++ runtime as a separate
+library, so on a machine without that redistributable it installed and then
+refused to open, saying *The code execution cannot proceed because
+VCRUNTIME140.dll was not found.* The runtime is now part of the application, and
+Slipcase asks the machine for nothing that is not already part of Windows.
+
+Nothing about the application itself changed, and nothing changed on Linux or
+macOS: this is a Windows build setting, and 0.1.2 on the other two platforms is
+0.1.1 rebuilt.
+
 ## [0.1.1] - 2026-08-29
 
 ### Fixed
