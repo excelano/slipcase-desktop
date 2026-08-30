@@ -271,176 +271,28 @@ This is why `slipcase.ico` is a committed artifact in a repository that
 otherwise holds only sources: the executable references it at compile time, and
 Windows has no step that would rasterize the SVG for either purpose.
 
-## What a Store build would need
+## What a Store build is
 
-**The account exists; nothing Windows does.** There is a Microsoft Partner
-Center account, so registration, identity verification and the agreements are
-behind us — which matters because verification is the one step here measured in
-days rather than minutes. Recorded because a session that has to ask this
-question loses an afternoon to it, and the macOS README carries the same
-sentence about Apple for the same reason.
+It exists and it ships. `build-msix.ps1` produces it and `RELEASE.md` has the
+process; what belongs here is why it is shaped that way.
 
-**What is absent is the build, and it is now half absent.**
-`AppxManifest.xml.in` landed on 2026-08-28, templated the way `control.in` and
-`Info.plist.in` are, with four placeholders: three identity values Partner
-Center assigns and the version, which `packaging/version.sh` answers when asked
-for the appx spelling. What is still missing is `build-msix.ps1`. The MSIX that
-answered the three questions in `CHECKLIST.md` was built by hand at a prompt and
-nothing in the tree rebuilds it.
+**MSIX rather than an installer**, for the reason the channel was chosen at all:
+Windows offers to search the Store by file type when somebody double-clicks
+something nothing is registered for, and outside the Store that search finds
+nothing. The Store takes MSIX, which is also why the WiX rejection above stands
+on its own reasoning and now on the channel as well.
 
-**Amended: `build-msix.ps1` landed on 2026-08-28 and the tree rebuilds it now.**
-It takes a release binary, stages the executable, the manifest and the assets,
-substitutes the identity and the version, and calls `makeappx`.
-`packaging/macos/build-app.sh` is the model, and so is its rule: it refuses
-rather than producing something subtly wrong. Four refusals were verified by
-breaking what each one guards.
+**The two PowerShell scripts stay.** A Store listing is no reason to withdraw
+the per-user route from somebody who wants no account, and they are what
+`install.ps1` and `uninstall.ps1` are for.
 
-Two of the four are read out of the PE header, because neither is visible in a
-finished package. The architecture, because the manifest declares x64. And the
-subsystem, because `src/main.rs` carries `windows_subsystem = "windows"` only
-when `debug_assertions` is off — so a debug binary packaged by mistake is a
-console subsystem one, and *a console window behind the application* is a defect
-this platform's walkthrough already found by hand once. Packaging
-`target\debug\slipcase-desktop.exe` is refused, which was measured rather than
-reasoned about.
+**Signing stops being optional.** The shell will not accept an unsigned MSIX, so
+unlike macOS there is no unsigned build-and-test loop here. The Store signs what
+it distributes, so the package that goes up is unsigned and the throwaway-signed
+copy is only for installing locally — and the two must come from one staging
+tree with no rebuild between, because a rebuild of identical source produces a
+different file.
 
-The other two are the manifest's: a placeholder that survived substitution, and
-a `Publisher` that is not an X.500 string. The second is the display name typed
-into the wrong field, which is the identity mistake that gets rejected at upload
-rather than at review.
-
-**The manifest names image assets that do not exist yet.** `StoreLogo.png`,
-`Square150x150Logo.png`, `Square44x44Logo.png`, `Wide310x150Logo.png` and
-`slipcase.png`, all under `Assets\`. `packaging/windows/slipcase.ico` is the
-source for the last of those and `packaging/linux/icons/` holds the scalable
-originals for the rest, so nothing has to be drawn — but something has to
-produce PNGs at the sizes the Store asks for, and that belongs in the build
-script beside everything else mechanical. The `.ico` generator in
-`packaging/windows/make-ico` is the model: committed output, checked in CI
-against a rebuild.
-
-**Amended: they exist, and the model was taken rather than imitated.** The
-paragraph above put the work in the build script and then named `make-ico` as
-the model, and those are two different places. `make-ico` won, because a build
-script that rasterizes has to carry a rasterizer, and nothing on Windows does
-that from a shell: the argument that gave this directory an icon converter in
-the first place gives it these five PNGs too. It writes `../assets` beside the
-`.ico` now, `windows.yml` compares the whole directory against a rebuild, and
-`build-msix.ps1` only copies. The `.ico` is byte-identical across the change,
-which is the check that the shared renderer did not quietly alter it.
-
-**One thing about those assets is guidance rather than measurement.** The
-dimensions are the Store's and are not a choice. How much of each canvas the
-drawing occupies is: a tile is drawn on a coloured plate and Microsoft's tile
-guidance leaves the icon about two thirds of it, where an icon-shaped asset is
-drawn at the size it is given and wants all of it — which is also what
-`slipcase.ico` does at every size it holds. So the two square tiles and the wide
-one are at two thirds and the rest fill their canvas. **Nobody has looked at a
-real tile**, and until somebody has, that split is a reading of a document.
-`CHECKLIST.md` is where the look goes.
-
-**The association in the manifest mirrors `install.ps1` deliberately.** Same
-extension, same content type, same friendly name. If the packaged application
-and a side-loaded one ever claim `.slpc` differently, a person with both sees
-the wrong one win and has nothing to explain it.
-
-**Three values have to come out of Partner Center before a manifest is real.**
-`Package/Identity/Name`, `Publisher` and `PublisherDisplayName` are assigned
-when the name is reserved and must appear in `AppxManifest.xml` exactly as
-Partner Center gives them; a package whose identity disagrees is rejected at
-upload rather than at review. Reserving the name is cheap and blocks the listing
-work, so it is worth doing before the manifest is written rather than after.
-
-**Done: `Slipcase` was reserved on 2026-08-28 and the three values are in
-`identity.psd1`.** They went there rather than into `AppxManifest.xml.in`
-because `RELEASE.md` asked for one place, and because more than the manifest
-wants them: the package family name is what `Get-AppxPackage` is asked for when
-checking an install, and `build-msix.ps1 -SelfSign` builds a certificate subject
-out of `Publisher` rather than having it typed a second time — `signtool`
-refuses a package whose manifest publisher and certificate subject differ, and
-the throwaway certificate left over from the 2026-08-26 measurement carries a
-subject invented before the reservation existed and cannot sign this.
-
-**`identity.psd1` is not committed and `identity.psd1.example` is.** None of
-those values is a credential — `Publisher` appears in the manifest of every
-package the Store distributes and the store id is in the public listing URL —
-and the first version of this file was committed on exactly that reasoning. It
-is still true and it was still the wrong call: these are an account's
-identifiers on a public record, which is the judgement
-`packaging/macos/SUBMITTING.local.md` already got, and *not secret* is a weaker
-claim than *belongs in public*. The commit was rewritten before it was pushed so
-the values were never published — `CLAUDE.md` records what taking an identifier
-back out of this history has cost twice, once after pushing, and neither time
-was it cheap.
-
-What is committed is the template. `build-msix.ps1` names it in the refusal
-rather than reporting a missing path, because a build script whose first failure
-is *no such file* teaches nothing to the checkout that hit it. The MSA
-application id on the same Partner Center page is needed by nothing here and is
-recorded nowhere.
-
-**The self-signed certificate does not carry forward, and that is fine.**
-`New-SelfSignedCertificate` and `signtool` were how the questions got answered
-on one machine; the Store signs what it distributes, so a submission uploads a
-package it has not signed itself. The measurement was never wasted — it is what
-established that the container does not change what `opens_with` sees — but no
-certificate from it goes near a submission.
-
-**The version is not the one in `Cargo.toml`.** A Store package declares
-`Major.Minor.Build.Revision` and the revision must be `0`, which is a different
-shape from the crate version and from what macOS wants in
-`CFBundleShortVersionString`. One number, three spellings, and the scheme is
-worth deciding once rather than per platform.
-
-**Unrun: the Windows App Certification Kit.** Certification runs it and a
-submission that fails it comes back. It has never been run here, and it is
-mechanical, so it belongs in a build script rather than in somebody's memory.
-
-**It is in the build script now, behind `-Certify`, and it is still unrun.**
-`appcert.exe` is stock on this machine at `C:\Program Files (x86)\Windows Kits\
-10\App Certification Kit\`, so nothing has to be installed. What it needs is
-elevation, and it installs the package it tests, so it needs a signed one as
-well — `-Certify` refuses without `-SelfSign` rather than producing a kit run
-against nothing.
-
-The verdict is read out of the report's `OVERALL_RESULT` rather than out of an
-exit code, and a report with no verdict in it is a refusal too. A kit that ran
-and failed and a kit that never ran are different things, and the second must
-never be reported as a pass — which is the same failure `preflight.sh` found in
-its own CI check, where a run still in progress was being counted as a result.
-
-**Amended: run three times on 2026-08-28, and both of those sentences turned out
-to be missing a case.** `CHECKLIST.md` holds the runs.
-
-*Stale* is a third state that neither *ran and failed* nor *never ran* covers.
-`appcert` refuses to overwrite an existing report and stops before running a
-single test, so the second run parsed the first run's file and printed its
-findings as though they were the new package's. The report is deleted before the
-kit starts and the one that appears must be newer than the run.
-
-And the gate refused on any test that was not PASS, which meant it refused every
-time: `Blocked executables` fails on every run this application will ever do.
-That is the *red is the normal state* problem this file's own rule about compiled
-C is written around. The known findings are named in `KNOWN_FINDINGS` at the top
-of the script with what each was traced to, and the gate fires on a finding that
-is new or worse than recorded. Naming one there is not accepting it — that
-decision is `RELEASE.md`'s.
-
-`-ReadReport <path>` applies the gate to an existing report and does nothing
-else, which is how the gate gets checked without an elevated session: take a
-finding out of the list and watch it refuse.
-
-**The kit passes the package.** Fourth run, 2026-08-28: `OVERALL_RESULT="PASS"`,
-twenty-three tests passing and one failing. The DPI warning is gone, because
-`build.rs` embeds an application manifest for the linker to read — see
-`DESIGN.md` §2 for why a linker argument is not the build step that section keeps
-out, and why this is not a precedent for a second one.
-
-What remains is `Blocked executables`, and the kit passes the package with it
-failing. That is not luck: `configuration.xml` in the kit marks that task
-`OPTIONAL_FOR_APP_TYPES="Centennial"`, which is what this package is, so failing
-it does not stop the overall verdict. It objects to `ShellExecuteW` — `opener`
-performing the handover the Open button exists for — and to `cmd.exe` strings
-that belong to the Rust standard library rather than to any code this build
-calls. `CHECKLIST.md` has the tracing and `RELEASE.md` has the decision, which is
-about submitting rather than about changing anything.
+**The manifest declares `runFullTrust` and nothing else.** A capability asked for
+and unused is a question at certification with no good answer, and the
+justification field caps at 500 characters and truncates silently at the paste.

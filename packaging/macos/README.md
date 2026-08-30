@@ -180,144 +180,40 @@ all. A bundle that reached a person by download would carry that attribute and
 Gatekeeper would refuse it, with System Settings → Privacy & Security → Open
 Anyway the only way past.
 
-## What a Store build would need
+## What a Store build is
 
-**The channel is chosen**, and the Mac App Store is it: it is how a person who has been sent a container finds something
-to open it, since Finder offers *Search App Store* by document type and outside
-the Store that search returns nothing. What follows is what a Store build costs,
-written down as it is paid rather than discovered afterwards.
+It exists and it ships. `build-app.sh --store PROFILE` produces it and
+`RELEASE.md` has the process; what belongs here is why it is shaped that way.
 
-**The sandbox is the gate, and it has been run.** Every Store binary is
-sandboxed. Three paths in this application were measured against one on
-2026-08-25, and `CHECKLIST.md` holds the detail; two of the three fail and the
-one predicted to fail hardest does not.
+**The sandbox is the gate**, and it is not a formality. Every Store binary is
+sandboxed, and the sandbox is inert until the entitlement is inside a signature
+— so an unsigned bundle carrying the entitlements file is simply not sandboxed,
+and every measurement taken against one is meaningless. Signing is therefore not
+only a distribution concern here. An Apple Development certificate is enough to
+measure with; a distribution certificate is only needed for the upload itself.
 
-The handover survives. `opener` forks `/usr/bin/open` and this file used to say
-the sandbox would deny that outright; it does not. Exec is permitted, the child
-inherits the sandbox, and Launch Services is reachable over Mach IPC from
-inside it.
+**Three paths were measured against a real sandbox rather than reasoned about,
+and the prediction was wrong in both directions.** The handover survives:
+`opener` forks `/usr/bin/open`, which this file once said the sandbox would deny
+outright, and it does not — exec is permitted, the child inherits the sandbox,
+and Launch Services is reachable over Mach IPC from inside it. The save did not:
+`Destination::in_place` creates a randomly-named sibling of the container, and
+the grant a person gives through the open panel covers the file rather than its
+directory. That is what `src/staging.rs` exists for, and `DESIGN.md` §5 carries
+the reasoning.
 
-The save does not. `Destination::in_place` creates a randomly-named sibling of
-the container, and the grant a person gives through the open panel covers the
-file rather than the directory holding it, so Save stops with *Operation not
-permitted* on the temporary file. `NSFileManager.replaceItemAt…` is the route
-out, and it needs no sibling.
+**The Store entitlements are not the development ones.**
+`packaging/macos/Slipcase.entitlements` holds the sandbox and user-selected
+files, which is right for a development build and not enough for an upload: a
+Store build also needs `com.apple.application-identifier` and
+`com.apple.developer.team-identifier`, which the provisioning profile grants.
+The profile grants `keychain-access-groups` as well and it is declined, because
+a capability asked for and unused is a question at review with no good answer.
 
-**Amended 2026-08-28: it extracts and it opens, and the paragraph below is kept
-because the reasoning in it was right about the platform and wrong about what
-the library would do next.** Measured against the signed sandboxed bundle with a
-container marked the way Safari marks a download: the card said it arrived from
-elsewhere, Open put the payload in front of Preview, and nothing refused. `slpc`
-gained `Mark::AlreadyMarked` after this was written — the platform's own mark on
-the file this process wrote *is* a mark, so `carry` reports that rather than
-failing, and `src/lib.rs` no longer tears down the extraction. **`DESIGN.md` §5
-does not have to be reopened for this.**
-
-What is true, and is the part worth carrying forward, is that the mark on the
-payload is the platform's rather than the container's:
-`0086;…;slipcase-desktop;` where the container said
-`0083;…;Safari;<uuid>`. The payload is gated; it no longer says where it came
-from, and it is indistinguishable from a payload extracted from a container that
-was never downloaded. That is a Store-build-only difference — unsandboxed,
-`carry` writes the source's value — and `CHECKLIST.md`'s *What a downloaded
-container did under the sandbox* holds the measurement and its consequence for
-the store listing.
-
-Carrying provenance does not either, and that is the expensive one. The
-platform marks whatever a sandboxed process writes, so `xattr::set` of
-`com.apple.quarantine` is then refused, and `src/lib.rs` fails the whole
-extraction when carrying fails. A container that arrived from elsewhere can
-therefore be neither extracted nor opened under a sandbox — the containers a
-Store build exists to serve. `DESIGN.md` §5 has to be reopened before this
-channel is taken.
-
-None of that needed a distribution certificate. An Apple Development
-certificate signs a bundle with entitlements perfectly well, and the sandbox is
-inert until the entitlement is inside a signature.
-
-**The account exists; nothing macOS does.** It already ships two iOS
-applications, so App Store Connect, the agreements, and the tax and banking
-side are done. Absent on this machine are an Apple Distribution certificate, a
-Mac Installer Distribution certificate, a macOS App ID for
-`com.excelano.slipcase-desktop`, and a Mac App Store provisioning profile,
-which a Store bundle carries as `embedded.provisionprofile` and which must
-declare the same entitlements the signature does.
-
-**No Xcode project is needed and none should be added.** `build-app.sh`
-assembles the bundle; a Store submission is that bundle signed with the
-entitlements and the profile, wrapped by `productbuild --component` into a
-package signed with the installer certificate, and uploaded with Transporter.
-The build stays a shell script, which is the point of it.
-
-**The property list key is there now.** App Store Connect refuses an upload
-with no `LSApplicationCategoryType`, and `Info.plist.in` declares
-`public.app-category.utilities` — the honest fit for something that opens a
-container, shows what is in it, and hands the payload to whatever the system
-registered for it. It is inert outside the Store.
-
-**The architecture was a real problem and is now a build flag.** This machine is
-`x86_64`, and an Intel-only binary on the Store would mean every Apple silicon
-buyer running under a translation layer Apple is winding down. `rustup target
-add aarch64-apple-darwin` and `build-app.sh --universal` join the two slices
-with `lipo`; nothing here compiles C and the cross-build was uneventful.
-
-Two things that came out of doing it. The script checks that `lipo` actually
-produced both architectures, because a joined executable silently missing one
-is a Store upload rejected days later or, worse, accepted and unrunnable on
-half the machines that bought it. And it checks each slice's minimum against
-the `LSMinimumSystemVersion` the bundle declares: measured on the first
-universal build, the x86_64 slice said 10.12 and the arm64 slice said 11.0
-while the property list said 12.0, so the bundle promised a floor its executable
-did not keep. `MACOSX_DEPLOYMENT_TARGET=12.0` on both builds is what moves it,
-and the check is what catches forgetting.
-
-What remains true is that the arm64 slice cannot be **run** on this machine, and
-the one platform-specific module in the crate is the Objective-C one — exactly
-the code least safe to ship untested. Someone has to open a container on an
-Apple silicon Mac before this is submitted.
-
-**Amended 2026-08-28: a machine does it now, on every push.** The last sentence
-above was written when nothing could open a container on Apple silicon, and
-`.github/workflows/apple-silicon.yml` does. `open` on a container reaches Launch
-Services and delivers the same Apple Event Finder delivers, so the runner
-exercises `src/opened_document.rs` — the module documented as impossible before
-it was written — and the job asserts two things about the result. That a window
-exists, asked of the window server rather than of a screenshot, because
-`CHECKLIST.md` records `screencapture` returning the desktop with every window
-omitted and reporting no error while doing it. And that the container's folder
-was remembered, which is what proves the event delivered a *document* rather
-than merely launching the application: the refusal this guards against was
-written up as opening an **empty window**, so the window check alone would call
-it a pass. Both were broken deliberately and watched to fail; the second was
-broken by launching with no container at all, where the window check passes and
-the document check does not.
-
-The photograph the job uploads shows what a person would have gone to see:
-`minimal.slpc` loaded and named, the verdict `conformant`, the card reading
-*Opens with Preview*, the tree drawn, Open carrying the focus ring `DESIGN.md`
-§3's amendment gives it, and no dialog.
-
-**This does not retire the requirement, and the amendment must not be read as
-retiring it.** The runner builds an unsigned, unsandboxed bundle. A submission is
-a universal *sandboxed* bundle signed for distribution and wrapped in a `.pkg`,
-and none of that has run on Apple silicon. Every sandbox measurement here was
-taken on x86_64; sandbox policy ought not to vary by architecture, and *ought* is
-what cost this platform `src/staging.rs` and a reopened `DESIGN.md` §5.
-
-What a runner cannot be is the App Sandbox, a high-density display, or Finder —
-the icon, Get Info's Kind, and a warm double-click into a running window. Those
-stay in `CHECKLIST.md`. What the amendment buys is a narrower search: the
-Objective-C event module is no longer unexecuted on that architecture, so what is
-left to find lives in the sandbox and the signing context. The sentence above is
-kept rather than deleted because it was true when written.
-
-**Two things already argue well at review.** `DESIGN.md` §3 refuses to open a
-payload automatically on a double-click, which is the behaviour an autorun
-archive would have and the behaviour review exists to catch, and `§5` carries
-the container's provenance onto the payload rather than laundering it.
-
-A Developer ID `.dmg` and a Store build ship from one codebase, so this is not
-a fork in the road.
+**A Store-signed bundle cannot be launched here.** AMFI refuses a restricted
+entitlement without a profile covering the machine, and a Mac App Store profile
+covers none, so anything needing a running application uses a Developer ID build
+and the real article is reached through TestFlight.
 
 ## The icon
 
