@@ -55,6 +55,10 @@ So the section keeps its claim and gains the other half of its measurement. `.ca
 
 **What it costs is stated rather than skipped**: a CRT security fix now needs Slipcase rebuilt, where a dynamically linked one would have taken it from a serviced DLL. The alternative — declaring a `Microsoft.VCLibs.140.00.UWPDesktop` framework dependency, which is what the policy means by disclosing one — was rejected for answering the paperwork while leaving the application unable to start until the machine acquires something. Removing the dependency is a better answer to that policy than declaring it, and it is the answer that matches the sentence this section opens with.
 
+**Amended the same day again: looking for the Linux equivalent found one, and it had shipped twice.** The paragraph above says a dependency on the toolchain is invisible from inside the toolchain. The desktop is the same shape of blind spot. `libxkbcommon-x11` is opened by name whenever winit uses the X11 backend, nothing in the package's `Depends` reached it, and `libxkbcommon0` is the dependency in the other direction rather than a route to it — so an X11 machine that installed 0.1.0 or 0.1.1 got an application that panicked before drawing anything. Measured rather than reasoned about, by putting a broken copy earlier on the search path: `Library libxkbcommon-x11.so could not be loaded`, exit 101.
+
+**No single run could have found it**, which is the part worth keeping. A Wayland session never opens libX11 or libxkbcommon-x11 and an X11 session never opens libwayland-client, so half the `Depends` list is unexercised by any one run, and the half this machine exercises was the half that worked. `packaging/linux/check-libraries.sh` runs both, reads `/proc/PID/maps` rather than `ldd`, and refuses any library belonging to a package the declared `Depends` does not transitively reach. It carries one recorded exception, `mesa-vulkan-drivers`, and the exception is measured too: with no Vulkan driver visible the application starts and draws through GL, which is what the `libvulkan1 | libgl1` alternative is for.
+
 ## 3. Shape
 
 A single window.

@@ -161,6 +161,22 @@ Windows. `build-msix.ps1` runs it and will not package a binary that fails, and
 `windows.yml` runs it on every push. If it names something new, that is a
 person's decision and not a line to add to the allowlist without one.
 
+**And Linux had the same defect, found by going to look for it.** `ldd` covers
+what the executable links; it says nothing about what the running application
+*opens*, which here is the whole display stack. `libxkbcommon-x11` was opened on
+the X11 path, `Depends` did not reach it, and 0.1.0 and 0.1.1 installed on an
+X11 machine and panicked at startup. The check is a command, because it needs a
+display:
+
+    cargo build --release
+    ./packaging/linux/check-libraries.sh
+
+It runs the window under both backends — they load disjoint sets, and running
+one proves nothing about the other — reads `/proc/PID/maps`, and refuses any
+library whose package `Depends` does not transitively reach. Run it after
+touching a dependency, and read `packaging/debian/control.in` before adding a
+name to it: one exception is recorded there with the measurement that earns it.
+
 **No table mapping filenames to types.** What the card says about a payload's
 type is what the platform said. Where the platform will not answer, the card
 says nothing rather than guessing. `DESIGN.md` §3.

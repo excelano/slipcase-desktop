@@ -28,9 +28,17 @@ refused to open, saying *The code execution cannot proceed because
 VCRUNTIME140.dll was not found.* The runtime is now part of the application, and
 Slipcase asks the machine for nothing that is not already part of Windows.
 
-Nothing about the application itself changed, and nothing changed on Linux or
-macOS: this is a Windows build setting, and 0.1.2 on the other two platforms is
-0.1.1 rebuilt.
+Slipcase starts on a Debian or Ubuntu machine running X11. The package did not
+declare `libxkbcommon-x11-0`, which the application opens by name whenever it
+uses the X11 display backend and which nothing else in its dependency list
+pulls in — so on a machine that did not already have it, installing Slipcase
+produced an application that exited the moment it was launched. A Wayland
+session never loads that library, and every machine this is built on had it
+already, which is why it went unseen through two releases.
+
+Nothing about the application itself changed in either case. The first is a
+Windows build setting and the second is a line in the Debian package's
+dependency list; on macOS, 0.1.2 is 0.1.1 rebuilt.
 
 ## [0.1.1] - 2026-08-29
 

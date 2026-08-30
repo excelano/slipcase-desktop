@@ -1,5 +1,10 @@
 slipcase-desktop (0.1.2) unstable; urgency=medium
 
+  * Depend on libxkbcommon-x11-0, which the application opens by name under the
+    X11 display backend and which nothing else in the dependency list pulls in.
+    Without it the package installed and the application exited at startup on
+    any X11 machine that did not already have the library. A Wayland session
+    never loads it, which is why two releases went out with it missing.
   * Start on a Windows machine with no Microsoft Visual C++ Redistributable.
     0.1.1 linked the Visual C++ runtime as a separate library and would not
     open without it. Nothing about this package changes: the fix is a Windows

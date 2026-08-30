@@ -6,7 +6,7 @@ Installed-Size: @SIZE@
 Section: utils
 Priority: optional
 Homepage: https://github.com/excelano/slipcase-desktop
-Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, shared-mime-info, desktop-file-utils, hicolor-icon-theme
+Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libxkbcommon-x11-0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, shared-mime-info, desktop-file-utils, hicolor-icon-theme
 Description: Viewer and metadata editor for slipcase containers
  Opens a .slpc container, shows its metadata as an editable tree, and hands
  the payload to whatever application the desktop has registered for it.
@@ -17,8 +17,17 @@ Description: Viewer and metadata editor for slipcase containers
  .
  Only two of the libraries above are found by dpkg-shlibdeps. The executable
  links libc and libgcc and nothing else; the display stack, the graphics
- driver loader, and the keyboard map library are all opened by name at run
+ driver loader, and the keyboard map libraries are all opened by name at run
  time, so a package built from the linker's answer alone would install on a
- machine where it cannot start. The three tool packages at the end own the
- dpkg triggers that rebuild the mime, desktop, and icon caches, which is why
- this package carries no maintainer scripts.
+ machine where it cannot start.
+ .
+ There are two keyboard map libraries and not one, because there are two
+ display backends. A Wayland session never loads libxkbcommon-x11, and an X11
+ session panics at startup without it; nothing pulls it in behind
+ libxkbcommon0, which is the dependency in the other direction. It was
+ missing here until 2026-08-29 and no run on a developer machine could have
+ shown it, every such machine having the package already.
+ .
+ The three tool packages at the end own the dpkg triggers that rebuild the
+ mime, desktop, and icon caches, which is why this package carries no
+ maintainer scripts.
