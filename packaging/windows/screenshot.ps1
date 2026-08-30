@@ -1,7 +1,7 @@
 # Photograph the application's own window at a size the Microsoft Store accepts.
 #
-# `RELEASE.md` listed screenshots under *by hand, because no script can*, and
-# that was an assumption rather than a measurement. What a script cannot do is
+# Screenshots were once listed as something no script could do, and that was an
+# assumption rather than a measurement. What a script cannot do is
 # decide which container to open and whether the result is a good advertisement.
 # What it can do is every mechanical part: size the window so the visible frame
 # is exactly the size asked for, bring it to the front, capture it, and refuse if
