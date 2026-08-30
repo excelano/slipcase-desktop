@@ -14,7 +14,7 @@ use std::path::Path;
 /// through the open panel and not the directory holding it, so
 /// `Destination::in_place` — which asks `NamedTempFile` for a randomly-named
 /// sibling — stops with *Operation not permitted* before a byte is written.
-/// `CHECKLIST.md` holds the run.
+/// Measured under the sandbox; `git log` holds the run.
 ///
 /// This is not a way around the library. Both arms below use `slpc` for the
 /// whole of what it does: reserving a file, handing back a writer, flushing and
@@ -95,8 +95,8 @@ impl Staged {
             // Done here rather than trusted to `replaceItemAtURL:`, which is
             // documented to preserve the original item's metadata and may well
             // preserve this too. May well is not measured, this is the
-            // attribute `CHECKLIST.md` records as the difference between an
-            // unsigned application from the internet being stopped and running,
+            // attribute measured as the difference between an unsigned
+            // application from the internet being stopped and running,
             // and doing it twice costs a `Mark::AlreadyMarked` and nothing else.
             //
             // Not fatal. `carry` refuses when the copy would be ungated where
@@ -146,8 +146,8 @@ mod macos {
         /// boot volume, and measured 2026-08-25 a replacement whose two ends
         /// are on different volumes stops with `NSCocoaErrorDomain` 512 on APFS,
         /// FAT32 and exFAT alike. Save did not work for any container on an
-        /// external drive, a mounted image, or a share. `CHECKLIST.md` holds the
-        /// run.
+        /// external drive, a mounted image, or a share. Measured on all three;
+        /// `git log` holds the run.
         ///
         /// `NSItemReplacementDirectory` is what Apple provides for exactly this:
         /// asked with `appropriateForURL:`, it makes a fresh directory on the
@@ -398,8 +398,8 @@ mod tests {
     /// does not and hands back whatever the umask would have given a new file.
     /// So macOS depends on `replaceItemAtURL:` putting the original's metadata
     /// back. That had been read out of Apple's documentation rather than
-    /// measured: the extended attributes were measured on 2026-08-25 and
-    /// recorded in `CHECKLIST.md`, and the mode bits were not. This test is
+    /// measured: the extended attributes were measured on 2026-08-25 and the
+    /// mode bits were not. This test is
     /// where they are, and the Apple silicon workflow is where it runs — a mode
     /// bit needs no display, no session and no person, so the one platform
     /// nobody here can execute answers it anyway. It passes: the replacement

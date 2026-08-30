@@ -86,7 +86,7 @@ const ALTFORMS: &[&str] = &["", "_altform-unplated", "_altform-lightunplated"];
 /// application list entry, the file type — is drawn at the size it is given
 /// and wants the whole of it, which is also what `slipcase.ico` does at every
 /// size it holds. **Only a look at real tiles settles the two thirds**, and
-/// that look is in `CHECKLIST.md` rather than here.
+/// that look was taken and it settled them; `git log` has it.
 ///
 /// `slipcase.png` is the file type association logo and is a single 256, not a
 /// set: without a `resources.pri` the shell resolves no `targetsize-` variants,

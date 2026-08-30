@@ -823,9 +823,9 @@ id = 2
     /// **Run at four scales, and that is what answers the `@2x` question.**
     /// `pixels_per_point` is `native_scale × zoom_factor`, so a Retina display
     /// at 2 and this display zoomed to 2 are the same number and the same
-    /// rasterisation and layout path. `CHECKLIST.md` carried *the application's
-    /// own interface at 2x* as needing a high-density display nobody had; what
-    /// it needed was a scale, and a scale is something a test can set. Glyph
+    /// rasterisation and layout path. This was carried as needing a
+    /// high-density display nobody had; what it needed was a scale, and a
+    /// scale is something a test can set. Glyph
     /// metrics do round differently at each — 888.6 points at 1 against 889.3
     /// at 3 — which is exactly the drift that could push a borderline row over
     /// the edge, and is why this asserts at each rather than at one.

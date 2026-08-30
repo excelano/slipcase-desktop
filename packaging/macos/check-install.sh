@@ -190,8 +190,7 @@ note "the version it declares" "${short:-?} (build ${build:-?})"
 #    Store build is not distributed under that policy, so it is rejected naming
 #    our own certificate as the origin, and counting that as a finding would
 #    make this script cry wolf on every correct Store build. Measured
-#    2026-08-29; `CHECKLIST.md`'s *What a Store-signed build did when it was
-#    launched* holds it. What is worth reporting is a verdict that does not
+#    2026-08-29; `git log` holds the run. What is worth reporting is a verdict that does not
 #    match the certificate the bundle carries.
 gk=$(spctl -a -vvv "$app" 2>&1)
 case "$kind,$gk" in
@@ -247,7 +246,8 @@ echo
 if [ "$findings" -eq 0 ]; then
     echo "Nothing mechanical is wrong with this install."
 else
-    echo "${findings} thing(s) to write down in CHECKLIST.md."
+    echo "${findings} thing(s) to write down — in the commit, and in"
+    echo "CHECKLIST.md only if the next person would run the list differently."
 fi
 echo "The rest needs eyes: the layout at 2x, the icon, the frame, and what"
 echo "Gatekeeper shows a person rather than what spctl reports."

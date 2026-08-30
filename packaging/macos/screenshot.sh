@@ -29,8 +29,8 @@
 # has no bundle identifier and no icon, so it is not the thing anybody installs.
 # On Windows the equivalent is photographing the packaged application. The
 # closest this platform can get is a *signed bundle built from the same commit*:
-# the Store package cannot be launched at all off the Store, which
-# `CHECKLIST.md` records, so no screenshot can ever be of the exact artefact
+# the Store package cannot be launched at all off the Store — the kernel
+# refuses it — so no screenshot can ever be of the exact artefact
 # that gets uploaded. Build the bundle from the commit being released and say so
 # in `packaging/store-listing.md`.
 #

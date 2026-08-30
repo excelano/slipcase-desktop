@@ -100,8 +100,7 @@ it cannot be forged and a person has to make the choice.
 
 **Amended: it was measured later the same day, and this paragraph was stale for
 two days without anybody noticing.** David made the choice by hand on
-2026-08-26 and `CHECKLIST.md`'s *What the stale UserChoice run found* holds the
-result, in three rows. The short version is that the answer depends on what the
+2026-08-26 and `git log` holds the result, in three rows. The short version is that the answer depends on what the
 stale key points at, which is not a distinction anyone had anticipated:
 
 | `UserChoice` names | What a double-click does |

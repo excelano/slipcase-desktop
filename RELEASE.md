@@ -1193,8 +1193,8 @@ platforms together, which no platform session can do. What it covers:
   the container's, and no API avoids it.
 
   **A wording problem and not a safety one**, established before it was assumed:
-  `CHECKLIST.md`'s *What the provenance sitting found* measured the sandbox's own
-  mark gating at least as hard as the one it displaces and harder for anything
+  the sandbox's own mark was measured gating at least as hard as the one it
+  displaces and harder for anything
   that executes, and stripping it being the difference between an unsigned
   application from the internet running and being stopped.
 

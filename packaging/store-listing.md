@@ -21,9 +21,8 @@ have that mark replaced, so the payload reaches its handler carrying this
 application's mark rather than the container's. Measured 2026-08-28, and no API
 avoids it — a sandboxed process cannot attribute a file to anyone but itself.
 
-Nothing is lost by it. `CHECKLIST.md`'s *What the provenance sitting found*
-established that the sandbox's own mark gates at least as hard as the one it
-displaces, and harder for anything that executes. So the wording says *treats it
+Nothing is lost by it. The sandbox's own mark was measured gating at least as
+hard as the one it displaces, and harder for anything that executes. So the wording says *treats it
 with the caution it gives anything that came from outside*, which is true of both
 stores, rather than *the same warning*, which is true of one. **Resisting the
 second per-store variant was the point**: the executable-payload sentence below

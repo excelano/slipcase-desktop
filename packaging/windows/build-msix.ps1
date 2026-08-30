@@ -60,7 +60,7 @@ $ErrorActionPreference = 'Stop'
 # David's, and `RELEASE.md` carries it. Recording a finding here does not take
 # it. It was taken on 2026-08-28: submit with it failing.
 #
-# Traced rather than tolerated; `CHECKLIST.md` has the working for both.
+# Traced rather than tolerated; `git log` has the working for both.
 #
 #   Blocked executables     The `cmd.exe` strings are the Rust standard
 #                           library's batch-file spawn, which no arm of this
@@ -123,7 +123,7 @@ function Test-CertificationReport([string] $report) {
         $seen[$name] = $verdict
         $expected = $KNOWN_FINDINGS[$name]
         if ($expected -eq $verdict) {
-            Write-Host "$verdict  $name  (known - see CHECKLIST.md)"
+            Write-Host "$verdict  $name  (known - see RELEASE.md)"
         } else {
             $unexpected += "$verdict $name"
             Write-Host "$verdict  $name  ** NOT IN THE KNOWN LIST **"
