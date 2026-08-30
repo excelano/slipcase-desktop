@@ -152,6 +152,23 @@ and Windows had certified a 0.1.1 build without publishing it. So 0.1.1 is what
 the fix went into, and 0.1.2 would have left a version that existed only in this
 tree.
 
+**0.1.2 is on apt as of 2026-08-29, and it is the first 0.1.2 anywhere.** apt
+went 0.1.0, 0.1.1, then straight here; the tag collision that stopped the first
+attempt is why. Verified from the client side rather than from the script's
+report: the bytes served hash to the bytes built, the served package really does
+declare `libxkbcommon-x11-0`, `InRelease` carries a good signature, and 0.1.0 is
+gone from the pool at HTTP 404, which is `KEEP=2` doing its job.
+
+**`apt-ship -n` followed by `apt-ship -y` aborts, and the abort is a false
+positive.** The dry run updates the local pool and indices before it stops, so
+its prune has already removed the old version; the second run's prune then has
+nothing to ask for while the remote deletion is still pending, and the deletion
+guard — correctly, on the information it has — refuses a removal nobody asked
+for. Nothing was deployed, which is the guard working. The way through is to
+verify the pool by hand and call `updatesite excelano.com.apt` directly, which
+is apt-ship's own last step. Worth knowing before the next release repeats it:
+run `-n` or `-y`, not both.
+
 **Amended 2026-08-29: the X11 dependency fix stays inside 0.1.2, and does not
 get a number of its own.** It was found after `v0.1.2` was tagged, which by the
 rule below would ordinarily mean a bump. It does not here, and the reason is
