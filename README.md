@@ -36,9 +36,8 @@ state the design names, editing the metadata and writing it back, extracting and
 replacing the payload, and file association.
 
 Association ships on all three platforms, each built and walked through by hand
-on the platform itself. `packaging/` holds what each decided, `HANDOFF.md`
-summarises what each found, and `CHECKLIST.md` records what only a hand could
-test — thirteen defects between them that the tests and the conformance corpus
+on the platform itself. `packaging/` holds what each decided and
+`CHECKLIST.md` records what only a hand could test — thirteen defects between them that the tests and the conformance corpus
 passed over. Two things measured on macOS are recorded unresolved: an unsigned
 bundle is refused by Gatekeeper, and Spotlight and Launch Services disagree
 about a registered type.

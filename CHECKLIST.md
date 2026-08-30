@@ -1452,7 +1452,7 @@ that one is inside the Linux `#[cfg]` arm and never exists here.
 
 ### What an unrecognised stream is worth on this platform
 
-`HANDOFF.md` asks whether the origin note macOS added — `slpc` 0.3.10's
+macOS asked whether the origin note it added — `slpc` 0.3.10's
 `com.excelano.slipcase.origin` — should be written here too, and named three
 things needing measurement. Two were taken on 2026-08-29 and the third is
 below.
@@ -1483,8 +1483,8 @@ over ours and the note recovered what the sandbox destroyed; nothing here takes
 the information away except a person choosing to remove it.
 
 **Two things are unmeasured and neither changes the recommendation.** Whether a
-packaged install sees such a stream at all is the third question `HANDOFF.md`
-asks, and it belongs to the next sitting that has the MSIX installed. And a
+packaged install sees such a stream at all is the third of those questions, and
+it belongs to the next sitting that has the MSIX installed. And a
 volume with no alternate streams — a FAT32 or exFAT stick — is where the zone
 stream is lost outright, which is also where a note could not be written; this
 machine has no second volume and no administrator to make one, so that is
@@ -1583,8 +1583,7 @@ statement as having seen the window open. It is in *Not yet done by hand* below.
   walkthrough: the predicate asked whether the `Zone.Identifier` stream exists,
   and a stream that exists carrying no `ZoneId` line is a file the shell does
   not gate. Reproduced first by denying the stream write, then repaired against
-  a measurement of what the shell stops for. `HANDOFF.md` says what it cost and
-  `DESIGN.md` §8 carries the table. The hand item it pointed at — provenance,
+  a measurement of what the shell stops for. `DESIGN.md` §8 carries the table. The hand item it pointed at — provenance,
   which had never run on this platform — was walked later the same day and has
   its own section above.
 
@@ -1771,8 +1770,8 @@ state, there being no conffiles to leave.
 
 ### What looking for the light card found, and why there was none
 
-`HANDOFF.md` left one item for this platform: the contrast repair is shared
-code, every Windows walkthrough ran in dark mode and macOS had never looked, so
+One item was left for this platform by the sessions before it: the contrast
+repair is shared code, every Windows walkthrough ran in dark mode and macOS had never looked, so
 open a container in light mode and look at the card. macOS answered on
 2026-08-28 and this was the last arm.
 
@@ -2807,7 +2806,7 @@ offers no way to reach.
 
 ### What the light card looked like here
 
-`HANDOFF.md` left this for the two platforms that had never seen it: the contrast
+This was left for the two platforms that had never seen it: the contrast
 repair is shared code, every Windows walkthrough ran in dark mode, so the light
 card had been looked at while it was broken and not once since it was fixed.
 macOS had never looked at either. Run 2026-08-28 against the signed sandboxed

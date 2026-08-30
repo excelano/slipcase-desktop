@@ -5,30 +5,32 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 
 ---
 
-## Every platform has drawn a frame now
+## Three platforms, one repository
 
-This application was written and first built on Linux. Windows was then done on
-Windows and macOS on a Mac, so both briefs beside `HANDOFF.md` are records
-rather than tasks and no platform is holding up a stage.
+Written and first built on Linux, then Windows on Windows and macOS on a Mac.
+All three ship, and no platform is waiting on another.
 
-**If you are here for the release, read `RELEASE.md`.** It is the live
-document: `HANDOFF-windows.md` and `HANDOFF-macos.md` are records of finished
-work, and `RELEASE.md` is what is left, in the order it is to be done, with the
-once-only work separated from what every patch will cost.
+**If you are here for a release, read `RELEASE.md`.** It is the live document
+and it holds the process, not the history: what every patch costs, in the order
+it is done.
 
-**Read *What is waiting on a platform* in `HANDOFF.md` before you start.**
-Reviewing one platform's work from another turns up things only the arm's owner
-can settle, and that section is where they are left. It names the platform each
-one belongs to; an empty section means nothing has come back.
+**Stay inside your own platform's arm.** Its `#[cfg]` arm of
+`src/opens_with.rs`, its own directory under `packaging/`, and its own file
+under `.github/workflows/`. One workflow file per platform rather than a shared
+`ci.yml`, so that a session can change its own without touching anybody else's.
+What each platform decided is in its own directory:
 
 - **Linux** — `packaging/linux` and `packaging/debian`.
-- **Windows** — `packaging/windows/README.md` says what was decided.
-- **macOS** — `packaging/macos/README.md` says what was decided, including two
-  things measured and left unresolved.
+- **Windows** — `packaging/windows/README.md`.
+- **macOS** — `packaging/macos/README.md`.
 
-`HANDOFF.md` summarises what each platform found. Stay inside your own
-platform's `#[cfg]` arm of `src/opens_with.rs` and its own
-directory under `packaging/`.
+**Reviewing another platform's arm is worth doing, and it is how the worst
+defects here were found.** Reading code you cannot run found the payload name
+rendered unescaped in the tree; going looking for the Windows dependency defect's
+counterpart found the Linux one. Neither was reachable by any test. What you
+cannot settle from here, raise with David rather than guessing — this repository
+kept three handover documents for that once, and the cure was noisier than the
+disease. `git log` is where their content went.
 
 ---
 

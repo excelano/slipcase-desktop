@@ -119,10 +119,10 @@ MSIX can clear: a package runs no code at install time, so it cannot remove a
 `UserChoice`. That leaves a decision, and it is recorded in `RELEASE.md` rather
 than settled here.
 
-Worth noticing how this was found: `CHECKLIST.md` was written and this file, and
-`HANDOFF.md`, and `RELEASE.md` all went on saying the question was open. The
-record was right and three summaries of it were wrong, which is the argument for
-reading the record rather than the summary.
+Worth noticing how this was found: `CHECKLIST.md` was written and this file and
+`RELEASE.md` both went on saying the question was open. The record was right and
+the summaries of it were wrong, which is the argument for reading the record
+rather than the summary — and, in the end, for keeping fewer summaries.
 
 One thing to carry into any check of a packaged install: `AssocQueryString`
 answers `ERROR_NO_APPLICATION_ASSOCIATED` for the executable and the command

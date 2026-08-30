@@ -1,9 +1,8 @@
 # Release: getting Slipcase into two stores, repeatably
 
-`HANDOFF-windows.md` and `HANDOFF-macos.md` are records of work that is
-finished. This is the live one, and it is the only document that says what is
-left before Slipcase is something a person can install without being handed a
-file.
+The only document that says what is left before Slipcase is something a person
+can install without being handed a file, and what it will cost to do it again
+next time.
 
 **The organising rule is that this is not a checklist.** A checklist gets a
 first release out and is useless for the second. Every patch will need the same
