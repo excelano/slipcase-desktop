@@ -703,8 +703,17 @@ Linux and macOS is 0.1.1 rebuilt, and the changelogs say so.
       binary FA00281208A30C6D0C32573D9B95FC10EF00B45E84BE8D400E804182E3BDBF95
 
     dist\Slipcase-0.1.2.0-x64.msix          throwaway-signed, local install only
-      sha256 452E77F322AA1ADDC6CD1652C564B1F2176DC1770297D22744D22235F42BD90F
-      the same binary, byte for byte
+      sha256 73642061671F225A1E0C90044776D12F861D2F069E7437BEC2955ABB1458F4C1
+      the same binary, byte for byte - which is the property that matters,
+      because this is the copy the certification kit passed and the unsigned
+      one is what goes to the Store
+
+**Certified at 0.1.2 on 2026-08-29: `OVERALL_RESULT="PASS"`**, with `Blocked
+executables` failing as it always does and as `CHECKLIST.md` explains. Its
+messages are now a strict subset of 0.1.1's - the two that were traced to random
+bytes inside an instruction, `Csi` and `REg`, disappeared when linking the C
+runtime relaid the code, and the four with a named cause are unchanged. Nothing
+new appeared, which is the question a re-certification is actually asking.
 
 **The provenance was got right by ordering rather than by a detached checkout
 this time.** Every file that compiles into the binary was final before

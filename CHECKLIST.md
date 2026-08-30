@@ -1256,6 +1256,21 @@ messages are real and understood — `ShellExecuteW` is the Open button and
 the rest are noise from a substring scan. Nothing about them changes between runs
 except which random three bytes happen to spell an executable's name.
 
+**Confirmed at 0.1.2, 2026-08-29, and the confirmation is the useful part.** The
+kit was run again on the package that fixes the Visual C++ dependency. Overall
+`PASS`, `Blocked executables` failing as always, and the message set is now a
+strict subset of 0.1.1's:
+
+    0.1.1   CreateProcessW, ShellExecuteW, "Csi", "REg", "cmd.exe", "\cmd.exe"
+    0.1.2   CreateProcessW, ShellExecuteW,               "cmd.exe", "\cmd.exe"
+
+`Csi` and `REg` are gone and the four understood ones are unchanged. **That is
+the argument above making a prediction and the prediction coming true.** The
+claim was that those two are three random bytes inside an instruction, so they
+should survive nothing that moves the code — and linking the C runtime in moved
+all of it. The four that remain are the four with a named cause. Nothing new
+appeared, which is the thing actually being checked when a fix is re-certified.
+
 ### What taking the screenshots found
 
 Taken 2026-08-28 by `packaging/windows/screenshot.ps1`, against the packaged
