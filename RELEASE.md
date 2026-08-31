@@ -148,8 +148,9 @@ signs what it distributes, and the throwaway-signed one is for installing here.
 
 ### What the Partner Center form actually does
 
-Three things no documentation said, all now walked through in
-`SUBMITTING.local.md`:
+Four things no documentation said. The first three are walked through in
+`SUBMITTING.local.md`; the fourth was found afterwards, by looking at what the
+first submission had been filed under:
 
 - **The Store logo field takes 1080x1080 or 2160x2160**, not the 300x300 the
   older documentation describes. `make-ico` draws both into
@@ -161,6 +162,15 @@ Three things no documentation said, all now walked through in
 - **The reviewer has nothing to open.** Slipcase without a container is an empty
   window and the notes field takes no attachment, which is why the sample
   container is served from the website and its URL is one of the answers below.
+- **The store listing has a language, and it came from the package.** The first
+  submission was filed under *English (United Kingdom)*, which is what
+  `AppxManifest.xml.in` declared and the only place in this repository that
+  names a language. It declares `en` now, so the next package's submission
+  belongs under *English*: add that listing, copy `packaging/store-listing.md`
+  into it, and delete the English (United Kingdom) one, the form having no
+  rename. The copy is spelled British either way, which is a house style rather
+  than a market. Read the language back in the form before committing the
+  submission — neither channel below serves it.
 
 **The submission API cannot make a first submission.** MSIX apps use the API at
 `manage.devcenter.microsoft.com` — `api.store.microsoft.com` is for MSI and EXE

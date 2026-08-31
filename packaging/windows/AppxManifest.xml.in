@@ -65,7 +65,21 @@
   </Dependencies>
 
   <Resources>
-    <Resource Language="en-gb" />
+    <!-- Neutral English, and it said `en-gb` until 2026-08-31. The package
+         carries no localised resources, so this tag is not choosing between
+         translations: it is the language the Store reports the application in,
+         and the language Partner Center opens a store listing under. `en-gb`
+         is how the first submission came to be filed as English (United
+         Kingdom), which is narrower than the listing is -- there is one
+         listing and it is meant for every English-speaking market. The copy in
+         `packaging/store-listing.md` goes on spelling *recognise* and
+         *organisation*, which is a house style rather than a locale.
+
+         This is the only place in the repository that names a language, and
+         `build-msix.ps1` spells the same tag a second time for `makepri`.
+         Changing one without the other is the silent failure that file's
+         comment describes. -->
+    <Resource Language="en" />
   </Resources>
 
   <Applications>
