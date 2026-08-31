@@ -99,7 +99,7 @@ Open a container, read the metadata travelling with the file inside it, edit tha
 
 ## Short description (Microsoft Store, 1,000)
 
-A slipcase container is one file holding a document of any type together with a TOML description of it, so the description travels with the document instead of living in a filename, a sidecar file, or somebody else's database.
+A slipcase container is one file holding a document of any type together with metadata describing it, so the metadata travels with the document instead of living in a filename, a sidecar file, or somebody else's database.
 
 Slipcase opens a container and shows what is in it: the payload's name and size, what your computer says would open it, and the metadata as a tree you can edit. Open hands the payload to the application registered for that kind of file. Extract writes it where you choose. Replace swaps it for another file. Save writes edited metadata back.
 
@@ -107,7 +107,7 @@ It tells you what it found and lets you decide. Where your computer will not say
 
 ## App features (Microsoft Store, up to 20 bullets of 200 characters)
 
-    Metadata travels with the document: one file holds the payload and a TOML description of it.
+    Metadata travels with the document: one file holds the payload and the metadata describing it.
     Edit the metadata in place and save. Comments, key order and whitespace you did not touch survive the rewrite.
     Hands the payload to whatever your computer has registered for that kind of file. No preview, no guessing at types.
     Says when a container arrived from elsewhere, and marks the payload you extract so your computer treats it with the same caution.
@@ -129,7 +129,7 @@ equivalent of this field.
 
 ## Description (both, written to 4,000)
 
-A slipcase container is one file holding a document of any type together with a TOML description of it. Copy the container, send it, or move it to another machine and the description goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
+A slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
 
 Slipcase opens a container and shows what is inside.
 
