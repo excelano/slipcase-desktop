@@ -2894,7 +2894,7 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "slipcase-desktop"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "block2 0.6.2",
  "eframe",
@@ -4101,8 +4101,7 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 [[package]]
 name = "winit"
 version = "0.30.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6755fa58a9f8350bd1e472d4c3fcc25f824ec358933bba33306d0b63df5978d"
+source = "git+https://github.com/excelano/winit?rev=3cfd905679da3ca241b97dea723211b580620a27#3cfd905679da3ca241b97dea723211b580620a27"
 dependencies = [
  "ahash",
  "android-activity",

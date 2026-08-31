@@ -37,3 +37,4 @@ dist-devid/
 # file above: `packaging/windows/README.md` carries everything about the package
 # that belongs on a public record, and this one is deliberately local.
 /packaging/windows/SUBMITTING.local.md
+dist-refused/

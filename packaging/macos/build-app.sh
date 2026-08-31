@@ -185,6 +185,88 @@ fi
     exit 1
 }
 
+# **A private symbol in the binary is a rejection, and one cost a review cycle.**
+# Slipcase 0.1.1 was refused on 2026-08-31 for referencing
+# `_CGSSetWindowBackgroundBlurRadius`, which arrived through `winit` and which
+# this application neither calls nor had heard of. Review scans the symbol table
+# rather than the call graph, so *unreachable* is not *absent*: the same build
+# with fat LTO and `-Wl,-dead_strip` still carried it. `Cargo.toml`'s
+# `[patch.crates-io]` is what removed it, and this is what notices if it or
+# anything like it comes back.
+#
+# **The question it asks is a real one rather than a list of names.** A denylist
+# of symbols Apple has already rejected somebody for would have caught nothing
+# here until after the rejection. So: for every undefined symbol the executable
+# imports from a system *framework*, does that framework's own public headers
+# declare it? That is exactly the line Apple draws — measured against the
+# refused binary, `CGShieldingWindowLevel` is in `CGDirectDisplay.h` and is
+# fine, while the two `CGS` symbols appear in no header and only in
+# `CoreGraphics.tbd`.
+#
+# Frameworks only. libSystem, libobjc and the rest are the compiler's own
+# runtime — `objc_retain`, `_Unwind_Resume`, `__bzero` — emitted rather than
+# named by any source here, and declared in no header by design. Asking about
+# them produced a dozen findings that were all noise, which is the state
+# `CLAUDE.md` warns is worse than no check at all.
+#
+# The whole `.framework` directory is searched and not just its `Headers`,
+# because Carbon and CoreServices are umbrellas whose declarations live in
+# sub-frameworks beneath them; scoping to `Headers` reported five false
+# positives from those two alone.
+#
+# Measured on the refused binary: two findings, both correct, in 3.5 seconds.
+# On the patched one: none.
+private_symbols() {
+    exe="$1"
+    sdk=$(xcrun --sdk macosx --show-sdk-path 2>/dev/null) || sdk=""
+    # Not being able to ask is not the same as a clean answer, and a check that
+    # goes quiet on the machine that lacks a tool is the one that lets a build
+    # through. Refuse instead.
+    [ -n "$sdk" ] && [ -d "$sdk" ] || {
+        echo "build-app.sh: no macOS SDK, so the private-symbol check cannot run" >&2
+        echo "  install the Xcode command line tools: xcode-select --install" >&2
+        exit 1
+    }
+    scratch=$(mktemp -d)
+    # `nm -m` names the library each undefined symbol is expected to come from,
+    # which is what makes the per-framework question askable at all. Both slices
+    # of a universal binary are listed, and a symbol in either is a finding.
+    nm -mu "$exe" 2>/dev/null |
+        sed -n 's/.*(undefined) external _\{0,1\}\([A-Za-z0-9_]*\) (from \([A-Za-z0-9_+]*\)).*/\2 \1/p' |
+        sort -u > "${scratch}/pairs"
+    # An executable that imports nothing is not a clean answer, it is `nm`
+    # having failed to read the file — and an empty list walks through every
+    # check below it without a word. Refuse that rather than pass it.
+    [ -s "${scratch}/pairs" ] || {
+        echo "build-app.sh: nm read no imported symbols from ${exe}" >&2
+        echo "  a Mach-O executable always imports some; this is not a pass" >&2
+        rm -rf "$scratch"
+        exit 1
+    }
+    : > "${scratch}/flagged"
+    for framework in $(cut -d' ' -f1 "${scratch}/pairs" | sort -u); do
+        dir="${sdk}/System/Library/Frameworks/${framework}.framework"
+        [ -d "$dir" ] || continue
+        awk -v f="$framework" '$1 == f { print $2 }' "${scratch}/pairs" |
+            sort -u > "${scratch}/wanted"
+        find "$dir" -name '*.h' -print0 2>/dev/null |
+            xargs -0 grep -hoFw -f "${scratch}/wanted" 2>/dev/null |
+            sort -u > "${scratch}/declared"
+        comm -23 "${scratch}/wanted" "${scratch}/declared" |
+            sed "s/^/${framework} /" >> "${scratch}/flagged"
+    done
+    if [ -s "${scratch}/flagged" ]; then
+        echo "build-app.sh: the executable imports symbols no public header declares:" >&2
+        sed 's/^/  /' "${scratch}/flagged" >&2
+        echo "  App Store review refuses these as Guideline 2.5.1." >&2
+        echo "  Find the crate with: grep -rn SYMBOL ~/.cargo/registry/src/*/" >&2
+        rm -rf "$scratch"
+        exit 1
+    fi
+    rm -rf "$scratch"
+}
+private_symbols "$binary"
+
 # Two numbers, not one, and that is the whole reason `version.sh` takes an
 # argument. `CFBundleShortVersionString` is what a person sees in the About box
 # and is the release version. `CFBundleVersion` is what App Store Connect

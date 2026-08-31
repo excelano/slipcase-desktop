@@ -179,6 +179,29 @@ library whose package `Depends` does not transitively reach. Run it after
 touching a dependency, and read `packaging/debian/control.in` before adding a
 name to it: one exception is recorded there with the measurement that earns it.
 
+**And macOS had a third of the same shape, found by a store rather than by us.**
+A submission was refused under Guideline 2.5.1 for referencing
+`_CGSSetWindowBackgroundBlurRadius`, a private CoreGraphics symbol nothing here
+calls: `winit` declares it and calls it from `set_blur` unconditionally, and
+review reads the symbol table rather than the call graph. Every macOS binary
+this project has ever built carried it. The same sentence covers all three
+platforms — a dependency on what the toolchain hands you is invisible from
+inside the toolchain — and here it was invisible a second way, because the code
+is unreachable and the symbol is present anyway. Fat LTO with `-Wl,-dead_strip`
+was measured and does not remove it.
+
+`Cargo.toml`'s `[patch.crates-io]` is what removes it and says when to delete
+itself. The outcome check is in `build-app.sh`, which refuses to bundle an
+executable importing a symbol from a system framework that the framework's own
+public headers do not declare — a question rather than a list of names Apple has
+already caught somebody with, which would have found nothing here until after
+the rejection. `apple-silicon.yml` already calls `build-app.sh`, so it runs on
+every push.
+
+**A `cargo update` or an `eframe` bump off winit 0.30.13 makes that patch stop
+applying**, which is the moment to check whether the release it lands on carries
+the `private-apple-apis` feature gate.
+
 **No table mapping filenames to types.** What the card says about a payload's
 type is what the platform said. Where the platform will not answer, the card
 says nothing rather than guessing. `DESIGN.md` §3.

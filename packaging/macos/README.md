@@ -215,6 +215,40 @@ entitlement without a profile covering the machine, and a Mac App Store profile
 covers none, so anything needing a running application uses a Developer ID build
 and the real article is reached through TestFlight.
 
+## No private symbol reaches the binary
+
+Guideline 2.5.1, and it cost a review cycle. The submission was refused for
+referencing `_CGSSetWindowBackgroundBlurRadius`, which nothing here calls: it is
+`winit`'s, declared in `platform_impl/macos/ffi.rs` and called from
+`WindowDelegate::set_blur` with neither a feature nor a `cfg` in front of it.
+**Review reads the symbol table and not the call graph**, so unreachable is not
+absent, and every macOS binary this project has built carried it.
+
+Three things were eliminated by measurement before anything was forked. Nothing
+here reaches blur — `egui-winit` has no reference to it and eframe's only one is
+in `src/web/`. A build flag does not remove it: fat LTO with `-Wl,-dead_strip`
+still carries the symbol, the call sitting behind a runtime `if attrs.blur` the
+optimizer will not fold. And the other CoreGraphics symbol in that file is fine,
+`CGShieldingWindowLevel` being declared in the public `CGDirectDisplay.h` while
+the two `CGS` ones appear in no header at all — which is the whole definition of
+private, and the line the check below draws.
+
+`Cargo.toml`'s `[patch.crates-io]` removes it and says when to delete itself.
+
+**`build-app.sh` refuses to bundle an executable that imports a symbol from a
+system framework which that framework's own public headers do not declare.** A
+list of names Apple has already caught somebody with would have found nothing
+here until after the rejection, so it asks a question instead. Frameworks only:
+libSystem and libobjc are the compiler's own runtime, and asking about them
+produced a dozen findings that were all noise. The whole `.framework` is
+searched rather than its `Headers`, because Carbon and CoreServices are
+umbrellas and scoping to `Headers` reported five false positives from those two
+alone. It also refuses a binary `nm` read no imports from, an empty list being
+`nm` having failed rather than a clean answer.
+
+It was watched to fail on the refused executable before it was believed.
+`apple-silicon.yml` already calls `build-app.sh`, so it runs on every push.
+
 ## The icon
 
 One drawing, `packaging/linux/icons/slipcase-desktop.svg`, which

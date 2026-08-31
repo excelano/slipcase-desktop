@@ -17,6 +17,16 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.3] - 2026-08-31
+
+### Fixed
+
+Slipcase can be distributed on the Mac App Store. 0.1.2 and everything before it
+referenced a private Apple graphics function that Slipcase never calls, picked up
+from the window library it is built on, and Apple refuses any submission naming
+one. The function has been removed. Nothing an installed copy does changes on any
+platform, and on Linux and Windows the application is 0.1.2 rebuilt.
+
 ## [0.1.2] - 2026-08-29
 
 ### Fixed
