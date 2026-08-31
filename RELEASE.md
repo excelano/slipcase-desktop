@@ -40,21 +40,29 @@ parsing `Cargo.toml` a second time.
 
 | Where | Shape | Rule |
 | --- | --- | --- |
-| `Cargo.toml` | `0.1.2` | The source. |
-| `AppxManifest.xml` | `0.1.2.0` | Four parts, and the Store requires the fourth to be `0`. |
-| `Info.plist` `CFBundleShortVersionString` | `0.1.2` | What a person sees. |
+| `Cargo.toml` | `X.Y.Z` | The source. |
+| `AppxManifest.xml` | `X.Y.Z.0` | Four parts, and the Store requires the fourth to be `0`. |
+| `Info.plist` `CFBundleShortVersionString` | `X.Y.Z` | What a person sees. |
 | `Info.plist` `CFBundleVersion` | the commit count | Must increase on **every upload**, including a rejected one resubmitted unchanged. |
 
 `CFBundleVersion` is the awkward one: two uploads of the same version need
-different build numbers, so it comes from `git rev-list --count HEAD`.
+different build numbers, so it comes from `git rev-list --count --first-parent
+HEAD`. `--first-parent` is not decoration: this history carries a merge, and
+counting without it lands three commits away.
 
 **It buys a second thing.** The build number App Store Connect shows is a
-pointer back to a commit — build 167 is `git rev-list --count` at `7d38b4f`, the
-commit those store packages were built from — so the store record identifies its
-own source with nobody having written the mapping down. **The Appx spelling has
-no such property**: it is a function of the release version alone, so on Windows
-the only record of which commit was uploaded is the one `SUBMITTING.local.md`
-keeps.
+pointer back to a commit, so the store record identifies its own source with
+nobody having written the mapping down. Read it back with the same count against
+a candidate commit, and take `version.sh` as the authority over this paragraph —
+which used to carry a worked example naming a build and a commit. The example
+counted without `--first-parent`, so it agreed by coincidence while pointing
+three commits away from the real one, and it sat there wrong because nobody
+recomputes a number a document has already written down. Deleted rather than
+corrected, for the reason `CLAUDE.md` gives about the conformance count.
+
+**The Appx spelling has no such property**: it is a function of the release
+version alone, so on Windows the only record of which commit was uploaded is the
+one `SUBMITTING.local.md` keeps.
 
 **Bump only for a number that has been *tagged*.** A code change costs a
 certification re-run either way; only a published number costs a version as
@@ -195,7 +203,7 @@ imply a listing was verified.
 ## macOS
 
     cargo build --release
-    ./packaging/macos/build-app.sh --store "Slipcase Mac App Store"
+    ./packaging/macos/build-app.sh --store ~/Downloads/Slipcase_Mac_App_Store.provisionprofile
     ./packaging/macos/check-install.sh
     ./packaging/macos/screenshot.sh
 
@@ -213,6 +221,13 @@ with the wrong one.
 `keychain-access-groups` is declined although the profile grants it, for the
 reason `AppxManifest.xml` declares only `runFullTrust`: a capability asked for
 and unused is a question at review with no good answer.
+
+`build-app.sh` also refuses a binary importing a symbol from a system framework
+that the framework's public headers do not declare — the macOS counterpart of
+`check-imports.ps1` and `check-libraries.sh`, and there for the same reason all
+three exist. A submission was refused under Guideline 2.5.1 for a private
+CoreGraphics symbol `winit` links unconditionally and nothing here calls;
+`packaging/macos/README.md` has it.
 
 **The signing identities, whose names differ from the portal's labels:**
 
