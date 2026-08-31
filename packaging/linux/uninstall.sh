@@ -18,16 +18,15 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# The media type and the icon a container is drawn with are `slipcase-common`'s
+# and are left alone: removing them here would take the file type away from
+# every other slipcase product on the machine.
 rm -f \
-    "${prefix}/share/mime/packages/application-x.slipcase+zip.xml" \
     "${prefix}/share/applications/slipcase-desktop.desktop" \
-    "${prefix}/share/icons/hicolor/scalable/apps/slipcase-desktop.svg" \
-    "${prefix}/share/icons/hicolor/scalable/mimetypes/application-x.slipcase+zip.svg"
+    "${prefix}/share/icons/hicolor/scalable/apps/slipcase-desktop.svg"
 
 [ -n "$keep_binary" ] || rm -f "${prefix}/bin/slipcase-desktop"
 
-[ -x "$(command -v update-mime-database || true)" ] &&
-    update-mime-database "${prefix}/share/mime" || true
 [ -x "$(command -v update-desktop-database || true)" ] &&
     update-desktop-database "${prefix}/share/applications" || true
 [ -x "$(command -v gtk-update-icon-cache || true)" ] &&

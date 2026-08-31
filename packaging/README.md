@@ -8,9 +8,10 @@ was measured rather than assumed.
 
 ## linux
 
-The freedesktop half: the media type, the desktop entry, and two icons. Install
-it into a prefix, which defaults to `~/.local`:
+The freedesktop half: the desktop entry and the application icon. Install it
+into a prefix, which defaults to `~/.local`:
 
+    ../slipcase-common/install.sh
     ./packaging/linux/install.sh
     ./packaging/linux/install.sh --prefix /usr/local     # for everyone
     ./packaging/linux/uninstall.sh
@@ -27,6 +28,23 @@ Check that it took:
 
 Before the media type is installed a `.slpc` reports as `application/zip`, which
 is true and useless: it is what every slipcase is underneath.
+
+**The media type and the icon a container is drawn with left this repository.**
+They are `slipcase-common`'s, which this package depends on. Two packages cannot
+ship one path — dpkg refuses the second install outright — so as soon as
+`slipcase-open` claimed the same association the type could be declared here or
+there and not both, and the icon could only ever be in one of them. Every
+container on a machine with the other product drew as a blank generic document.
+Declaring it once and depending on it is the arrangement that has no such side.
+
+The reasoning that used to sit in the XML's comments went with it, including why
+the icon has to be named as the generic icon as well as the icon. That finding
+was made here and is recorded in `slipcase-common`'s README, which measured it
+again from the other direction.
+
+`install.sh` now says so when the machine has no declaration of the type, asked
+of `share/mime/types` rather than of the filenames in `packages/`, since each
+product names its declaration differently.
 
 ## macos
 
@@ -77,16 +95,20 @@ window under both display backends and refuses any library whose package
 `Depends` does not transitively reach. Run it after touching a dependency. Two
 releases shipped without `libxkbcommon-x11-0` before it existed.
 
-The package carries no maintainer scripts. `shared-mime-info`,
-`desktop-file-utils`, and `hicolor-icon-theme` own dpkg triggers on the three
-directories this package writes into, so the mime, desktop, and icon caches are
-rebuilt by dpkg without a `postinst` asking for it. Those three packages are in
-`Depends` for that reason as much as for anything they provide at run time.
+The package carries no maintainer scripts. `desktop-file-utils` and
+`hicolor-icon-theme` own dpkg triggers on the two directories this package
+writes into, so the desktop and icon caches are rebuilt by dpkg without a
+`postinst` asking for it. Both are in `Depends` for that reason as much as for
+anything they provide at run time. `shared-mime-info` is no longer named,
+because `slipcase-common` pulls it in.
 
 ## The icon
 
 `packaging/linux/icons/slipcase-desktop.svg`, drawn on a 64-unit grid: a card
-sliding into an open-topped case. It is the source for every platform's icon —
+sliding into an open-topped case. This is the *application* icon. The icon a
+container is drawn with was the same file under another name and now lives in
+`slipcase-common`, which is a different role and free to diverge from this one.
+It is the source for every platform's icon —
 macOS wants `.icns` and Windows wants `.ico`, both converted from this.
 `packaging/windows/make-ico` is the converter for the second; a `.icns` one has
 still to be written.

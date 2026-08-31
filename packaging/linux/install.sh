@@ -1,6 +1,11 @@
 #!/bin/sh
-# Install the desktop integration DESIGN.md §8 describes: the media type, the
-# desktop entry, and the two icons. Optionally the binary alongside them.
+# Install the desktop integration DESIGN.md §8 describes: the desktop entry and
+# the application icon. Optionally the binary alongside them.
+#
+# The media type and the icon a container is drawn with are not here. They are
+# `slipcase-common`'s, declared once for every slipcase product because two
+# packages cannot ship one path; install that first, or the entry below has no
+# type to be associated with.
 #
 # For a person installing by hand and for testing the association without
 # building a package. The Excelano apt repository ships the same files from
@@ -62,19 +67,13 @@ elif [ "$binary" != "none" ]; then
 fi
 
 mkdir -p \
-    "${prefix}/share/mime/packages" \
     "${prefix}/share/applications" \
-    "${prefix}/share/icons/hicolor/scalable/apps" \
-    "${prefix}/share/icons/hicolor/scalable/mimetypes"
+    "${prefix}/share/icons/hicolor/scalable/apps"
 
-install -m 0644 "${here}/application-x.slipcase+zip.xml" \
-    "${prefix}/share/mime/packages/application-x.slipcase+zip.xml"
 install -m 0644 "${here}/slipcase-desktop.desktop" \
     "${prefix}/share/applications/slipcase-desktop.desktop"
 install -m 0644 "${here}/icons/slipcase-desktop.svg" \
     "${prefix}/share/icons/hicolor/scalable/apps/slipcase-desktop.svg"
-install -m 0644 "${here}/icons/application-x.slipcase+zip.svg" \
-    "${prefix}/share/icons/hicolor/scalable/mimetypes/application-x.slipcase+zip.svg"
 
 if [ -n "$found_binary" ]; then
     mkdir -p "${prefix}/bin"
@@ -87,14 +86,29 @@ fi
 # Each is absent on a minimal system and each failure is survivable: the files
 # are in place either way and the next login or the next package installation
 # rebuilds these caches.
-[ -x "$(command -v update-mime-database || true)" ] &&
-    update-mime-database "${prefix}/share/mime" || true
 [ -x "$(command -v update-desktop-database || true)" ] &&
     update-desktop-database "${prefix}/share/applications" || true
 [ -x "$(command -v gtk-update-icon-cache || true)" ] &&
     gtk-update-icon-cache -q -t -f "${prefix}/share/icons/hicolor" || true
 
-echo "installed the slipcase media type, desktop entry, and icons under ${prefix}"
+echo "installed the slipcase desktop entry and application icon under ${prefix}"
+
+# Said rather than assumed. An entry naming a type nothing has declared is an
+# entry no file manager will offer, and the symptom looks like an association
+# fight rather than a missing package. Asked of `share/mime/types`, which is
+# what `update-mime-database` writes, rather than of the filenames in
+# `packages/`: every product names its declaration differently.
+if ! grep -qsx 'application/x.slipcase+zip' \
+        "${prefix}/share/mime/types" \
+        /usr/local/share/mime/types \
+        /usr/share/mime/types
+then
+    echo
+    echo "The slipcase media type is not declared on this machine."
+    echo "Install slipcase-common, or run its install.sh, or nothing will"
+    echo "associate a .slpc with this application."
+fi
+
 echo
 echo "check it with:"
 echo "  xdg-mime query filetype SOME.slpc     # application/x.slipcase+zip"

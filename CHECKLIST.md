@@ -200,8 +200,11 @@ property of the release profile and passes vacuously in debug.
 
 ### The association
 
-Run `./packaging/linux/install.sh` first. Log out and back in if the desktop
-does not notice: GNOME reads the mime database once per session.
+Run `../slipcase-common/install.sh` and then `./packaging/linux/install.sh`. The
+media type is the first of those and the desktop entry is the second, so an
+association checked without the first fails for a reason that has nothing to do
+with this application. Log out and back in if the desktop does not notice: GNOME
+reads the mime database once per session.
 
 1. **The type is ours.** `xdg-mime query filetype SOME.slpc` says
    `application/x.slipcase+zip`. Before installing it says `application/zip`,

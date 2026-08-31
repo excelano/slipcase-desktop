@@ -1,6 +1,11 @@
 #!/bin/sh
 # Build the binary package DESIGN.md §8 ships through the Excelano apt
-# repository: the executable, the media type, the desktop entry, and the icons.
+# repository: the executable, the desktop entry, and the application icon.
+#
+# Not the media type and not the icon a container is drawn with. Those are
+# `slipcase-common`'s, which this package depends on: two packages cannot ship
+# one path, and the type has to be declared once for every slipcase product
+# rather than once per product.
 #
 # A binary package rather than a source package. Everything here is one static
 # Rust executable and four data files, and the archive is assembled from a
@@ -104,22 +109,16 @@ chmod 0755 "$stage"
 mkdir -p \
     "${stage}/DEBIAN" \
     "${stage}/usr/bin" \
-    "${stage}/usr/share/mime/packages" \
     "${stage}/usr/share/applications" \
     "${stage}/usr/share/icons/hicolor/scalable/apps" \
-    "${stage}/usr/share/icons/hicolor/scalable/mimetypes" \
     "${stage}/usr/share/man/man1" \
     "${stage}/usr/share/doc/slipcase-desktop"
 
 install -m 0755 "$binary" "${stage}/usr/bin/slipcase-desktop"
-install -m 0644 "${here}/../linux/application-x.slipcase+zip.xml" \
-    "${stage}/usr/share/mime/packages/application-x.slipcase+zip.xml"
 install -m 0644 "${here}/../linux/slipcase-desktop.desktop" \
     "${stage}/usr/share/applications/slipcase-desktop.desktop"
 install -m 0644 "${here}/../linux/icons/slipcase-desktop.svg" \
     "${stage}/usr/share/icons/hicolor/scalable/apps/slipcase-desktop.svg"
-install -m 0644 "${here}/../linux/icons/application-x.slipcase+zip.svg" \
-    "${stage}/usr/share/icons/hicolor/scalable/mimetypes/application-x.slipcase+zip.svg"
 install -m 0644 "${root}/LICENSE" "${stage}/usr/share/doc/slipcase-desktop/copyright"
 
 # Debian policy wants a changelog in every binary package, and lintian makes

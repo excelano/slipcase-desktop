@@ -23,16 +23,20 @@ should get it rather than from here. `https://excelano.com/slipcase/` is the
 product page for all three platforms. What follows is the from-source route,
 which is what this repository is for.
 
-On Linux, the desktop integration and the media type:
+On Linux, the media type and then the desktop integration:
 
 ```
+../slipcase-common/install.sh
 ./packaging/linux/install.sh
 ```
 
-That registers `application/x.slipcase+zip` against `*.slpc`, so a file manager
-knows what a container is and what opens one. `packaging/debian/build-deb.sh`
-builds the package the Excelano apt repository ships. `packaging/README.md` has
-the detail.
+`slipcase-common` registers `application/x.slipcase+zip` against `*.slpc` and
+ships the icon a container is drawn with, so a file manager knows what a
+container is; this application's own entry says what opens one. The type is a
+separate package because every slipcase product needs it and only one of them
+can ship it — two packages cannot install the same path.
+`packaging/debian/build-deb.sh` builds the package the Excelano apt repository
+ships. `packaging/README.md` has the detail.
 
 ## Status
 

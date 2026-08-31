@@ -6,7 +6,7 @@ Installed-Size: @SIZE@
 Section: utils
 Priority: optional
 Homepage: https://github.com/excelano/slipcase-desktop
-Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libxkbcommon-x11-0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, shared-mime-info, desktop-file-utils, hicolor-icon-theme
+Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libxkbcommon-x11-0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, slipcase-common, desktop-file-utils, hicolor-icon-theme
 Description: Viewer and metadata editor for slipcase containers
  Opens a .slpc container, shows its metadata as an editable tree, and hands
  the payload to whatever application the desktop has registered for it.
@@ -28,6 +28,11 @@ Description: Viewer and metadata editor for slipcase containers
  missing here until 2026-08-29 and no run on a developer machine could have
  shown it, every such machine having the package already.
  .
- The three tool packages at the end own the dpkg triggers that rebuild the
- mime, desktop, and icon caches, which is why this package carries no
- maintainer scripts.
+ slipcase-common declares the media type and ships the icon a container is
+ drawn with. It is a hard dependency: without the type declared, nothing
+ associates a .slpc with this application. It pulls shared-mime-info in behind
+ it, which is why that is no longer named here.
+ .
+ The two tool packages at the end own the dpkg triggers that rebuild the
+ desktop and icon caches, which is why this package carries no maintainer
+ scripts.
