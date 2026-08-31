@@ -164,6 +164,32 @@ submission created through the API must be edited only through the API**;
 touching it in Partner Center can leave it uncommittable, and the recovery is to
 delete it and start again.
 
+### Reading the listing back, which needs no login
+
+Once a submission is live the Store publishes it, and two public channels answer
+without a Partner Center session — which is the point, because a dashboard
+reporting its own success is the same evidence as a build script reporting its
+own output:
+
+    $id = (Import-PowerShellDataFile packaging\windows\identity.psd1).StoreId
+    winget show --id $id --source msstore
+    Invoke-RestMethod ("https://displaycatalog.mp.microsoft.com/v7.0/products/" +
+        $id + "?market=US&languages=en-US&fieldsTemplate=Details")
+
+`winget` gives the description, price, category, publisher and both URLs — so
+the description can be **diffed** against `packaging/store-listing.md` rather
+than read, which is the only way to confirm the per-store cut that file's header
+requires was actually made in the form. The display catalogue gives the package:
+`PackageFullName` carries the version, and `Version` is the same four parts
+packed into a 64-bit integer, so `0.1.2.0` reads `4295098368`. That is what says
+the Store is serving the build that was uploaded. `winget`'s own `Version`
+column reads `Unknown` from the msstore source and that is not a fault.
+
+**What neither serves back** is the screenshots, the search terms, the
+`runFullTrust` justification, the notes to certification, and *What's new in
+this version*. Those stay write-only, so a check here must say so rather than
+imply a listing was verified.
+
 ---
 
 ## macOS
@@ -227,11 +253,26 @@ The last goes in *Notes for certification* telling the tester to open it. It is
 `packaging/demo-container.sh`'s output, which pins its archive timestamps so
 that any machine rebuilds the same bytes.
 
+**The age rating is answered once and then reused.** IARC generates the ratings
+from that questionnaire and they cover the product *and any later change that
+would not alter the answers* — so an ordinary patch costs nothing, and anything
+that gives Slipcase something to rate means answering it again. The Global
+Rating ID it issues is portable to every other storefront that has licensed
+IARC, which makes it an identifier rather than a fact: it is in
+`packaging/windows/SUBMITTING.local.md` with the rest of them.
+
 **Both pages are on `excelano.com` and are submission blockers.** Check the
 served HTML rather than this file — the anchor is `id="slipcase"`, which was
 once recorded here wrongly, and the privacy section is
 `packaging/privacy-entry.html` pasted in, which has twice gone stale against the
 repository's copy.
+
+**Going live makes a third page stale, and nothing prompts you.** `/slipcase/`
+says a store listing is *coming* until somebody edits it, so publication is not
+finished when the Store says published: the product page has to gain the link
+and lose the promise. It is the last step of a release rather than an
+afterthought, because it is the page both store forms give as the support URL
+and the one a person actually arrives at.
 
 ---
 
@@ -302,9 +343,15 @@ Then, and only then, both submissions go in.
 
 `packaging/windows/store-metadata.ps1` and `packaging/macos/store-metadata.sh`:
 read a submission back from each store's API, so that what the listing says can
-be checked against what was actually filed. Neither can be written until a
-submission exists to read, which is why they are here rather than done. They are
-what turns *the listing is right* from a reading into a check.
+be checked against what was actually filed. They are what turns *the listing is
+right* from a reading into a check.
+
+**The Windows one should be written smaller than this entry assumed.** It was
+here because no submission existed to read; one does now, and most of what it
+wanted comes from the two public commands above rather than from the submission
+API — no Entra directory, no token, and it runs on any machine. What is left for
+the API is the write-only half listed there, and a script that checks the public
+half must say plainly that it did not check the other.
 
 Each platform's own decisions are in its directory rather than repeated here:
 `packaging/windows/README.md`, `packaging/macos/README.md`, and

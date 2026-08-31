@@ -18,6 +18,11 @@ A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
 
 ## Install
 
+**On Windows, Slipcase is in the Microsoft Store**, which is where a person
+should get it rather than from here. `https://excelano.com/slipcase/` is the
+product page for all three platforms. What follows is the from-source route,
+which is what this repository is for.
+
 On Linux, the desktop integration and the media type:
 
 ```

@@ -177,6 +177,20 @@ property of the release profile and passes vacuously in debug.
   Containers-DisposableClientVM -All` needs elevation and a reboot. Until then
   what stands is `check-imports.ps1`, which says the loader cannot ask for the
   DLL — a narrower claim than the one worth having.
+
+  **The install is *Get* on the listing now**, so this needs a machine and not a
+  machine plus a sideload plus a trusted certificate. Take the Store copy rather
+  than a local build: it is what the person who found the defect had.
+- **Whether the binary the Store serves is the binary that was built.** The
+  Store re-signs what it distributes, so the package it serves is not the file
+  that was uploaded and no hash kept here describes what a customer receives.
+  What should still hold is the executable inside. Install from the Store, find
+  it under `C:\Program Files\WindowsApps\`, and hash it against the number
+  `SUBMITTING.local.md` records for the submitted build; point
+  `check-imports.ps1` at the same copy, which turns the import-table argument
+  from a claim about what was built into one about what is being served. Every
+  other measurement in this repository was taken on a file this project
+  produced, and this is the first link in the chain that is somebody else's.
 - **Whether an alternate stream's *name* matters** to what the shell gates on. A
   packaged application reads a `Zone.Identifier` it did not write, unvirtualised;
   whether it would read a differently-named stream is a question about NTFS
