@@ -167,6 +167,41 @@ property of the release profile and passes vacuously in debug.
    no Add/Remove Programs entry, no shortcut. Explorer should go back to
    calling it `SLPC File`.
 
+### The handover, with real-time protection on
+
+Which is the state a customer's machine is in. Turning Defender off makes both
+items below pass and measures nothing.
+
+1. **What Defender does to the payload Slipcase just wrote.** Open
+   `accept/payload-name-bidi-override.slpc` — the container item 3 of the
+   every-platform section already asks you to look at — and press Open. The
+   window extracts into `%TEMP%\slipcase-XXXXXX\` and hands the result to the
+   shell, so the file on disk is named `report<U+202E>fdp.exe` for real, whatever
+   the card shows.
+
+   Defender has been seen to take that file as `Trojan:Win32/Artoelo.B`. It is
+   not reacting to the payload, which is 47 bytes beginning `%PDF-1.4`: a
+   right-to-left override in front of `.exe` is a real technique and flagging
+   the name is a fair heuristic, which is why the corpus carries the case at
+   all. So this item does not ask whether the detection is right. It asks what
+   Slipcase says while it happens.
+
+   Record three things. Whether `extract` finishes or fails part-way, because a
+   file deleted underneath the write arrives in the window as the library's
+   wording rather than as ours. What the window shows afterwards. And whether
+   the payload is still on disk when it does. The handover's failure sentence in
+   `src/main.rs` reads *… was extracted, and the system would not open it*,
+   which was written for a file that is still there; if Defender has taken it,
+   that sentence names a path that no longer exists and the wording has a case
+   it does not cover.
+2. **The same container through Extract to.** Choose a destination instead of
+   pressing Open. Nothing is launched on that path, so all a person could see is
+   a window reporting where the payload landed and a folder with nothing in it.
+   Record whether that is what happens.
+
+Both of these are the platform answering, so **do not add an exclusion to make
+them pass.** An exclusion measures a machine no customer has.
+
 ### Not yet done by hand
 
 - **Whether the shipped build starts where 0.1.1 did not** — a Windows machine
