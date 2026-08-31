@@ -17,6 +17,21 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.4] - 2026-08-31
+
+### Changed
+
+On Linux, the slipcase file type and the icon a container is drawn with now come
+from a package of their own, `slipcase-common`, which Slipcase depends on and
+apt installs alongside it. Nothing looks or behaves differently. The reason for
+the move is that a file type has to be declared once on a machine, and a second
+application that opens containers cannot declare it a second time — two packages
+cannot install the same file. Before this, whichever application went without
+the icon showed containers as blank documents.
+
+Windows and macOS are unaffected: neither has a shared file-type database, and
+each registers the type in its own way.
+
 ## [0.1.3] - 2026-08-31
 
 ### Fixed

@@ -1,14 +1,20 @@
+slipcase-desktop (0.1.4) unstable; urgency=medium
+
+  * Depend on slipcase-common for the media type and the icon a container is
+    drawn with, which this package no longer ships. They have to be declared
+    once for every product that opens containers, and two packages cannot
+    install the same path. slipcase-common must be in the apt repository before
+    or with this version, or the upgrade has an unsatisfiable dependency.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Sun, 31 Aug 2026 13:30:00 -0500
+
 slipcase-desktop (0.1.3) unstable; urgency=medium
 
   * Remove a reference to a private Apple graphics function, picked up from the
     window library the application is built on and never called by Slipcase.
     Apple refuses any Mac App Store submission naming one, which is what this
-    fixes. It changes nothing on this platform.
-  * Depend on slipcase-common for the media type and the icon a container is
-    drawn with, which this package no longer ships. They have to be declared
-    once for every product that opens containers, and two packages cannot
-    install the same path. slipcase-common must reach the apt repository before
-    or with this version, or the upgrade has an unsatisfiable dependency.
+    fixes. It changes nothing on this platform, and no Linux package was built
+    from it: v0.1.3 is the tag the macOS submission was cut from.
 
  -- David M. Anderson <david.anderson@excelano.com>  Mon, 31 Aug 2026 07:30:00 -0500
 
