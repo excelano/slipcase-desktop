@@ -3,7 +3,7 @@
 **Status:** built through `§7` stage 4, on all three platforms.
 **Document version:** 2026-08-21
 **Amendments:** this document was written before anything was built, and building it contradicted parts of it. Every change since 2026-08-20 is marked **Amended** and states what was measured. A design that quietly rewrote itself to match the code would be worth nothing as a record.
-**Implements:** slipcase specification 1.0, through the `slpc` library rather than directly.
+**Implements:** Slipcase specification 1.0, through the `slpc` library rather than directly.
 **Section references:** `SPEC §2.3` is the specification in `excelano/slipcase`. `slpc-rust §4.4` is the design document in that repository. A bare `§4` is this document. All three number their sections independently, so none is safe to read from context.
 
 ---

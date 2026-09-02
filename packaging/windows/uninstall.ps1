@@ -92,4 +92,4 @@ public static extern void SHChangeNotify(int eventId, uint flags, System.IntPtr 
 '@
 [SlipcaseUninstall.Shell]::SHChangeNotify(0x08000000, 0, [System.IntPtr]::Zero, [System.IntPtr]::Zero)
 
-Write-Output "removed the slipcase association, the Start menu entry, and the uninstall entry"
+Write-Output "removed the Slipcase association, the Start menu entry, and the uninstall entry"

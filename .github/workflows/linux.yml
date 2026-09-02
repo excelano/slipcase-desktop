@@ -206,7 +206,7 @@ jobs:
               libglib2.0-bin
 
           # The media type is not this repository's. `slipcase-common` declares
-          # it once for every slipcase product, because two packages cannot ship
+          # it once for every Slipcase product, because two packages cannot ship
           # one path, so the association below has nothing to resolve against
           # until that is installed. Pinned for the reason the corpus checkout
           # above is pinned: this clones another repository and runs a shell

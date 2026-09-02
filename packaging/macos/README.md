@@ -29,7 +29,7 @@ without the bundle.
 
 ## Two declarations, not one
 
-`UTExportedTypeDeclarations` says what a slipcase container is.
+`UTExportedTypeDeclarations` says what a Slipcase container is.
 `CFBundleDocumentTypes` says that this application opens it. A bundle carrying
 only the second claims a type it never defined; one carrying only the first
 defines a type nothing opens.

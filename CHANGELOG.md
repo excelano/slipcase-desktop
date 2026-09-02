@@ -21,7 +21,7 @@ version that file does not name, which is what keeps the two from parting.
 
 ### Changed
 
-On Linux, the slipcase file type and the icon a container is drawn with now come
+On Linux, the Slipcase file type and the icon a container is drawn with now come
 from a package of their own, `slipcase-common`, which Slipcase depends on and
 apt installs alongside it. Nothing looks or behaves differently. The reason for
 the move is that a file type has to be declared once on a machine, and a second

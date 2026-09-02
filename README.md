@@ -1,6 +1,6 @@
 # slipcase-desktop
 
-A desktop application for [slipcase](https://slipcaseformat.org) containers.
+A desktop application for [Slipcase](https://slipcaseformat.org) containers.
 
 A `.slpc` file is a ZIP archive holding a payload file of any type together with a TOML metadata document describing it. The two become one file, so copying, moving, or sending the payload carries its metadata along.
 
@@ -33,7 +33,7 @@ On Linux, the media type and then the desktop integration:
 `slipcase-common` registers `application/x.slipcase+zip` against `*.slpc` and
 ships the icon a container is drawn with, so a file manager knows what a
 container is; this application's own entry says what opens one. The type is a
-separate package because every slipcase product needs it and only one of them
+separate package because every Slipcase product needs it and only one of them
 can ship it — two packages cannot install the same path.
 `packaging/debian/build-deb.sh` builds the package the Excelano apt repository
 ships. `packaging/README.md` has the detail.
@@ -62,7 +62,7 @@ cargo test
 cargo clippy --all-targets
 ```
 
-The slipcase conformance corpus is run as a command rather than as a test,
+The Slipcase conformance corpus is run as a command rather than as a test,
 because it needs a checkout of `excelano/slipcase` with its cases generated:
 
 ```

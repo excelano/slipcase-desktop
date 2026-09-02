@@ -153,12 +153,12 @@ Set-RegistryValue "$classes\$progId\shell\open\command" '' "`"$installedExe`" `"
 
 # The application behind the type. `ApplicationName` is the first place the
 # shell looks for a name a person recognises, and the first place this
-# application's own type query looks: installing this is what makes a slipcase
+# application's own type query looks: installing this is what makes a Slipcase
 # report that it opens with Slipcase.
 Set-RegistryValue "$classes\$progId\Application" 'ApplicationName' $appName
 Set-RegistryValue "$classes\$progId\Application" 'ApplicationCompany' 'Excelano'
 Set-RegistryValue "$classes\$progId\Application" 'ApplicationDescription' `
-    'Open a slipcase container and see what is in it'
+    'Open a Slipcase container and see what is in it'
 Set-RegistryValue "$classes\$progId\Application" 'ApplicationIcon' "$installedIcon,0"
 
 # The extension, and the media type SPEC 4 names. `Content Type` here and the
@@ -190,7 +190,7 @@ if (Test-Path -LiteralPath $installedExe) {
     $link.TargetPath = $installedExe
     $link.WorkingDirectory = $Prefix
     $link.IconLocation = "$installedIcon,0"
-    $link.Description = 'Open a slipcase container and see what is in it'
+    $link.Description = 'Open a Slipcase container and see what is in it'
     $link.Save()
     # Deliberately no AppUserModelID on this shortcut. Setting one would need
     # the running process to declare the same identity through

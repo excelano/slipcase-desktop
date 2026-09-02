@@ -5,14 +5,14 @@ Maintainer: David M. Anderson <david.anderson@excelano.com>
 Installed-Size: @SIZE@
 Section: utils
 Priority: optional
-Homepage: https://github.com/excelano/slipcase-desktop
+Homepage: https://excelano.com/slipcase/
 Depends: libc6, libgcc-s1, libwayland-client0, libxkbcommon0, libxkbcommon-x11-0, libegl1, libvulkan1 | libgl1, libx11-6, libx11-xcb1, libxi6, libxcursor1, libxrandr2, slipcase-common, desktop-file-utils, hicolor-icon-theme
-Description: Viewer and metadata editor for slipcase containers
+Description: Viewer and metadata editor for Slipcase containers
  Opens a .slpc container, shows its metadata as an editable tree, and hands
  the payload to whatever application the desktop has registered for it.
  .
  The container format is read and written entirely through the slpc library,
- which is the reference implementation of the slipcase specification. This
+ which is the reference implementation of the Slipcase specification. This
  application parses no containers of its own.
  .
  Only two of the libraries above are found by dpkg-shlibdeps. The executable

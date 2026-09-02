@@ -77,7 +77,7 @@ edited metadata back, and `packaging/macos/README.md` records that `Viewer`
 shopper is worse than making it to Launch Services. Renaming the product
 everywhere was the other option and costs more than it buys: the Partner Center
 reservation would be surrendered, and the *format* would still be called
-slipcase, since that is `excelano/slipcase`'s name and not this application's to
+Slipcase, since that is `excelano/slipcase`'s name and not this application's to
 change.
 
 It is written here because it has to be typed correctly into four places that
@@ -99,7 +99,7 @@ Open a container, read the metadata travelling with the file inside it, edit tha
 
 ## Short description (Microsoft Store, 1,000)
 
-A slipcase container is one file holding a document of any type together with metadata describing it, so the metadata travels with the document instead of living in a filename, a sidecar file, or somebody else's database.
+A Slipcase container is one file holding a document of any type together with metadata describing it, so the metadata travels with the document instead of living in a filename, a sidecar file, or somebody else's database.
 
 Slipcase opens a container and shows what is in it: the payload's name and size, what your computer says would open it, and the metadata as a tree you can edit. Open hands the payload to the application registered for that kind of file. Extract writes it where you choose. Replace swaps it for another file. Save writes edited metadata back.
 
@@ -129,7 +129,7 @@ equivalent of this field.
 
 ## Description (both, written to 4,000)
 
-A slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
+A Slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
 
 Slipcase opens a container and shows what is inside.
 

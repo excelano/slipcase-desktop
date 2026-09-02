@@ -51,7 +51,7 @@
     <DisplayName>Slipcase</DisplayName>
     <PublisherDisplayName>@PUBLISHER_DISPLAY_NAME@</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
-    <Description>Open a slipcase container, read and edit the metadata travelling with its payload, and hand the payload to whatever opens that kind of file.</Description>
+    <Description>Open a Slipcase container, read and edit the metadata travelling with its payload, and hand the payload to whatever opens that kind of file.</Description>
   </Properties>
 
   <Dependencies>
@@ -90,7 +90,7 @@
 
       <uap:VisualElements
         DisplayName="Slipcase"
-        Description="Open a slipcase container and hand its payload to whatever opens that kind of file."
+        Description="Open a Slipcase container and hand its payload to whatever opens that kind of file."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

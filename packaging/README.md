@@ -27,7 +27,7 @@ Check that it took:
     xdg-mime query default application/x.slipcase+zip   # slipcase-desktop.desktop
 
 Before the media type is installed a `.slpc` reports as `application/zip`, which
-is true and useless: it is what every slipcase is underneath.
+is true and useless: it is what every Slipcase is underneath.
 
 **The media type and the icon a container is drawn with left this repository.**
 They are `slipcase-common`'s, which this package depends on. Two packages cannot

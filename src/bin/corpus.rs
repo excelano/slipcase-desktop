@@ -1,4 +1,4 @@
-//! Run the slipcase conformance corpus against this application.
+//! Run the Slipcase conformance corpus against this application.
 //!
 //! Not a test. It needs a checkout of `excelano/slipcase` with its cases
 //! generated, neither of which `cargo test` implies, and a test that has to

@@ -12,7 +12,7 @@
 
 [package]
 name = "make-ico"
-description = "Rasterize the slipcase icon SVG into a Windows .ico"
+description = "Rasterize the Slipcase icon SVG into a Windows .ico"
 version = "0.1.0"
 edition = "2021"
 authors = ["David M. Anderson"]

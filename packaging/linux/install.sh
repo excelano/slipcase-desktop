@@ -3,7 +3,7 @@
 # the application icon. Optionally the binary alongside them.
 #
 # The media type and the icon a container is drawn with are not here. They are
-# `slipcase-common`'s, declared once for every slipcase product because two
+# `slipcase-common`'s, declared once for every Slipcase product because two
 # packages cannot ship one path; install that first, or the entry below has no
 # type to be associated with.
 #
@@ -91,7 +91,7 @@ fi
 [ -x "$(command -v gtk-update-icon-cache || true)" ] &&
     gtk-update-icon-cache -q -t -f "${prefix}/share/icons/hicolor" || true
 
-echo "installed the slipcase desktop entry and application icon under ${prefix}"
+echo "installed the Slipcase desktop entry and application icon under ${prefix}"
 
 # Said rather than assumed. An entry naming a type nothing has declared is an
 # entry no file manager will offer, and the symptom looks like an association
@@ -104,7 +104,7 @@ if ! grep -qsx 'application/x.slipcase+zip' \
         /usr/share/mime/types
 then
     echo
-    echo "The slipcase media type is not declared on this machine."
+    echo "The Slipcase media type is not declared on this machine."
     echo "Install slipcase-common, or run its install.sh, or nothing will"
     echo "associate a .slpc with this application."
 fi

@@ -1,7 +1,7 @@
 [package]
 name = "slipcase-desktop"
-description = "Open a slipcase container, read its metadata, and hand the payload to the application the system has registered for it"
-homepage = "https://github.com/excelano/slipcase"
+description = "Open a Slipcase container, read its metadata, and hand the payload to the application the system has registered for it"
+homepage = "https://excelano.com/slipcase/"
 readme = "README.md"
 keywords = ["slipcase", "container", "metadata", "gui", "egui"]
 categories = ["gui", "filesystem"]

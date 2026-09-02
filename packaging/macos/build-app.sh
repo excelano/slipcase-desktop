@@ -1,6 +1,6 @@
 #!/bin/sh
 # Assemble the application bundle DESIGN.md §8 describes: the executable, the
-# property list that exports the slipcase type and claims it, and the icon.
+# property list that exports the Slipcase type and claims it, and the icon.
 #
 # The bundle is the unit of everything on macOS. A bare executable can draw a
 # window, and it was how this application was first run here, but it has no

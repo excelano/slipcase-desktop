@@ -4,7 +4,7 @@
 #
 # Not the media type and not the icon a container is drawn with. Those are
 # `slipcase-common`'s, which this package depends on: two packages cannot ship
-# one path, and the type has to be declared once for every slipcase product
+# one path, and the type has to be declared once for every Slipcase product
 # rather than once per product.
 #
 # A binary package rather than a source package. Everything here is one static

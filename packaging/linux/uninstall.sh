@@ -20,7 +20,7 @@ done
 
 # The media type and the icon a container is drawn with are `slipcase-common`'s
 # and are left alone: removing them here would take the file type away from
-# every other slipcase product on the machine.
+# every other Slipcase product on the machine.
 rm -f \
     "${prefix}/share/applications/slipcase-desktop.desktop" \
     "${prefix}/share/icons/hicolor/scalable/apps/slipcase-desktop.svg"
@@ -32,4 +32,4 @@ rm -f \
 [ -x "$(command -v gtk-update-icon-cache || true)" ] &&
     gtk-update-icon-cache -q -t -f "${prefix}/share/icons/hicolor" || true
 
-echo "removed the slipcase desktop integration from ${prefix}"
+echo "removed the Slipcase desktop integration from ${prefix}"

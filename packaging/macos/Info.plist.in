@@ -4,7 +4,7 @@
   Cargo.toml, the way `packaging/debian/control.in` is substituted.
 
   Two declarations do the association, and they are not the same thing.
-  `UTExportedTypeDeclarations` says what a slipcase container *is*, and it is
+  `UTExportedTypeDeclarations` says what a Slipcase container *is*, and it is
   exported rather than imported because this application defines the type:
   SPEC 4 is the authority and it lives in `excelano/slipcase`, not in somebody
   else's product. `CFBundleDocumentTypes` says that this application handles
@@ -130,7 +130,7 @@
 	  Conformance to `public.zip-archive` is the macOS half of what
 	  `sub-class-of application/zip` does on Linux, and it is true for the
 	  same reason: a container is a ZIP, so an archive tool has something to
-	  offer and a Mac that has never heard of a slipcase is not stuck.
+	  offer and a Mac that has never heard of a Slipcase is not stuck.
 
 	  `public.data` is listed although `public.zip-archive` already conforms
 	  to it. It is stated rather than inherited because a container is a

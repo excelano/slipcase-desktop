@@ -15,13 +15,13 @@
 .\" Built with AI assistance (Claude, Anthropic)
 .TH SLIPCASE\-DESKTOP 1 "2026\-08\-26" "slipcase\-desktop @VERSION@" "User Commands"
 .SH NAME
-slipcase\-desktop \- viewer and metadata editor for slipcase containers
+slipcase\-desktop \- viewer and metadata editor for Slipcase containers
 .SH SYNOPSIS
 .B slipcase\-desktop
 .RI [ container ]
 .SH DESCRIPTION
 .B Slipcase
-opens a slipcase container, shows its metadata as an editable tree, and hands
+opens a Slipcase container, shows its metadata as an editable tree, and hands
 the payload to whatever application the desktop has registered for it.
 Containers are read and written entirely through the slpc library; this
 application parses none of its own.
@@ -68,7 +68,7 @@ than guessing. This application keeps no table mapping filenames to types.
 .BR xdg\-mime (1),
 .BR update\-desktop\-database (1)
 .PP
-The container format is specified in SPEC.md in the slipcase repository, and
+The container format is specified in SPEC.md in the Slipcase repository, and
 the design of this application in DESIGN.md in its own.
 .SH AUTHOR
 David M. Anderson

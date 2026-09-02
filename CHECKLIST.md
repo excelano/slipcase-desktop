@@ -248,7 +248,7 @@ reads the mime database once per session.
 2. **The handler is ours.** `xdg-mime query default application/x.slipcase+zip`
    says `slipcase-desktop.desktop`.
 3. **The folder shows the drawing.** Open a folder of containers in Files. The
-   `.slpc` files carry the slipcase icon rather than a generic archive, and the
+   `.slpc` files carry the Slipcase icon rather than a generic archive, and the
    type reads *Slipcase container*. Put a file beside them whose name does not
    match `*.slpc` — a copy with any other suffix will do. It should draw as a
    plain archive, and the two being identical is the tell that the icon is not
