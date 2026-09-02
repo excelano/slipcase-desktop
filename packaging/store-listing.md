@@ -55,11 +55,14 @@ above anything here and is left unmeasured rather than written down wrong.
     Microsoft Store   Slipcase
     Mac App Store     Slipcase Desktop
 
-**The application is called Slipcase and goes on calling itself Slipcase.** This
-is the storefront name only. `Package/Properties/DisplayName` in
-`AppxManifest.xml` and `CFBundleDisplayName` in `Info.plist` both say `Slipcase`
-and neither changes: what a person sees in their Dock, their task bar and the
-window is unaffected.
+**The application ships as Slipcase and is marketed as Slipcase Desktop.**
+`Package/Properties/DisplayName` in `AppxManifest.xml` and `CFBundleDisplayName`
+in `Info.plist` both say `Slipcase` and neither changes: what a person sees in
+their Dock, their task bar and the window is unaffected. What did change, on
+2026-09-02, is everything a reader meets before installing — `excelano.com/slipcase/`
+now says Slipcase Desktop throughout, because the *format* took the capital that
+same day and a page that calls both of them Slipcase cannot be read. The
+Microsoft Store listing stays `Slipcase`.
 
 **Why the Mac App Store name is different, so nobody rediscovers it.** `Slipcase`
 was refused by App Store Connect on 2026-08-28 — *the app name you entered is
@@ -80,11 +83,12 @@ reservation would be surrendered, and the *format* would still be called
 Slipcase, since that is `excelano/slipcase`'s name and not this application's to
 change.
 
-It is written here because it has to be typed correctly into four places that
-cannot see each other, and two of them now differ: the App Store Connect
+It is written here because it has to be typed correctly into five places that
+cannot see each other, and they do not all agree: the App Store Connect
 reservation (`Slipcase Desktop`), the Partner Center reservation (`Slipcase`),
-`Package/Properties/DisplayName` (`Slipcase`), and `CFBundleDisplayName`
-(`Slipcase`). Until this section existed the name appeared in this file only
+`Package/Properties/DisplayName` (`Slipcase`), `CFBundleDisplayName`
+(`Slipcase`), and the product page at `excelano.com/slipcase/` (`Slipcase
+Desktop`). Until this section existed the name appeared in this file only
 inside the prose below, which is not somewhere a person copies a value from.
 
 `Slipcase Desktop` is 16 characters, inside the Mac App Store's 30.
