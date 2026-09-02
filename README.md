@@ -1,12 +1,12 @@
 # slipcase-desktop
 
-A desktop application for [slipcase](https://github.com/excelano/slipcase) containers.
+A desktop application for [slipcase](https://slipcaseformat.org) containers.
 
 A `.slpc` file is a ZIP archive holding a payload file of any type together with a TOML metadata document describing it. The two become one file, so copying, moving, or sending the payload carries its metadata along.
 
 Slipcase opens a container, shows what is in it, and hands the payload to whatever application the operating system has registered for it. It parses no containers itself: every read, every write, and every verdict comes from [`slpc`](https://github.com/excelano/slpc-rust).
 
-The specification lives in `excelano/slipcase` and is the authority on the format.
+The specification lives in [`excelano/slipcase`](https://github.com/excelano/slipcase) and is the authority on the format. <https://slipcaseformat.org> publishes it as pages.
 
 ## Build
 
