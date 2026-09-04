@@ -22,6 +22,8 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "${here}/../.." && pwd)
 binary=""
 outdir="${root}/dist"
+# Not on PATH, and README.md says so.
+lsregister=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 universal=no
 identity=""
 store_profile=""
@@ -500,6 +502,32 @@ ENTITLEMENTS
     productbuild --component "$app" /Applications --sign "$pkg_identity" "$pkg" >/dev/null
     pkgutil --check-signature "$pkg" | sed -n '1,3p'
     echo "built ${pkg} signed with ${pkg_identity}"
+
+    # Launch Services must not know this bundle. It cannot run on this machine:
+    # AMFI refuses its restricted entitlements without a profile covering the
+    # Mac, and a Store profile covers none (README.md). Launch Services does not
+    # ask whether a bundle can launch before choosing it, and among copies of
+    # one identifier it prefers the newer version, so a submission build sitting
+    # here is a handler candidate at least as new as the installed copy and
+    # newer the moment the next version is built. Measured 2026-09-04, with the
+    # Store copy in the Trash: every double-click on a container launched
+    # dist/Slipcase.app and was killed before it drew anything — SIGKILL,
+    # "Taskgated Invalid Signature", five crash reports in thirty seconds and
+    # no window.
+    #
+    # How the claim gets there, measured the same day. A fresh build is not
+    # registered by itself: Spotlight indexed the bundle within a minute and
+    # Launch Services still did not know it three minutes later. What registers
+    # it is a hand-off — `lsregister -f`, which README.md tells you to run on a
+    # development build at this same default path, or an explicit `mdimport` —
+    # and a claim made that way survives `rm -rf` and a rebuild at the path.
+    # So this withdraws the claim the development build left behind, and holds
+    # until something hands the bundle over again.
+    #
+    # `-u` exits 1 with -10814 when the bundle was never registered, which is
+    # the usual state straight after a build, so its status is not the script's.
+    "$lsregister" -u "$app" >/dev/null 2>&1 || true
+
     echo
     echo "upload it with Transporter, or validate without submitting:"
     echo "  xcrun altool --validate-app -f ${pkg} -t macos -u APPLE_ID --password APP_SPECIFIC_PASSWORD"
@@ -535,7 +563,7 @@ fi
 echo "built ${app} from ${binary}"
 echo
 echo "register it and check that it took:"
-echo "  /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f ${app}"
+echo "  ${lsregister} -f ${app}"
 # Not `mdls`, which reports the synthesised `dyn.…` type for a registered `.slpc`
 # and is not the authority here — `README.md` records the measurement and the
 # likeliest reason. Launch Services is what decides what opens a container, and

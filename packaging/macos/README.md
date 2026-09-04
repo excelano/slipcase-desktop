@@ -215,6 +215,22 @@ entitlement without a profile covering the machine, and a Mac App Store profile
 covers none, so anything needing a running application uses a Developer ID build
 and the real article is reached through TestFlight.
 
+**And Launch Services will launch it anyway, if it is allowed to know about it.**
+It does not ask whether a bundle can run before choosing it as a handler, and
+among copies of one identifier it prefers the newer version. `--store` writes to
+the same `dist/` that a development build does, the `lsregister -f` above leaves
+a claim on that path, and the claim survives the rebuild — so once the installed
+copy is older than the submission build, or absent, every double-click on a
+container launches the submission build and the kernel kills it on the spot:
+`SIGKILL (Code Signature Invalid)`, `Taskgated Invalid Signature`, one crash
+report per attempt and no window. Measured 2026-09-04, with the Store copy in
+the Trash. `build-app.sh --store` now withdraws the claim with `lsregister -u`
+as its last step, and that holds: Spotlight indexing the bundle did not register
+it over three minutes, only a deliberate hand-off did. A bundle copied aside
+(`dist-refused/` is one) keeps whatever claim it had, so unregister it by hand.
+If a container opens Archive Utility, that is the *absence* of a claim — the
+Store copy is not installed — rather than a defect here.
+
 ## No private symbol reaches the binary
 
 Guideline 2.5.1, and it cost a review cycle. The submission was refused for

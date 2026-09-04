@@ -382,6 +382,13 @@ foreground process, and nothing can be associated with it.
 7. **A container opens Slipcase from the card.** With a `.slpc` as the payload
    of another container, the card should say `Slipcase`, which is this bundle
    naming itself through the same code that names Preview.
+8. **A submission build is not the handler.** After
+   `build-app.sh --store PROFILE`, ask Launch Services what opens a container
+   (`cargo run --example opens-with -- SOME.slpc` asks through this
+   application's own code). It must name the installed copy or nothing, never
+   `dist/Slipcase.app`. Found 2026-09-04 when the Store copy was in the Trash:
+   five double-clicks, five `Taskgated Invalid Signature` crash reports in
+   thirty seconds, and it looked like every container was broken.
 
 ### Not yet done by hand
 
