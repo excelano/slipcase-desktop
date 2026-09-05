@@ -18,10 +18,18 @@ A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
 
 ## Install
 
-**On Windows, Slipcase is in the Microsoft Store**, which is where a person
-should get it rather than from here. `https://excelano.com/slipcase/` is the
-product page for all three platforms. What follows is the from-source route,
-which is what this repository is for.
+**On macOS, Slipcase is on the
+[Mac App Store](https://apps.apple.com/us/app/slipcase-desktop/id6806461555?mt=12);
+on Windows it is in the Microsoft Store**, and on Linux it is in the Excelano apt
+repository. That is where a person should get it rather than from here.
+`https://excelano.com/slipcase/` is the product page for all three, and what
+follows is the from-source route, which is what this repository is for.
+
+Two things about that link. It lists as **Slipcase Desktop** rather than
+*Slipcase*, because the name was taken on that store alone —
+`packaging/store-listing.md` carries both names and the reasoning. And the
+`?mt=12` is the Mac-software media type rather than decoration: without it the
+link can route a visitor to the iOS store.
 
 On Linux, the media type and then the desktop integration:
 
@@ -45,11 +53,16 @@ state the design names, editing the metadata and writing it back, extracting and
 replacing the payload, and file association.
 
 Association ships on all three platforms, each built and walked through by hand
-on the platform itself. `packaging/` holds what each decided and
-`CHECKLIST.md` records what only a hand could test — thirteen defects between them that the tests and the conformance corpus
-passed over. Two things measured on macOS are recorded unresolved: an unsigned
-bundle is refused by Gatekeeper, and Spotlight and Launch Services disagree
-about a registered type.
+on the platform itself. `packaging/` holds what each decided and `CHECKLIST.md`
+records what only a hand could test, along with the defects the tests and the
+conformance corpus passed over — that list is the authority on how many, and
+this sentence deliberately does not say.
+
+Both macOS items this paragraph used to carry as unresolved are closed.
+Spotlight and Launch Services agreed once the bundle was signed, measured
+2026-08-25 and recorded in `packaging/macos/README.md`; the Gatekeeper line
+described what an *unsigned* bundle does, which is expected rather than a
+defect, and no released build is unsigned.
 
 `DESIGN.md` is what this is and the order it is being built in. It is amended in
 place where building it proved it wrong, and every amendment says what was
