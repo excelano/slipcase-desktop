@@ -117,7 +117,10 @@ decision to take with David, not one to take because there is precedent.
 The rest of this section still has no exceptions.
 
 **Nothing compiles C.** A crate that links a system library is fine; one that
-builds C is not.
+builds C is not. That is this repository's rule and the fleet's preference:
+since 2026-09-04 a project may take C when its product depends on it, and
+`~/notes/pure_rust_preference.md` holds that stance and its costs, so neither
+is restated here.
 
 **The check for it was wrong, and had been reporting a positive nobody read.**
 This said `cc`, `cmake`, `pkg-config` and `bindgen` stay out of the
