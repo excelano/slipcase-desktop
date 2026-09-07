@@ -126,7 +126,7 @@ ico = "0.5.0"
 # already have theirs. Pure Rust, no build script, and its three dependencies
 # were already in the tree under `eframe`, so it compiles one new crate.
 # DESIGN.md §3.
-windows-registry = "0.6.1"
+windows-registry = "0.100.0"
 
 # Only the tests reach for it now. The card's provenance line and the marks
 # carried onto an extracted payload both come from `slpc::provenance`, and a
