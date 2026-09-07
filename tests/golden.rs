@@ -88,7 +88,7 @@ fn hold(kind: &str, name: &str, ext: &str, produced: &str) {
         .lines()
         .zip(produced.lines())
         .position(|(a, b)| a != b)
-        .map_or(recorded.lines().count().min(produced.lines().count()), |i| i);
+        .unwrap_or(recorded.lines().count().min(produced.lines().count()));
     let was = recorded.lines().nth(differs).unwrap_or("<end>");
     let now = produced.lines().nth(differs).unwrap_or("<end>");
     panic!(
