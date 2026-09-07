@@ -165,10 +165,10 @@ first submission had been filed under:
 - **The store listing has a language, and it came from the package.** The first
   submission was filed under *English (United Kingdom)*, which is what
   `AppxManifest.xml.in` declared and the only place in this repository that
-  names a language. It declares `en` now, so the next package's submission
-  belongs under *English*: add that listing, copy `packaging/store-listing.md`
-  into it, and delete the English (United Kingdom) one, the form having no
-  rename. The copy is spelled British either way, which is a house style rather
+  names a language. It declares `en-us` now, so the next package's submission
+  belongs under *English (United States)*: add that listing, copy
+  `packaging/store-listing.md` into it, and delete the English (United Kingdom)
+  one, the form having no rename. The copy is spelled British either way, which is a house style rather
   than a market. Read the language back in the form before committing the
   submission — neither channel below serves it.
 

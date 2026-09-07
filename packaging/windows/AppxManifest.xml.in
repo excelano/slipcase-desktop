@@ -65,7 +65,8 @@
   </Dependencies>
 
   <Resources>
-    <!-- Neutral English, and it said `en-gb` until 2026-08-31. The package
+    <!-- US English. It said `en-gb` until 2026-08-31 and neutral `en` until
+         2026-09-06; the reasoning below is 2026-08-31's and stands. The package
          carries no localised resources, so this tag is not choosing between
          translations: it is the language the Store reports the application in,
          and the language Partner Center opens a store listing under. `en-gb`
@@ -75,11 +76,18 @@
          `packaging/store-listing.md` goes on spelling *recognise* and
          *organisation*, which is a house style rather than a locale.
 
+         `en-us` rather than the neutral `en` is a fleet decision taken
+         2026-09-06, when duckling and segler were brought to the same value:
+         one tag across the three products, and the one the Store's own
+         supported-languages table names for the market these are sold from.
+         Neutral `en` would have served as well; what was not worth keeping was
+         three products spelling it three ways.
+
          This is the only place in the repository that names a language, and
          `build-msix.ps1` spells the same tag a second time for `makepri`.
          Changing one without the other is the silent failure that file's
          comment describes. -->
-    <Resource Language="en" />
+    <Resource Language="en-us" />
   </Resources>
 
   <Applications>
