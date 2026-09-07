@@ -8,7 +8,6 @@
 
 pub mod opens_with;
 mod staging;
-pub mod tree;
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -20,9 +19,8 @@ use slpc::Verdict;
 
 // The editor's operations come from `flyleaf-core` now, and are re-exported
 // under the names this crate has always had so that nothing calling them
-// moved. `src/tree.rs` takes them from the source; the tests and the window
-// take them from here.
-pub use flyleaf_core::{
+// moved.
+pub use flyleaf::flyleaf_core::{
     add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
     set_value, NewKey,
 };
@@ -42,10 +40,10 @@ pub use flyleaf_core::{
 ///
 /// This was the tree's own knowledge until 2026-09-07. It is the one thing in
 /// the tree that was about Slipcase rather than about TOML, so it moved here
-/// before the tree moves out to `excelano/flyleaf`.
+/// before the tree moved out to `excelano/flyleaf`, where it now is.
 pub struct RequiredKeys;
 
-impl tree::Policy for RequiredKeys {
+impl flyleaf::Policy for RequiredKeys {
     fn protected(&self, path: &[String]) -> bool {
         let joined = path.join(".");
         [slpc::VERSION_KEY, slpc::PAYLOAD_FILE_KEY]
@@ -1289,8 +1287,8 @@ aaa = \"written second\"
 
 #[cfg(test)]
 mod policy_tests {
-    use super::tree::Policy;
     use super::RequiredKeys;
+    use flyleaf::Policy;
 
     /// The keys SPEC §2.2 requires are shown and not edited, and so is the
     /// table holding one: deleting `[payload]` would take `payload.file` with

@@ -46,14 +46,16 @@ from `slpc`, the library in `excelano/slpc-rust`. Where it needs behaviour
 the library lacks, the behaviour goes into the library — twice so far, filed as
 issues and both fixed upstream rather than worked around here.
 
-**The metadata editor is being extracted into `excelano/flyleaf`** (working
-copy `~/flyleaf`), so that Tommy Flyleaf and this application share one
-editor. Its edit operations already come from `flyleaf-core`, re-exported from
-`src/lib.rs` under their old names; the tree follows. That repository's
-`PROMPT.md` holds the plan in slices, and `tests/golden/` here is what every
-slice is measured against: what the tree draws and what an edit saves, held
-byte for byte. Where the editor needs behaviour the widget lacks, the
-behaviour goes there, the same rule as for `slpc`.
+**The metadata editor lives in `excelano/flyleaf`** (working copy
+`~/flyleaf`), so that Tommy Flyleaf and this application share one editor.
+The tree is `flyleaf::render`, called once from `src/main.rs` with
+`RequiredKeys`, this application's answer to which keys are protected; the
+edit operations come from `flyleaf-core`, re-exported from `src/lib.rs` under
+their old names. That repository's `PROMPT.md` holds the extraction plan in
+slices, and `tests/golden/` here is what every slice is measured against: what
+the tree draws and what an edit saves, held byte for byte. Where the editor
+needs behaviour the widget lacks, the behaviour goes there, the same rule as
+for `slpc`.
 
 **Three documents, three authorities.** `SPEC.md` in `excelano/slipcase` is the
 authority on the format and this repository neither restates nor amends it.
@@ -270,9 +272,10 @@ build that only a hand can check, run it, and write down what it found.
 
 ## Layout
 
-    src/lib.rs          state, document operations, the save path, extraction
-    src/main.rs         the window: panels, dialogs, threading, the card
-    src/tree.rs         the metadata tree, one renderer per TOML type
+    src/lib.rs          state, the save path, extraction, and RequiredKeys,
+                        which is what the tree is told about this format
+    src/main.rs         the window: panels, dialogs, threading, the card;
+                        the tree itself is flyleaf::render
     src/opens_with.rs   what the platform says would open a payload
     src/staging.rs      where a rewrite waits, and how it lands on the original
     src/system_theme.rs which way the desktop's light and dark setting points

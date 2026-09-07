@@ -1078,9 +1078,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "flyleaf"
+version = "0.1.0"
+source = "git+https://github.com/excelano/flyleaf?rev=32b5465f18c0cfff44667e875ca4326367b01cf9#32b5465f18c0cfff44667e875ca4326367b01cf9"
+dependencies = [
+ "egui",
+ "flyleaf-core",
+]
+
+[[package]]
 name = "flyleaf-core"
 version = "0.1.0"
-source = "git+https://github.com/excelano/flyleaf?rev=56c3331e8d0a6dbc5f54e51c4be1d6cfb0c272f0#56c3331e8d0a6dbc5f54e51c4be1d6cfb0c272f0"
+source = "git+https://github.com/excelano/flyleaf?rev=32b5465f18c0cfff44667e875ca4326367b01cf9#32b5465f18c0cfff44667e875ca4326367b01cf9"
 dependencies = [
  "toml_edit",
 ]
@@ -2906,7 +2915,7 @@ version = "0.1.4"
 dependencies = [
  "block2 0.6.2",
  "eframe",
- "flyleaf-core",
+ "flyleaf",
  "ico",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",

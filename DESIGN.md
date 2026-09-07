@@ -105,7 +105,9 @@ The document renders as a collapsible tree: tables are sections, scalars and arr
 
 **Amended: an integer is not right-aligned.** Every value starts in the same column, integers included. Right-aligning a number put it against the window's edge, far from its own key and from every value above and below it, and the arithmetic legibility that buys is worth less in a metadata document than knowing which key a number belongs to. A tree with one such row measured 916 pixels wide in a 900-pixel window, and the delete button beside it fell off the edge.
 
-**Amended 2026-09-07: which keys are protected is the application's answer, not the tree's.** The tree carried the two required keys itself, and that was the one thing in it that was about Slipcase rather than about TOML. It now takes a policy, `RequiredKeys` in `src/lib.rs`, that answers whether a path is protected and how a protected string reads; the tree knows no key names. Done in place, before the tree moves out to `excelano/flyleaf`, so that the move is a move. Measured: the goldens in `tests/golden/` hold byte for byte.
+**Amended 2026-09-07: which keys are protected is the application's answer, not the tree's.** The tree carried the two required keys itself, and that was the one thing in it that was about Slipcase rather than about TOML. It now takes a policy, `RequiredKeys` in `src/lib.rs`, that answers whether a path is protected and how a protected string reads; the tree knows no key names. Done in place, before the tree moved out to `excelano/flyleaf`, so that the move was a move. Measured: the goldens in `tests/golden/` hold byte for byte.
+
+**Amended the same day: the tree is `flyleaf::render` now.** `src/tree.rs` left this repository with its tests and became the widget in `excelano/flyleaf`; this section still describes what it draws, and the goldens still hold it to that. What this repository keeps is `RequiredKeys`, the one call, and the record of why every decision above was taken.
 
 **Document order is preserved and never sorted.** Authoring order carries intent.
 

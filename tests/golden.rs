@@ -23,7 +23,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use eframe::egui::{self, Shape};
-use slipcase_desktop::tree::render;
+use flyleaf::render;
 use slipcase_desktop::{
     add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
     set_value, NewKey, RequiredKeys,
