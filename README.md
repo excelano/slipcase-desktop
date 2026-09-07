@@ -31,6 +31,12 @@ Two things about that link. It lists as **Slipcase Desktop** rather than
 `?mt=12` is the Mac-software media type rather than decoration: without it the
 link can route a visitor to the iOS store.
 
+From crates.io, `cargo install slipcase-desktop` builds and installs the
+binary alone, on any platform with a Rust toolchain. It opens a container from
+the command line and does everything the packaged application does, but a
+crate carries no desktop entry and no media type, so a double-click in a file
+manager does not reach it until the two steps below have run as well.
+
 On Linux, the media type and then the desktop integration:
 
 ```

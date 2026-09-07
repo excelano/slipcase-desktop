@@ -96,6 +96,13 @@ Then tag, release, and ship:
     gh release create vX.Y.Z dist/slipcase-desktop_X.Y.Z_amd64.deb --notes-file …
     apt-ship slipcase-desktop vX.Y.Z -y
 
+The tag push also runs `publish-crate.yml`, which publishes the crate to crates.io
+with the organisation's token before the GitHub release exists; the fleet's
+`~/notes/releasing.md` step 5 is the procedure and the rule that a version
+there is never re-published. Confirm it ran:
+
+    gh run list --workflow=publish-crate.yml --limit 1
+
 **amd64 only, and say so wherever the install is written.** Nothing here
 cross-compiles and there is no arm64 machine to run a build on, so an arm64
 `.deb` would be a binary nobody had executed. The position is *no hardware*, not
