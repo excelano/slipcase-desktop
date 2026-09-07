@@ -1079,9 +1079,9 @@ dependencies = [
 
 [[package]]
 name = "flyleaf"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e2ec5f487e951ef9ae8cc177cd33d381b4e765f1e0d3d59433e073ef5045495"
+checksum = "0d9fc4ad764c7c9d1bb3046b2e92366a8e06bab4042595a94c29f5becb491758"
 dependencies = [
  "egui",
  "flyleaf-core",
@@ -1089,10 +1089,11 @@ dependencies = [
 
 [[package]]
 name = "flyleaf-core"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a05b0191dd1419db1a849afc8e9048b36deb4a8258fe870b377f107d52b037bb"
+checksum = "516568a33c7efaefcec8da511c8b64fe460ce18dc890df3f06ac44c77706c2dc"
 dependencies = [
+ "tempfile",
  "toml_edit",
 ]
 

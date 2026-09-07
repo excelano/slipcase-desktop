@@ -1,61 +1,137 @@
-1x rect 0.0,0.0 162.0x19.0
-1x text 4.0,4.0 151.0x12.0 "slipcase_version_renamed"
-1x rect 198.0,0.0 320.0x19.0
-1x text 203.0,4.0 65.0x12.0 "1.0 (edited)"
-1x text 526.0,4.0 259.8x12.0 "# slipcase metadata the specification version"
-1x rect 792.3,2.0 19.7x15.0
-1x text 796.3,4.0 10.0x12.0 "🗑"
-1x rect 0.0,22.0 162.0x19.0
-1x text 4.0,26.0 67.0x12.0 "added_text"
-1x rect 198.0,22.0 320.0x19.0
+1x text 0.0,4.5 10.2x9.0 "#"
+1x rect inf,inf -infx-inf
+1x text 16.5,3.5 103.0x12.0 "slipcase metadata"
+1x rect 0.0,21.0 162.0x19.0
+1x text 4.0,25.0 151.0x12.0 "slipcase_version_renamed"
+1x rect 198.0,21.0 320.0x19.0
+1x text 203.0,25.0 65.0x12.0 "1.0 (edited)"
+1x rect 526.0,21.5 24.4x18.0
+1x text 530.0,27.5 17.0x6.0 "text"
+1x text 558.4,26.0 10.2x9.0 "#"
+1x rect inf,inf -infx-inf
+1x text 575.9,25.0 139.0x12.0 "the specification version"
+1x rect 874.0,23.0 19.7x15.0
+1x text 878.0,25.0 10.0x12.0 "🗑"
+1x rect 0.0,43.0 162.0x19.0
+1x text 4.0,47.0 67.0x12.0 "added_text"
+1x rect 198.0,43.0 320.0x19.0
 1x text NaN,NaN NaNxNaN ""
-1x rect 526.0,24.0 19.7x15.0
-1x text 530.0,26.0 10.0x12.0 "🗑"
-1x rect 0.0,44.0 162.0x19.0
-1x text 4.0,48.0 85.0x12.0 "added_integer"
-1x rect 198.0,44.5 40.0x18.0
-1x text 214.3,49.0 7.0x9.0 "0"
-1x rect 246.0,46.0 19.7x15.0
-1x text 250.0,48.0 10.0x12.0 "🗑"
-1x rect 0.0,66.0 162.0x19.0
-1x text 4.0,70.0 71.0x12.0 "added_float"
-1x rect 198.0,66.5 40.0x18.0
-1x text 209.1,71.0 18.0x9.0 "0.0"
-1x rect 246.0,68.0 19.7x15.0
-1x text 250.0,70.0 10.0x12.0 "🗑"
-1x rect 0.0,88.0 162.0x19.0
-1x text 4.0,92.0 89.0x12.0 "added_boolean"
+1x rect 526.0,43.5 24.4x18.0
+1x text 530.0,49.5 17.0x6.0 "text"
+1x rect 558.4,45.0 19.7x15.0
+1x text 562.4,47.0 10.0x12.0 "🗑"
+1x rect 0.0,65.0 162.0x19.0
+1x text 4.0,69.0 85.0x12.0 "added_integer"
+1x rect 198.0,65.5 40.0x18.0
+1x text 214.3,70.0 7.0x9.0 "0"
+1x rect 246.0,65.5 37.1x18.0
+1x text 250.0,70.5 30.0x9.0 "integer"
+1x rect 291.1,67.0 19.7x15.0
+1x text 295.1,69.0 10.0x12.0 "🗑"
+1x rect 0.0,87.0 162.0x19.0
+1x text 4.0,91.0 71.0x12.0 "added_float"
+1x rect 198.0,87.5 40.0x18.0
+1x text 209.1,92.0 18.0x9.0 "0.0"
+1x rect 246.0,87.5 27.0x18.0
+1x text 250.0,92.5 19.0x7.0 "float"
+1x rect 281.0,89.0 19.7x15.0
+1x text 285.0,91.0 10.0x12.0 "🗑"
+1x rect 0.0,109.0 162.0x19.0
+1x text 4.0,113.0 89.0x12.0 "added_boolean"
 1x rect inf,inf -infx-inf
 1x text NaN,NaN NaNxNaN ""
-1x rect 198.0,90.5 14.0x14.0
-1x rect 224.0,90.0 19.7x15.0
-1x text 228.0,92.0 10.0x12.0 "🗑"
-1x rect 0.0,110.0 162.0x19.0
-1x text 4.0,114.0 130.0x12.0 "added_date_and_time"
-1x rect 198.0,110.0 320.0x19.0
-1x text 203.0,115.0 130.0x9.0 "1970-01-01T00:00:00Z"
-1x rect 526.0,112.0 19.7x15.0
-1x text 530.0,114.0 10.0x12.0 "🗑"
-1x path 6.0,138.0 6.0x6.0
-1x text 18.0,135.5 72.0x12.0 "added_table"
-1x rect 18.0,153.0 162.0x19.0
-1x text 22.0,157.0 72.0x12.0 "added_table"
-1x rect 216.0,155.0 19.7x15.0
-1x text 220.0,157.0 10.0x12.0 "🗑"
-1x rect 18.0,175.0 162.0x19.0
-1x text 22.0,179.0 54.0x12.0 "add a key"
-1x text NaN,NaN NaNxNaN ""
-1x rect 216.0,175.5 100.0x18.0
-1x path 300.1,181.4 9.8x6.3
-1x text 221.0,180.0 23.0x9.0 "text"
-1x rect 324.0,175.5 31.5x18.0
-1x text 328.0,179.0 23.0x10.0 "Add"
-1x line 8.5,152.5 1.0x40.0
+1x rect 198.0,111.5 14.0x14.0
+1x rect 224.0,109.5 40.7x18.0
+1x text 228.0,114.5 32.0x7.0 "boolean"
+1x rect 272.7,111.0 19.7x15.0
+1x text 276.7,113.0 10.0x12.0 "🗑"
+1x rect 0.0,131.0 162.0x19.0
+1x text 4.0,135.0 141.0x12.0 "added_offset_date-time"
+1x rect 198.0,131.0 320.0x19.0
+1x text 203.0,136.0 130.0x9.0 "1970-01-01T00:00:00Z"
+1x rect 526.0,131.5 73.4x18.0
+1x text 530.0,136.5 65.0x7.0 "offset date-time"
+1x rect 607.4,133.0 19.7x15.0
+1x text 611.4,135.0 10.0x12.0 "🗑"
+1x rect 0.0,153.0 162.0x19.0
+1x text 4.0,157.0 132.0x12.0 "added_local_date-time"
+1x rect 198.0,153.0 320.0x19.0
+1x text 203.0,158.0 122.0x9.0 "1970-01-01T00:00:00"
+1x rect 526.0,153.5 67.7x18.0
+1x text 530.0,158.5 60.0x7.0 "local date-time"
+1x rect 601.7,155.0 19.7x15.0
+1x text 605.7,157.0 10.0x12.0 "🗑"
+1x rect 0.0,175.0 162.0x19.0
+1x text 4.0,179.0 102.0x12.0 "added_local_date"
+1x rect 198.0,175.0 320.0x19.0
+1x text 203.0,180.0 63.0x9.0 "1970-01-01"
+1x rect 526.0,175.5 46.8x18.0
+1x text 530.0,180.5 39.0x7.0 "local date"
+1x rect 580.8,177.0 19.7x15.0
+1x text 584.8,179.0 10.0x12.0 "🗑"
 1x rect 0.0,197.0 162.0x19.0
-1x text 4.0,201.0 54.0x12.0 "add a key"
+1x text 4.0,201.0 102.0x12.0 "added_local_time"
+1x rect 198.0,197.0 320.0x19.0
+1x text 202.0,202.0 50.0x9.0 "00:00:00"
+1x rect 526.0,197.5 46.9x18.0
+1x text 530.0,202.5 39.0x7.0 "local time"
+1x rect 580.9,199.0 19.7x15.0
+1x text 584.9,201.0 10.0x12.0 "🗑"
+1x path 6.0,225.0 6.0x6.0
+1x text 18.0,222.5 72.0x12.0 "added_array"
+1x rect 18.0,240.0 162.0x19.0
+1x text 22.0,244.0 72.0x12.0 "added_array"
+1x rect 216.0,240.5 28.2x18.0
+1x text 220.0,247.5 21.0x7.0 "array"
+1x rect 252.2,242.0 19.7x15.0
+1x text 256.2,244.0 10.0x12.0 "🗑"
+1x rect 208.0,262.0 100.0x18.0
+1x path 292.1,267.9 9.8x6.3
+1x text 213.0,266.5 23.0x9.0 "text"
+1x rect 316.0,262.0 31.5x18.0
+1x text 320.0,265.5 23.0x10.0 "Add"
+1x line 8.5,239.5 1.0x39.0
+1x path 6.0,289.0 6.0x6.0
+1x text 18.0,286.5 110.0x12.0 "added_inline_table"
+1x rect 18.0,304.0 162.0x19.0
+1x text 22.0,308.0 110.0x12.0 "added_inline_table"
+1x rect 216.0,304.5 52.3x18.0
+1x text 220.0,309.5 44.0x7.0 "inline table"
+1x rect 276.3,306.0 19.7x15.0
+1x text 280.3,308.0 10.0x12.0 "🗑"
+1x rect 18.0,326.0 162.0x19.0
+1x text 22.0,330.0 54.0x12.0 "add a key"
 1x text NaN,NaN NaNxNaN ""
-1x rect 198.0,197.5 100.0x18.0
-1x path 282.1,203.4 9.8x6.3
-1x text 203.0,202.0 23.0x9.0 "text"
-1x rect 306.0,197.5 31.5x18.0
-1x text 310.0,201.0 23.0x10.0 "Add"
+1x rect 216.0,326.5 100.0x18.0
+1x path 300.1,332.4 9.8x6.3
+1x text 221.0,331.0 23.0x9.0 "text"
+1x rect 324.0,326.5 31.5x18.0
+1x text 328.0,330.0 23.0x10.0 "Add"
+1x line 8.5,303.5 1.0x40.0
+1x path 6.0,354.0 6.0x6.0
+1x text 18.0,351.5 72.0x12.0 "added_table"
+1x rect 18.0,369.0 162.0x19.0
+1x text 22.0,373.0 72.0x12.0 "added_table"
+1x rect 216.0,369.5 28.5x18.0
+1x text 220.0,374.5 20.0x7.0 "table"
+1x rect 252.5,371.0 19.7x15.0
+1x text 256.5,373.0 10.0x12.0 "🗑"
+1x rect 18.0,391.0 162.0x19.0
+1x text 22.0,395.0 54.0x12.0 "add a key"
+1x text NaN,NaN NaNxNaN ""
+1x rect 216.0,391.5 100.0x18.0
+1x path 300.1,397.4 9.8x6.3
+1x text 221.0,396.0 23.0x9.0 "text"
+1x rect 324.0,391.5 31.5x18.0
+1x text 328.0,395.0 23.0x10.0 "Add"
+1x line 8.5,368.5 1.0x40.0
+1x rect 0.0,413.0 162.0x19.0
+1x text 4.0,417.0 54.0x12.0 "add a key"
+1x text NaN,NaN NaNxNaN ""
+1x rect 198.0,413.5 100.0x18.0
+1x path 282.1,419.4 9.8x6.3
+1x text 203.0,418.0 23.0x9.0 "text"
+1x rect 306.0,413.5 31.5x18.0
+1x text 310.0,417.0 23.0x10.0 "Add"
+1x rect 0.0,443.0 160.1x15.0
+1x text 4.0,445.0 151.0x10.0 "add a comment at the end"

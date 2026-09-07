@@ -33,13 +33,13 @@ slpc = { version = "0.3.10", features = ["fs", "provenance"] }
 # dependency in a committed manifest, since crates.io refuses the one and a
 # path builds on one machine.
 #
-# `default-features = false` leaves the application binary and its eframe
-# behind; this crate has its own. It re-exports `flyleaf-core`, which is where
+# `default-features = false` leaves the application binary, its eframe and its
+# rfd behind; this crate has its own of each. It re-exports `flyleaf-core`, which is where
 # the operations live, and depends on the same `toml_edit` major that `slpc`
 # re-exports, and has to: this crate hands a `DocumentMut` from one to the
 # other, and two versions in the graph would make that two types. Its `egui`
 # is the one `eframe` re-exports, for the same reason about a `Ui`.
-flyleaf = { version = "0.1", default-features = false }
+flyleaf = { version = "0.2", default-features = false }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature

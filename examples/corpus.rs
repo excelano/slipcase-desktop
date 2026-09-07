@@ -31,7 +31,7 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::{add_key, extract_at, rename_key, NewKey, Opened, Saved, Watch};
+use slipcase_desktop::{add_key, extract_at, rename_key, Kind, Opened, Saved, Watch};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -683,7 +683,7 @@ fn edited_round_trips(
     };
     // SPEC §2.5 leaves unknown keys unconstrained, so adding one keeps every
     // case conformant.
-    if !add_key(document.as_table_mut(), ADDED, NewKey::Text) {
+    if !add_key(document.as_table_mut(), ADDED, Kind::Text) {
         report.disagree(
             "the rewrite: a key could not be added".to_owned(),
             c,

@@ -23,6 +23,8 @@
 1x text 203.0,92.0 23.0x9.0 "text"
 1x rect 306.0,87.5 31.5x18.0
 1x text 310.0,91.0 23.0x10.0 "Add"
+1x rect 0.0,117.0 160.1x15.0
+1x text 4.0,119.0 151.0x10.0 "add a comment at the end"
 1.5x text 0.0,3.0 92.7x13.3 "slipcase_version"
 1.5x rect 198.0,0.0 320.0x19.0
 1.5x text 203.3,4.7 16.0x9.3 "1.0"
@@ -48,6 +50,8 @@
 1.5x text 202.7,91.8 23.3x9.3 "text"
 1.5x rect 306.0,87.4 31.5x18.0
 1.5x text 310.0,90.4 22.7x10.7 "Add"
+1.5x rect 0.0,116.9 160.1x14.7
+1.5x text 4.0,118.2 151.3x10.7 "add a comment at the end"
 2x text 0.5,3.5 91.5x12.5 "slipcase_version"
 2x rect 198.0,0.0 320.0x19.0
 2x text 203.0,5.0 16.5x9.0 "1.0"
@@ -73,6 +77,8 @@
 2x text 203.0,92.0 22.5x9.0 "text"
 2x rect 306.0,87.5 31.5x18.0
 2x text 310.0,91.0 22.5x10.0 "Add"
+2x rect 0.0,117.0 160.1x15.0
+2x text 4.5,119.0 150.5x10.0 "add a comment at the end"
 3x text 0.3,3.5 92.0x12.3 "slipcase_version"
 3x rect 198.0,0.0 320.0x19.0
 3x text 203.3,5.0 16.0x9.0 "1.0"
@@ -98,3 +104,5 @@
 3x text 203.0,92.0 22.7x9.0 "text"
 3x rect 306.0,87.5 31.5x18.0
 3x text 310.0,91.0 22.7x10.0 "Add"
+3x rect 0.0,117.0 160.1x15.0
+3x text 4.3,119.0 150.7x10.0 "add a comment at the end"

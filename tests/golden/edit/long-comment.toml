@@ -4,6 +4,11 @@ added_text = ""
 added_integer = 0
 added_float = 0.0
 added_boolean = false
-added_date_and_time = 1970-01-01T00:00:00Z
+added_offset_date-time = 1970-01-01T00:00:00Z
+added_local_date-time = 1970-01-01T00:00:00
+added_local_date = 1970-01-01
+added_local_time = 00:00:00
+added_array = []
+added_inline_table = {}
 
 [added_table]

@@ -22,7 +22,7 @@ use slpc::Verdict;
 // moved.
 pub use flyleaf::flyleaf_core::{
     add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
-    set_value, NewKey,
+    set_value, Kind,
 };
 
 /// What this application tells the tree about a metadata document: the two
