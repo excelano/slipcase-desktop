@@ -17,7 +17,7 @@ use std::borrow::Cow;
 use eframe::egui::{self, Ui};
 use slpc::toml_edit::{Array, Datetime, DocumentMut, InlineTable, Item, RawString, Table, Value};
 
-use crate::{
+use flyleaf_core::{
     add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
     set_value, NewKey,
 };

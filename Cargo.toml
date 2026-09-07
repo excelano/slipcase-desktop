@@ -25,6 +25,19 @@ path = "src/main.rs"
 # DESIGN.md §5 writes edited metadata back through, is behind it and is
 # compiled out without it.
 slpc = { version = "0.3.10", features = ["fs", "provenance"] }
+# The metadata editor's operations, and from slice 5 of the extraction the
+# editor itself: one TOML editor across the excelano applications, which is
+# what `excelano/flyleaf` exists for. A git dependency pinned by revision for
+# the length of the extraction, and a crates.io version the moment 0.1 is
+# published, which is that plan's slice 7. Until then this crate cannot be
+# published, since crates.io refuses a git dependency without a version; and
+# DESIGN.md §2's rule that the library is never a path dependency in a
+# committed manifest holds here too, since a path builds on one machine.
+#
+# `flyleaf-core` depends on the same `toml_edit` major that `slpc` re-exports,
+# and has to: this crate hands a `DocumentMut` from one to the other, and two
+# versions in the graph would make that two types.
+flyleaf-core = { git = "https://github.com/excelano/flyleaf", rev = "56c3331e8d0a6dbc5f54e51c4be1d6cfb0c272f0" }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature

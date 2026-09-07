@@ -1078,6 +1078,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "flyleaf-core"
+version = "0.1.0"
+source = "git+https://github.com/excelano/flyleaf?rev=56c3331e8d0a6dbc5f54e51c4be1d6cfb0c272f0#56c3331e8d0a6dbc5f54e51c4be1d6cfb0c272f0"
+dependencies = [
+ "toml_edit",
+]
+
+[[package]]
 name = "foldhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2898,6 +2906,7 @@ version = "0.1.4"
 dependencies = [
  "block2 0.6.2",
  "eframe",
+ "flyleaf-core",
  "ico",
  "objc2 0.6.4",
  "objc2-app-kit 0.3.2",

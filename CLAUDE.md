@@ -46,6 +46,15 @@ from `slpc`, the library in `excelano/slpc-rust`. Where it needs behaviour
 the library lacks, the behaviour goes into the library — twice so far, filed as
 issues and both fixed upstream rather than worked around here.
 
+**The metadata editor is being extracted into `excelano/flyleaf`** (working
+copy `~/flyleaf`), so that Tommy Flyleaf and this application share one
+editor. Its edit operations already come from `flyleaf-core`, re-exported from
+`src/lib.rs` under their old names; the tree follows. That repository's
+`PROMPT.md` holds the plan in slices, and `tests/golden/` here is what every
+slice is measured against: what the tree draws and what an edit saves, held
+byte for byte. Where the editor needs behaviour the widget lacks, the
+behaviour goes there, the same rule as for `slpc`.
+
 **Three documents, three authorities.** `SPEC.md` in `excelano/slipcase` is the
 authority on the format and this repository neither restates nor amends it.
 `DESIGN.md` here is the authority on this application. `git log` is the record
