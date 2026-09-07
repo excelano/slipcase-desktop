@@ -26,21 +26,20 @@ path = "src/main.rs"
 # compiled out without it.
 slpc = { version = "0.3.10", features = ["fs", "provenance"] }
 # The metadata editor: the tree DESIGN.md §4 describes and the operations §5
-# describes, which were written here and moved out so that Tommy Flyleaf and
-# this application share one TOML editor rather than two that drift. That is
-# what `excelano/flyleaf` exists for. A git dependency pinned by revision for
-# the length of the extraction, and a crates.io version the moment 0.1 is
-# published, which is that plan's slice 7. Until then this crate cannot be
-# published, since crates.io refuses a git dependency without a version; and
-# DESIGN.md §2's rule that the library is never a path dependency in a
-# committed manifest holds here too, since a path builds on one machine.
+# describes, which were written here and moved out on 2026-09-07 so that
+# Tommy Flyleaf and this application share one TOML editor rather than two
+# that drift. That is what `excelano/flyleaf` exists for. From crates.io at a
+# published version, as `slpc` is and for the same reason: never a git or path
+# dependency in a committed manifest, since crates.io refuses the one and a
+# path builds on one machine.
 #
-# It re-exports `flyleaf-core`, which is where the operations live, and depends
-# on the same `toml_edit` major that `slpc` re-exports, and has to: this crate
-# hands a `DocumentMut` from one to the other, and two versions in the graph
-# would make that two types. Its `egui` is the one `eframe` re-exports, for
-# the same reason about a `Ui`.
-flyleaf = { git = "https://github.com/excelano/flyleaf", rev = "32b5465f18c0cfff44667e875ca4326367b01cf9" }
+# `default-features = false` leaves the application binary and its eframe
+# behind; this crate has its own. It re-exports `flyleaf-core`, which is where
+# the operations live, and depends on the same `toml_edit` major that `slpc`
+# re-exports, and has to: this crate hands a `DocumentMut` from one to the
+# other, and two versions in the graph would make that two types. Its `egui`
+# is the one `eframe` re-exports, for the same reason about a `Ui`.
+flyleaf = { version = "0.1", default-features = false }
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
