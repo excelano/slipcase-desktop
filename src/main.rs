@@ -555,6 +555,46 @@ impl App {
         (edited, self.save_said.as_ref())
     }
 
+    /// The bar across the top: open, save, undo, redo, and what the last
+    /// save said. Returns the button pressed, if one was.
+    fn bar(&self, ui: &mut egui::Ui) -> Option<Pressed> {
+        let (edited, said) = self.notes();
+        let history = self.opened.as_ref().and_then(|o| o.metadata.as_ref());
+        let (can_undo, can_redo) =
+            history.map_or((false, false), |d| (d.can_undo(), d.can_redo()));
+        let picking = self.picking.is_some();
+        let mut pressed = None;
+        let mut press = |ui: &mut egui::Ui, enabled: bool, label: &str, what: Pressed| {
+            if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
+                pressed = Some(what);
+            }
+        };
+        // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
+        egui::Panel::top("bar").show(ui, |ui| {
+            ui.horizontal(|ui| {
+                press(ui, !picking, "Open a slipcase…", Pressed::Open);
+                // Off until there is something to write, because DESIGN.md
+                // §5 does not write a container nothing has changed in and
+                // a button that does nothing should not invite a press.
+                press(ui, edited, "Save", Pressed::Save);
+                press(ui, can_undo, "Undo", Pressed::Undo);
+                press(ui, can_redo, "Redo", Pressed::Redo);
+                if edited {
+                    ui.label(egui::RichText::new("edited").italics().weak());
+                }
+                if let Some(said) = said {
+                    let text = egui::RichText::new(&said.text);
+                    ui.label(if said.wrong {
+                        text.color(error_colour(ui.visuals()))
+                    } else {
+                        text.weak()
+                    });
+                }
+            });
+        });
+        pressed
+    }
+
     /// Write the edits back, and show what happened.
     fn save(&mut self) {
         let Some(opened) = &self.opened else {
@@ -790,6 +830,15 @@ impl App {
             For::Replacement => self.take_replacement(path),
         }
     }
+}
+
+/// What a button in the bar asked for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Pressed {
+    Open,
+    Save,
+    Undo,
+    Redo,
 }
 
 /// The payload card: what it is, and what can be done with it.
@@ -1070,43 +1119,28 @@ impl App {
         // panel holds a borrow of the state a click changes.
         let mut asked = None;
         let mut pick_clicked = false;
-        let mut save_clicked = false;
 
-        if self.opened.is_some() {
-            // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
-            let (edited, said) = self.notes();
-            egui::Panel::top("bar").show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    let picking = self.picking.is_some();
-                    if ui
-                        .add_enabled(!picking, egui::Button::new("Open a slipcase…"))
-                        .clicked()
-                    {
-                        pick_clicked = true;
-                    }
-                    // Off until there is something to write, because DESIGN.md
-                    // §5 does not write a container nothing has changed in and
-                    // a button that does nothing should not invite a press.
-                    if ui
-                        .add_enabled(edited, egui::Button::new("Save"))
-                        .clicked()
-                    {
-                        save_clicked = true;
-                    }
-                    if edited {
-                        ui.label(egui::RichText::new("edited").italics().weak());
-                    }
-                    if let Some(said) = said {
-                        let text = egui::RichText::new(&said.text);
-                        ui.label(if said.wrong {
-                            text.color(error_colour(ui.visuals()))
-                        } else {
-                            text.weak()
-                        });
-                    }
-                });
-            });
+        // Taken before anything draws, so that a field with focus does not
+        // answer Ctrl+Z with its own undo of its own text: the document's
+        // undo is the window's, the way it is in Tommy Flyleaf. Redo is
+        // asked first, since its chord contains undo's.
+        let redo = ui.input_mut(|i| {
+            i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::Z)
+                || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
+        });
+        let undo = ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z));
+
+        let pressed = if self.opened.is_some() {
+            self.bar(ui)
+        } else {
+            None
+        };
+        if matches!(pressed, Some(Pressed::Open)) {
+            pick_clicked = true;
         }
+        let save_clicked = matches!(pressed, Some(Pressed::Save));
+        let undo_clicked = matches!(pressed, Some(Pressed::Undo));
+        let redo_clicked = matches!(pressed, Some(Pressed::Redo));
 
         egui::CentralPanel::default().show(ui, |ui| match &mut self.opened {
             None => {
@@ -1148,10 +1182,25 @@ impl App {
                 // The metadata is the window: it gets the space rather than a
                 // panel down one side. DESIGN.md §3.
                 if let Some(doc) = &mut opened.metadata {
+                    // Before the tree draws, and after the widget has been
+                    // told to forget what is half typed: a key field commits
+                    // its buffer when it loses focus, and would otherwise
+                    // rename the row back after the undo.
+                    if undo || undo_clicked {
+                        flyleaf::forget_typing(ui.ctx());
+                        doc.undo();
+                    } else if redo || redo_clicked {
+                        flyleaf::forget_typing(ui.ctx());
+                        doc.redo();
+                    }
                     ui.add_space(8.0);
-                    egui::ScrollArea::both()
+                    let selected = egui::ScrollArea::both()
                         .auto_shrink([false, false])
-                        .show(ui, |ui| flyleaf::render(ui, doc, &RequiredKeys));
+                        .show(ui, |ui| flyleaf::render(ui, doc.tree_mut(), &RequiredKeys))
+                        .inner;
+                    // Whatever this frame changed is a step, joined to the
+                    // last one where the same row is still being worked in.
+                    doc.record(selected.as_deref());
                 }
             }
         });
@@ -1353,6 +1402,55 @@ mod tests {
             picking: None,
             focus_open,
         }
+    }
+
+    /// Ctrl+Z takes the last edit back and Ctrl+Shift+Z puts it again,
+    /// through the window, with the chord taken before a field could. Found
+    /// wanting by hand on 2026-09-07: a comment edited in the tree could not
+    /// be taken back, and Ctrl+Z reached only egui's undo of a focused
+    /// field's text.
+    #[test]
+    fn the_undo_and_redo_chords_reach_the_metadata() {
+        let dir = tempfile::tempdir().expect("a scratch directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+        let title = |app: &App| {
+            app.opened
+                .as_ref()
+                .and_then(|o| o.metadata.as_ref())
+                .and_then(|d| d.tree()["title"].as_str().map(str::to_owned))
+        };
+        let before = title(&app).expect("the container has a title");
+        {
+            let doc = app
+                .opened
+                .as_mut()
+                .and_then(|o| o.metadata.as_mut())
+                .expect("a document");
+            doc.tree_mut()["title"] = slpc::toml_edit::value("after");
+            doc.record(None);
+        }
+        assert_eq!(title(&app).as_deref(), Some("after"));
+
+        let chord = |modifiers: eframe::egui::Modifiers| eframe::egui::RawInput {
+            events: vec![eframe::egui::Event::Key {
+                key: eframe::egui::Key::Z,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        };
+        let ctx = eframe::egui::Context::default();
+        ctx.run_ui(chord(eframe::egui::Modifiers::COMMAND), |ui| app.render(ui))
+            .drop_without_applying_deltas();
+        assert_eq!(title(&app).as_deref(), Some(before.as_str()), "undone");
+        ctx.run_ui(
+            chord(eframe::egui::Modifiers::COMMAND | eframe::egui::Modifiers::SHIFT),
+            |ui| app.render(ui),
+        )
+        .drop_without_applying_deltas();
+        assert_eq!(title(&app).as_deref(), Some("after"), "redone");
     }
 
     /// A container this test builds itself, so nothing here needs the
@@ -1645,7 +1743,7 @@ mod save_failure_tests {
             .as_mut()
             .expect("a document");
         set_value(
-            document["title"].as_value_mut().expect("a value"),
+            document.tree_mut()["title"].as_value_mut().expect("a value"),
             Value::from("after"),
         );
 

@@ -258,6 +258,7 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
         .metadata
         .as_mut()
         .expect("a document")
+        .tree_mut()
         .insert("title", slpc::toml_edit::value("edited"));
     assert!(matches!(
         opened.save(None).expect("saves"),
@@ -276,6 +277,7 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
         after
             .metadata
             .expect("a document")
+            .tree()
             .get("title")
             .is_some_and(|v| v.as_str() == Some("edited")),
         "the edit did not land"

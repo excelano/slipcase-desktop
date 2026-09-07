@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 
-use slpc::toml_edit::DocumentMut;
+use flyleaf::flyleaf_core::Document;
 use slpc::Verdict;
 
 // The editor's operations come from `flyleaf-core` now, and are re-exported
@@ -271,7 +271,8 @@ pub struct Opened {
     /// What came back.
     pub outcome: Outcome,
     /// The metadata document, when the metadata member could be read and
-    /// parsed as TOML.
+    /// parsed as TOML, with its edited baseline and its history: what
+    /// `as_parsed` held here until flyleaf 0.2, and undo and redo besides.
     ///
     /// `slpc::metadata_of` parses that member alone and asks nothing else of
     /// it, so a document survives a container that fails SPEC §2.1 somewhere
@@ -279,16 +280,7 @@ pub struct Opened {
     /// several, a version this build does not implement. Those are the rows of
     /// DESIGN.md §6 that show a verdict and a tree. The rows that show a
     /// verdict and nothing further are the ones where this is `None`.
-    pub metadata: Option<DocumentMut>,
-    /// The document as it was parsed, for telling whether it has been edited.
-    ///
-    /// Compared against rather than the bytes in the container, because two of
-    /// the corpus's 37 conformant containers do not re-serialize to the bytes
-    /// they came from: a leading byte order mark is dropped and CRLF line
-    /// endings come back as LF. Comparing against the stored bytes would call
-    /// those two edited the moment they were opened, and §5 says a container
-    /// nothing has changed in is not written.
-    as_parsed: Option<String>,
+    pub metadata: Option<Document>,
     /// The payload, when there is one this build can describe.
     ///
     /// Only a conformant container has one. DESIGN.md §6 gives the card to that
@@ -524,9 +516,17 @@ impl Opened {
         // Two reads rather than one. `Container::read` fails the payload check
         // before it yields a document, so the tree for a container that failed
         // that check has to be asked for separately.
+        // The library hands back a tree, and the Document is built from the
+        // tree's text: what the edited baseline was compared against before
+        // flyleaf 0.2, and a parse of a document the format bounds at 256 KiB.
+        // Compared against rather than the bytes in the container, because
+        // two of the corpus's conformant containers do not re-serialize to
+        // the bytes they came from, and §5 says a container nothing has
+        // changed in is not written.
         let metadata = std::fs::File::open(&path)
             .ok()
-            .and_then(|f| slpc::metadata_of_with(f, LIMITS).ok());
+            .and_then(|f| slpc::metadata_of_with(f, LIMITS).ok())
+            .and_then(|tree| Document::parse(&tree.to_string()).ok());
 
         let outcome = match std::fs::File::open(&path) {
             Err(e) => Outcome::Unreadable(e.to_string()),
@@ -537,8 +537,6 @@ impl Opened {
                 Err(e) => Outcome::Unreadable(e.to_string()),
             },
         };
-        let as_parsed = metadata.as_ref().map(DocumentMut::to_string);
-
         // Only a conformant container is given a card, so this opens the file
         // a third time and only for the row of §6 that has one.
         let payload = match &outcome {
@@ -552,7 +550,6 @@ impl Opened {
             path,
             outcome,
             metadata,
-            as_parsed,
             payload,
             from_elsewhere,
         }
@@ -582,10 +579,7 @@ impl Opened {
     /// Whether the metadata document has changed since it was parsed.
     #[must_use]
     pub fn metadata_edited(&self) -> bool {
-        match (&self.metadata, &self.as_parsed) {
-            (Some(doc), Some(as_parsed)) => doc.to_string() != *as_parsed,
-            _ => false,
-        }
+        self.metadata.as_ref().is_some_and(Document::edited)
     }
 
     /// Write the edits back into the container.
@@ -630,7 +624,7 @@ impl Opened {
             // trip alone. A payload replaced under a new name still moves
             // `payload.file`, which the library does from the stored bytes.
             if edited {
-                repack = repack.metadata(document);
+                repack = repack.metadata(document.tree());
             }
             if let Some(file) = replacing {
                 repack = repack.payload_file(file)?;
@@ -1257,7 +1251,7 @@ aaa = \"written second\"
         let mut opened = Opened::open(&path);
         let document = opened.metadata.as_mut().expect("a document");
         set_value(
-            document["title"].as_value_mut().expect("a value"),
+            document.tree_mut()["title"].as_value_mut().expect("a value"),
             Value::from("after"),
         );
 
@@ -1266,7 +1260,7 @@ aaa = \"written second\"
 
         let again = Opened::open(&path);
         assert_eq!(again.verdict_word(), "accept");
-        let written = again.metadata.as_ref().expect("a document").to_string();
+        let written = again.metadata.as_ref().expect("a document").render();
 
         assert!(written.contains("title = \"after\""), "{written}");
         assert!(written.contains("# a leading comment"), "{written}");
@@ -1415,7 +1409,7 @@ mod replacement_tests {
         assert_eq!(card.name, "report-v2.pdf");
         assert_eq!(card.size, 15);
 
-        let document = again.metadata.as_ref().expect("a document").to_string();
+        let document = again.metadata.as_ref().expect("a document").render();
         assert!(document.contains("report-v2.pdf"), "{document}");
         assert!(!document.contains("report.pdf"), "{document}");
         // The one key the replacement may move, and no other part of the file.
@@ -1502,7 +1496,7 @@ mod replacement_tests {
 
         let mut opened = Opened::open(&container);
         super::set_value(
-            opened.metadata.as_mut().expect("a document")["title"]
+            opened.metadata.as_mut().expect("a document").tree_mut()["title"]
                 .as_value_mut()
                 .expect("a value"),
             Value::from("after"),
@@ -1514,7 +1508,7 @@ mod replacement_tests {
         ));
 
         let again = Opened::open(&container);
-        let document = again.metadata.as_ref().expect("a document").to_string();
+        let document = again.metadata.as_ref().expect("a document").render();
         assert!(document.contains("\"after\""), "{document}");
         assert!(document.contains("# kept"), "{document}");
         assert!(document.contains("report-v2.pdf"), "{document}");

@@ -408,7 +408,11 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
 
     // The old name is gone from the document as well as from the archive.
     let after = Opened::open(&copy);
-    let document = after.metadata.as_ref().map(ToString::to_string).unwrap_or_default();
+    let document = after
+        .metadata
+        .as_ref()
+        .map(flyleaf::flyleaf_core::Document::render)
+        .unwrap_or_default();
     if !document.contains(REPLACEMENT) {
         report.disagree(
             "the replacement: payload.file did not move with the payload".to_owned(),
@@ -565,7 +569,7 @@ fn rename_round_trips(
     let Some(document) = opened.metadata.as_mut() else {
         return false;
     };
-    if !rename_key(document.as_table_mut(), ADDED, RENAMED) {
+    if !rename_key(document.tree_mut().as_table_mut(), ADDED, RENAMED) {
         report.disagree(
             "the rename: the key added a moment ago would not rename".to_owned(),
             c,
@@ -683,7 +687,7 @@ fn edited_round_trips(
     };
     // SPEC §2.5 leaves unknown keys unconstrained, so adding one keeps every
     // case conformant.
-    if !add_key(document.as_table_mut(), ADDED, Kind::Text) {
+    if !add_key(document.tree_mut().as_table_mut(), ADDED, Kind::Text) {
         report.disagree(
             "the rewrite: a key could not be added".to_owned(),
             c,
@@ -729,7 +733,7 @@ fn edited_round_trips(
     if !again
         .metadata
         .as_ref()
-        .is_some_and(|d| d.contains_key(ADDED))
+        .is_some_and(|d| d.tree().contains_key(ADDED))
     {
         report.disagree(
             "the rewrite: the edit did not survive the round trip".to_owned(),
@@ -768,7 +772,7 @@ const ADDED: &str = "x_slipcase_desktop_corpus";
 /// The top-level keys of a container's metadata, in document order.
 fn top_level_keys(opened: &Opened) -> Vec<String> {
     opened.metadata.as_ref().map_or_else(Vec::new, |d| {
-        d.as_table().iter().map(|(k, _)| k.to_owned()).collect()
+        d.tree().as_table().iter().map(|(k, _)| k.to_owned()).collect()
     })
 }
 
