@@ -85,7 +85,7 @@ The Slipcase conformance corpus is run as a command rather than as a test,
 because it needs a checkout of `excelano/slipcase` with its cases generated:
 
 ```
-cargo run --bin corpus -- /path/to/slipcase/conformance
+cargo run --example corpus -- /path/to/slipcase/conformance
 ```
 
 It puts every fixture through this application's own reading of them: the

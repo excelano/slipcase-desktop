@@ -78,7 +78,7 @@ that was never going to have those things is worse than a command run on
 purpose. It is the harness that matters — every fixture across verdict, tree,
 card, extraction, rewrite, rename, replacement, and pre-flight:
 
-    cargo run --bin corpus -- /path/to/slipcase/conformance
+    cargo run --example corpus -- /path/to/slipcase/conformance
 
 All of them must agree. Run it before and after any change to `src/lib.rs`.
 
@@ -87,9 +87,7 @@ then 87 — all on 2026-08-27, and two of those went stale inside the same day i
 this paragraph, which is the argument making itself. The runner prints the count
 and fails on any disagreement, so ask it rather than this file.
 
-Two things that have caught people out. `cargo run --bin corpus` rebuilds every
-binary in the package, including `slipcase-desktop`, so do not run it while the
-application is running from the same target directory. And the target directory
+One thing that has caught people out: the target directory
 may not be `./target`: `[build] target-dir` in a Cargo configuration file moves
 it and no environment variable then says so, which is why the packaging scripts
 ask `cargo metadata` rather than guessing.
@@ -273,6 +271,6 @@ build that only a hand can check, run it, and write down what it found.
                         the document macOS delivers by Apple Event rather than
                         argv — the crate's only unsafe, and the rule above says
                         what adding a second such module would mean
-    src/bin/corpus.rs   the conformance runner (a command, not a test)
-    examples/           the type query without a window
+    examples/           the conformance runner (a command, not a test) and
+                        the type query without a window
     packaging/          per platform, plus debian

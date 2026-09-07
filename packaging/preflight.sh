@@ -104,7 +104,7 @@ fi
 #    it. Skipped rather than failed when the checkout is not there: a machine
 #    that was never going to have it should not be told it failed a check.
 if [ -n "$corpus" ]; then
-    if cargo run --quiet --bin corpus -- "$corpus" 2>/dev/null | head -1 | grep -q 'all agree'; then
+    if cargo run --quiet --example corpus -- "$corpus" 2>/dev/null | head -1 | grep -q 'all agree'; then
         ok "the conformance corpus agrees"
     else
         bad "the conformance corpus agrees" "it does not"

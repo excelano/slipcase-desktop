@@ -104,7 +104,7 @@ jobs:
           git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
           git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach 996dcca3f65ed36728b11ee1741812b50def67b4
           python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
-          cargo run --bin corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
+          cargo run --example corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
 
       # The `.ico` is a committed artifact rather than a build product, because
       # `rc.exe` and `windres` are both tools `DESIGN.md` §2 keeps out of the

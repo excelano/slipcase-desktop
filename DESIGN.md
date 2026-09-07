@@ -349,12 +349,12 @@ rule rather than a naming one, and `§3`'s refusal to substitute this
 application's judgement for the platform's is untouched: nothing here decides a
 name is wrong, only how a path is spelled to the person who pressed the button.
 
-`src/bin/corpus.rs` needed the same treatment for the same reason, because it
+`examples/corpus.rs` needed the same treatment for the same reason, because it
 builds a path out of a container's payload name too, and that is where the run
 still hung after `extract` was fixed. `destination` is public so that the two
 share the rule rather than each keeping a copy of it.
 
-**Amended: both moved into the library, for the reason `§5`'s last amendment gives.** `destination` and `shown` are `slpc::payload_path` and `slpc::display_path` from 0.3.5, and neither exists here now. `slipcase unpack` had the same defect, written out of the same wrong inference in nearly the same words, because the repair lived in the caller that happened to find it — and `slpc` already owned the other half of the question, `check_payload_name` being what says a name is legal to begin with. `extract` asks the library for a whole path rather than addressing a directory and joining onto it, which is the better shape: `src/bin/corpus.rs` calls the same function for its two names and keeps no directory in a particular form. Everything the two paragraphs above describe is still what happens; it happens one crate down.
+**Amended: both moved into the library, for the reason `§5`'s last amendment gives.** `destination` and `shown` are `slpc::payload_path` and `slpc::display_path` from 0.3.5, and neither exists here now. `slipcase unpack` had the same defect, written out of the same wrong inference in nearly the same words, because the repair lived in the caller that happened to find it — and `slpc` already owned the other half of the question, `check_payload_name` being what says a name is legal to begin with. `extract` asks the library for a whole path rather than addressing a directory and joining onto it, which is the better shape: `examples/corpus.rs` calls the same function for its two names and keeps no directory in a particular form. Everything the two paragraphs above describe is still what happens; it happens one crate down.
 
 **Amended: the runtime libraries cannot be derived from the executable.** It links libc, libm, and libgcc, and nothing else. Everything that draws a window — the Wayland client library, the keyboard map library, the EGL and Vulkan loaders, the X11 libraries — is opened by name at run time, which is the other face of §2's claim that `wayland-sys` and `linux-raw-sys` resolve their symbols then. `dpkg-shlibdeps` sees none of it, so a package built from the linker's answer alone installs cleanly on a machine with no display stack and fails to start. The dependency list is written by hand and was measured by running the application and reading `/proc/PID/maps`.
 

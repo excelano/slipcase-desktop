@@ -31,7 +31,7 @@ not. That gap is what this section is for.
 
 Every fixture is in the conformance corpus, so nothing is built by hand:
 
-    cargo run --bin corpus -- /path/to/slipcase/conformance   # generates them
+    cargo run --example corpus -- /path/to/slipcase/conformance   # generates them
     ./target/release/slipcase-desktop \
         /path/to/slipcase/conformance/cases/accept/payload-setuid-external-attributes.slpc
 
