@@ -1,0 +1,36 @@
+slipcase_version_renamed = "1.0 (edited)"
+added_text = ""
+added_integer = 0
+added_float = 0.0
+added_boolean = false
+added_date_and_time = 1970-01-01T00:00:00Z
+
+[provenance]
+added_text = ""
+added_integer = 0
+added_float = 0.0
+added_boolean = false
+added_date_and_time = 1970-01-01T00:00:00Z
+
+[provenance.system_renamed]
+added_text = ""
+added_integer = 0
+added_float = 0.0
+added_boolean = false
+added_date_and_time = 1970-01-01T00:00:00Z
+
+[provenance.system_renamed.source_renamed]
+name_renamed = "docmgmt (edited)"
+added_text = ""
+added_integer = 0
+added_float = 0.0
+added_boolean = false
+added_date_and_time = 1970-01-01T00:00:00Z
+
+[provenance.system_renamed.source_renamed.added_table]
+
+[provenance.system_renamed.added_table]
+
+[provenance.added_table]
+
+[added_table]

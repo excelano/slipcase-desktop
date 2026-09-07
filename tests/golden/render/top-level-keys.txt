@@ -1,0 +1,172 @@
+1x text 0.0,3.5 93.0x12.0 "slipcase_version"
+1x rect 198.0,0.0 320.0x19.0
+1x text 203.0,5.0 17.0x9.0 "1.0"
+1x rect 0.0,22.0 162.0x19.0
+1x text 5.0,26.0 22.0x10.0 "title"
+1x rect 198.0,22.0 320.0x19.0
+1x text 202.0,27.0 58.0x11.0 "Q3 report"
+1x rect 526.0,24.0 19.7x15.0
+1x text 530.0,26.0 10.0x12.0 "🗑"
+1x rect 0.0,44.0 162.0x19.0
+1x text 4.0,48.0 39.0x10.0 "author"
+1x rect 198.0,44.0 320.0x19.0
+1x text 203.0,48.0 69.0x10.0 "D. Anderson"
+1x rect 526.0,46.0 19.7x15.0
+1x text 530.0,48.0 10.0x12.0 "🗑"
+1x rect 0.0,66.0 162.0x19.0
+1x text 5.0,70.0 87.0x12.0 "retention_class"
+1x rect 198.0,66.0 320.0x19.0
+1x text 202.0,71.0 14.0x11.0 "7y"
+1x rect 526.0,68.0 19.7x15.0
+1x text 530.0,70.0 10.0x12.0 "🗑"
+1x path 6.0,94.0 6.0x6.0
+1x text 19.0,91.5 44.0x12.0 "payload"
+1x text 19.0,112.5 17.0x10.0 "file"
+1x rect 216.0,109.0 320.0x19.0
+1x text 221.0,113.0 60.0x12.0 "report.pdf"
+1x rect 18.0,131.0 162.0x19.0
+1x text 22.0,135.0 54.0x12.0 "add a key"
+1x text NaN,NaN NaNxNaN ""
+1x rect 216.0,131.5 100.0x18.0
+1x path 300.1,137.4 9.8x6.3
+1x text 221.0,136.0 23.0x9.0 "text"
+1x rect 324.0,131.5 31.5x18.0
+1x text 328.0,135.0 23.0x10.0 "Add"
+1x line 8.5,108.5 1.0x40.0
+1x rect 0.0,153.0 162.0x19.0
+1x text 4.0,157.0 54.0x12.0 "add a key"
+1x text NaN,NaN NaNxNaN ""
+1x rect 198.0,153.5 100.0x18.0
+1x path 282.1,159.4 9.8x6.3
+1x text 203.0,158.0 23.0x9.0 "text"
+1x rect 306.0,153.5 31.5x18.0
+1x text 310.0,157.0 23.0x10.0 "Add"
+1.5x text 0.0,3.0 92.7x13.3 "slipcase_version"
+1.5x rect 198.0,0.0 320.0x19.0
+1.5x text 203.3,4.7 16.0x9.3 "1.0"
+1.5x rect 0.0,22.0 162.0x19.0
+1.5x text 4.7,25.3 22.7x10.7 "title"
+1.5x rect 198.0,22.0 320.0x19.0
+1.5x text 202.7,26.6 56.7x12.0 "Q3 report"
+1.5x rect 526.0,24.1 19.7x14.7
+1.5x text 530.7,25.5 9.3x12.0 "🗑"
+1.5x rect 0.0,43.9 162.0x19.0
+1.5x text 4.0,47.3 39.3x10.7 "author"
+1.5x rect 198.0,43.9 320.0x19.0
+1.5x text 202.7,47.3 70.0x10.7 "D. Anderson"
+1.5x rect 526.0,46.1 19.7x14.7
+1.5x text 530.7,47.4 9.3x12.0 "🗑"
+1.5x rect 0.0,65.9 162.0x19.0
+1.5x text 4.7,69.2 87.3x13.3 "retention_class"
+1.5x rect 198.0,65.9 320.0x19.0
+1.5x text 202.7,70.6 13.3x12.0 "7y"
+1.5x rect 526.0,68.1 19.7x14.7
+1.5x text 530.7,69.4 9.3x12.0 "🗑"
+1.5x path 6.0,93.9 6.0x6.0
+1.5x text 18.7,90.9 44.0x13.3 "payload"
+1.5x text 18.7,111.9 17.3x10.7 "file"
+1.5x rect 216.0,108.9 320.0x19.0
+1.5x text 220.7,112.2 60.0x13.3 "report.pdf"
+1.5x rect 18.0,130.8 162.0x19.0
+1.5x text 22.0,134.2 54.0x13.3 "add a key"
+1.5x text NaN,NaN NaNxNaN ""
+1.5x rect 216.0,131.3 100.0x18.0
+1.5x path 300.1,137.2 9.8x6.3
+1.5x text 220.7,135.7 23.3x9.3 "text"
+1.5x rect 324.0,131.3 31.5x18.0
+1.5x text 328.0,134.3 22.7x10.7 "Add"
+1.5x line 8.5,108.4 1.0x39.9
+1.5x rect 0.0,152.8 162.0x19.0
+1.5x text 4.0,156.1 54.0x13.3 "add a key"
+1.5x text NaN,NaN NaNxNaN ""
+1.5x rect 198.0,153.3 100.0x18.0
+1.5x path 282.1,159.2 9.8x6.3
+1.5x text 202.7,157.7 23.3x9.3 "text"
+1.5x rect 306.0,153.3 31.5x18.0
+1.5x text 310.0,156.3 22.7x10.7 "Add"
+2x text 0.5,3.5 91.5x12.5 "slipcase_version"
+2x rect 198.0,0.0 320.0x19.0
+2x text 203.0,5.0 16.5x9.0 "1.0"
+2x rect 0.0,22.0 162.0x19.0
+2x text 5.0,26.0 22.0x10.0 "title"
+2x rect 198.0,22.0 320.0x19.0
+2x text 202.5,27.0 57.0x11.5 "Q3 report"
+2x rect 526.0,24.0 19.7x15.0
+2x text 530.5,25.5 9.5x12.0 "🗑"
+2x rect 0.0,44.0 162.0x19.0
+2x text 4.5,48.0 38.5x10.0 "author"
+2x rect 198.0,44.0 320.0x19.0
+2x text 203.0,48.0 69.0x10.0 "D. Anderson"
+2x rect 526.0,46.0 19.7x15.0
+2x text 530.5,47.5 9.5x12.0 "🗑"
+2x rect 0.0,66.0 162.0x19.0
+2x text 5.0,70.0 87.0x12.5 "retention_class"
+2x rect 198.0,66.0 320.0x19.0
+2x text 202.5,71.0 13.0x11.5 "7y"
+2x rect 526.0,68.0 19.7x15.0
+2x text 530.5,69.5 9.5x12.0 "🗑"
+2x path 6.0,94.0 6.0x6.0
+2x text 19.0,91.5 43.5x12.5 "payload"
+2x text 19.0,112.5 17.0x10.0 "file"
+2x rect 216.0,109.0 320.0x19.0
+2x text 221.0,113.0 59.5x12.5 "report.pdf"
+2x rect 18.0,131.0 162.0x19.0
+2x text 22.5,135.0 53.0x12.5 "add a key"
+2x text NaN,NaN NaNxNaN ""
+2x rect 216.0,131.5 100.0x18.0
+2x path 300.1,137.4 9.8x6.3
+2x text 221.0,136.0 22.5x9.0 "text"
+2x rect 324.0,131.5 31.5x18.0
+2x text 328.0,135.0 22.5x10.0 "Add"
+2x line 8.5,108.5 1.0x40.0
+2x rect 0.0,153.0 162.0x19.0
+2x text 4.5,157.0 53.0x12.5 "add a key"
+2x text NaN,NaN NaNxNaN ""
+2x rect 198.0,153.5 100.0x18.0
+2x path 282.1,159.4 9.8x6.3
+2x text 203.0,158.0 22.5x9.0 "text"
+2x rect 306.0,153.5 31.5x18.0
+2x text 310.0,157.0 22.5x10.0 "Add"
+3x text 0.3,3.5 92.0x12.3 "slipcase_version"
+3x rect 198.0,0.0 320.0x19.0
+3x text 203.3,5.0 16.0x9.0 "1.0"
+3x rect 0.0,22.0 162.0x19.0
+3x text 5.0,26.0 22.0x10.0 "title"
+3x rect 198.0,22.0 320.0x19.0
+3x text 202.7,27.0 56.7x11.3 "Q3 report"
+3x rect 526.0,24.0 19.7x15.0
+3x text 530.7,25.7 9.3x11.7 "🗑"
+3x rect 0.0,44.0 162.0x19.0
+3x text 4.3,48.0 38.7x10.0 "author"
+3x rect 198.0,44.0 320.0x19.0
+3x text 203.0,48.0 69.0x10.0 "D. Anderson"
+3x rect 526.0,46.0 19.7x15.0
+3x text 530.7,47.7 9.3x11.7 "🗑"
+3x rect 0.0,66.0 162.0x19.0
+3x text 5.0,70.0 86.7x12.3 "retention_class"
+3x rect 198.0,66.0 320.0x19.0
+3x text 202.7,71.0 12.7x11.3 "7y"
+3x rect 526.0,68.0 19.7x15.0
+3x text 530.7,69.7 9.3x11.7 "🗑"
+3x path 6.0,94.0 6.0x6.0
+3x text 19.0,91.5 43.3x12.3 "payload"
+3x text 19.0,112.5 16.7x10.0 "file"
+3x rect 216.0,109.0 320.0x19.0
+3x text 221.0,113.0 59.7x12.3 "report.pdf"
+3x rect 18.0,131.0 162.0x19.0
+3x text 22.3,135.0 53.3x12.3 "add a key"
+3x text NaN,NaN NaNxNaN ""
+3x rect 216.0,131.5 100.0x18.0
+3x path 300.1,137.4 9.8x6.3
+3x text 221.0,136.0 22.7x9.0 "text"
+3x rect 324.0,131.5 31.5x18.0
+3x text 328.0,135.0 22.7x10.0 "Add"
+3x line 8.5,108.5 1.0x40.0
+3x rect 0.0,153.0 162.0x19.0
+3x text 4.3,157.0 53.3x12.3 "add a key"
+3x text NaN,NaN NaNxNaN ""
+3x rect 198.0,153.5 100.0x18.0
+3x path 282.1,159.4 9.8x6.3
+3x text 203.0,158.0 22.7x9.0 "text"
+3x rect 306.0,153.5 31.5x18.0
+3x text 310.0,157.0 22.7x10.0 "Add"

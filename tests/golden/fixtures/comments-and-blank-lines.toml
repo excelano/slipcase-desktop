@@ -1,0 +1,8 @@
+# slipcase metadata
+
+  slipcase_version = "1.0"   # the specification version
+
+
+[payload]
+  # the member this describes
+  file = "report.pdf"

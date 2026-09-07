@@ -1,0 +1,10 @@
+# slipcase metadata
+
+  slipcase_version_renamed = "1.0 (edited)"   # the specification version
+added_text = ""
+added_integer = 0
+added_float = 0.0
+added_boolean = false
+added_date_and_time = 1970-01-01T00:00:00Z
+
+[added_table]

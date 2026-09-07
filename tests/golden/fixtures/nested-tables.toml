@@ -1,0 +1,8 @@
+slipcase_version = "1.0"
+
+[payload]
+file = "report.pdf"
+
+[provenance.system.source]
+name = "docmgmt"
+id = 4821

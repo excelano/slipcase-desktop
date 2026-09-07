@@ -1,0 +1,5 @@
+slipcase_version = "1.0"
+
+payload = {
+    file = "report.pdf",
+}

@@ -1,0 +1,27 @@
+# a document comment
+slipcase_version = "1.0"   # the version
+
+[payload]
+file = "report.pdf"
+
+[types]
+text = "a string"
+count = 44
+ratio = 1.5
+flag = true
+offset_date_time = 1979-05-27T07:32:00Z
+local_date_time = 1979-05-27T07:32:00
+local_date = 1979-05-27
+local_time = 07:32:00
+list = [1, 2, 3]
+inline = { a = 1, b = "two" }
+# above a dotted key
+dotted.key = "reached by a dot"
+
+[[runs]]
+id = 1
+
+[[runs]]
+id = 2
+
+# a comment attached to nothing

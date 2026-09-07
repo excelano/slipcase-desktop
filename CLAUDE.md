@@ -274,3 +274,6 @@ build that only a hand can check, run it, and write down what it found.
     examples/           the conformance runner (a command, not a test) and
                         the type query without a window
     packaging/          per platform, plus debian
+    tests/golden.rs     what the tree draws and what an edit saves, held
+                        against tests/golden/ while the editor is extracted
+                        into excelano/flyleaf; regenerate only by decision

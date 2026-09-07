@@ -1,0 +1,7 @@
+slipcase_version = "1.0"
+title = "Q3 report"
+author = "D. Anderson"
+retention_class = "7y"
+
+[payload]
+file = "report.pdf"
