@@ -38,7 +38,8 @@ use std::sync::mpsc;
 use eframe::egui;
 
 use slipcase_desktop::{
-    extract, extract_at, tree, why_not_a_payload, Extracted, Opened, Payload, Saved, Watch,
+    extract, extract_at, tree, why_not_a_payload, Extracted, Opened, Payload, RequiredKeys, Saved,
+    Watch,
 };
 
 /// The window's identity to the desktop environment.
@@ -1151,7 +1152,7 @@ impl App {
                     ui.add_space(8.0);
                     egui::ScrollArea::both()
                         .auto_shrink([false, false])
-                        .show(ui, |ui| tree::render(ui, doc));
+                        .show(ui, |ui| tree::render(ui, doc, &RequiredKeys));
                 }
             }
         });

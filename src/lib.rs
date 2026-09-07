@@ -27,6 +27,50 @@ pub use flyleaf_core::{
     set_value, NewKey,
 };
 
+/// What this application tells the tree about a metadata document: the two
+/// keys SPEC §2.2 requires are shown and not edited, and so is the table
+/// holding one.
+///
+/// `payload.file` names the member the container is built around, and
+/// changing it without renaming that member leaves a container naming a
+/// payload that is not there; `slipcase_version` is the claim the whole
+/// verdict rests on, and `Repack` refuses to write a document disagreeing with
+/// the version it implements. `payload` is protected as well as
+/// `payload.file`, because deleting or renaming the table takes the required
+/// key inside it with it, which the value being read-only would not have
+/// stopped.
+///
+/// This was the tree's own knowledge until 2026-09-07. It is the one thing in
+/// the tree that was about Slipcase rather than about TOML, so it moved here
+/// before the tree moves out to `excelano/flyleaf`.
+pub struct RequiredKeys;
+
+impl tree::Policy for RequiredKeys {
+    fn protected(&self, path: &[String]) -> bool {
+        let joined = path.join(".");
+        [slpc::VERSION_KEY, slpc::PAYLOAD_FILE_KEY]
+            .iter()
+            .any(|required| *required == joined || required.starts_with(&format!("{joined}.")))
+    }
+
+    /// One of the two protected strings, `payload.file`, is a member name, and
+    /// SPEC §3 requires a name be shown escaped. The card does that through
+    /// `slpc::display_name` and the tree did not: a payload called
+    /// `report<U+202E>fdp.exe` read `report\u{202E}fdp.exe` on the card and
+    /// `reportfdp.exe` two rows below it, because egui gives a bidirectional
+    /// formatting character zero advance width. The tree was showing the spoof
+    /// the escaping exists to prevent, under a card that was not.
+    ///
+    /// Found by hand on Windows on 2026-08-29 against
+    /// `accept/payload-name-bidi-override`, while running the card's item 3 —
+    /// which asks about the card, so macOS and Linux had both ticked it without
+    /// looking two rows down. The code is shared and all three platforms had
+    /// this.
+    fn display_protected<'a>(&self, value: &'a str) -> std::borrow::Cow<'a, str> {
+        slpc::display_name(value)
+    }
+}
+
 /// How much of a copy has happened, and whether it should stop.
 ///
 /// Two handles onto the same counters, so the thread doing the copying and the
@@ -1240,6 +1284,50 @@ aaa = \"written second\"
         std::fs::create_dir(&into).expect("a directory");
         let out = again.extract_to(&into).expect("extracts");
         assert_eq!(std::fs::read(out).expect("reads"), b"payload");
+    }
+}
+
+#[cfg(test)]
+mod policy_tests {
+    use super::tree::Policy;
+    use super::RequiredKeys;
+
+    /// The keys SPEC §2.2 requires are shown and not edited, and so is the
+    /// table holding one: deleting `[payload]` would take `payload.file` with
+    /// it, which making the value read-only would not have stopped.
+    ///
+    /// A key of the same name under another table is a different key, and a
+    /// sibling of a required key is not required.
+    #[test]
+    fn the_required_keys_and_what_holds_them_are_protected() {
+        let path =
+            |parts: &[&str]| -> Vec<String> { parts.iter().map(|p| (*p).to_owned()).collect() };
+
+        assert!(RequiredKeys.protected(&path(&["slipcase_version"])));
+        assert!(RequiredKeys.protected(&path(&["payload", "file"])));
+        assert!(RequiredKeys.protected(&path(&["payload"])));
+
+        assert!(!RequiredKeys.protected(&path(&["title"])));
+        assert!(!RequiredKeys.protected(&path(&["payload", "size"])));
+        assert!(!RequiredKeys.protected(&path(&[
+            "elsewhere",
+            "slipcase_version"
+        ])));
+    }
+
+    /// A payload name whose bidirectional override the tree swallowed.
+    ///
+    /// Without the escape the field read `reportfdp.exe` — egui gives U+202E
+    /// zero advance width — which is a name one character short of the file on
+    /// disk, shown two rows under a card that escapes it. That is the spoof
+    /// SPEC §3's escaping exists to prevent, and it was in the one field this
+    /// application will not let anybody edit.
+    #[test]
+    fn a_protected_name_is_shown_escaped() {
+        assert_eq!(
+            RequiredKeys.display_protected("report\u{202E}fdp.exe"),
+            "report\\u{202E}fdp.exe"
+        );
     }
 }
 

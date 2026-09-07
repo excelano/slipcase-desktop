@@ -5,12 +5,15 @@
 //! to special-case and no allowlist to write. DESIGN.md §4.
 //!
 //! Scalars are editable and structure is not: a key can have its value changed,
-//! and adding, deleting, or renaming one is deferred. The two keys SPEC §2.2
-//! requires are shown and not edited. `payload.file` names the member the
-//! container is built around, and changing it without renaming that member
-//! leaves a container naming a payload that is not there; `slipcase_version` is
-//! the claim the whole verdict rests on, and `Repack` refuses to write a
-//! document disagreeing with the version it implements.
+//! and adding, deleting, or renaming one is deferred.
+//!
+//! Which keys are shown and not edited is the application's to say, through a
+//! [`Policy`], and the tree itself knows no key names. slipcase-desktop's
+//! answer is `RequiredKeys` in `src/lib.rs`: the two keys SPEC §2.2 requires,
+//! and the table holding one. The tree carried that answer itself until
+//! 2026-09-07, and it was the one thing in this file that was about Slipcase
+//! rather than about TOML, which is why it is the one thing that moved out
+//! before the file follows the edit operations into `excelano/flyleaf`.
 
 use std::borrow::Cow;
 
@@ -39,14 +42,38 @@ const KEY_WIDTH: f32 = 190.0;
 /// The width a value is edited in.
 const VALUE_WIDTH: f32 = 320.0;
 
-/// Render a metadata document, and let its scalars be edited.
-pub fn render(ui: &mut Ui, doc: &mut DocumentMut) {
+/// What the application says about the document the tree is showing.
+///
+/// The tree draws every key the same way unless told otherwise, and this is
+/// how it is told. Both answers default to "nothing special", so a policy
+/// that has nothing to say is an empty `impl`.
+pub trait Policy {
+    /// Whether the key at this path is shown and not edited, renamed, or
+    /// removed. A protected table protects everything under it, which is the
+    /// implementation's to arrange: the tree asks about each path on its own.
+    fn protected(&self, _path: &[String]) -> bool {
+        false
+    }
+
+    /// How a protected string reads.
+    ///
+    /// Only a protected string comes through here. An editable one is shown as
+    /// it is, because a `TextEdit` writes what it shows back into the document
+    /// the moment the field is touched, and a display transformation on a
+    /// value somebody can type into is a rewrite of their document.
+    fn display_protected<'a>(&self, value: &'a str) -> Cow<'a, str> {
+        Cow::Borrowed(value)
+    }
+}
+
+/// Render a document, and let its scalars be edited.
+pub fn render(ui: &mut Ui, doc: &mut DocumentMut, policy: &dyn Policy) {
     // Comments after the last item attach to no key, so no row can carry them.
     // Dropping them would tell a reader their file holds less than it does.
     let trailing = comment_lines(Some(doc.trailing()));
 
     let mut path: Vec<String> = Vec::new();
-    table(ui, doc.as_table_mut(), &mut path);
+    table(ui, doc.as_table_mut(), &mut path, policy);
 
     if !trailing.is_empty() {
         ui.add_space(8.0);
@@ -58,17 +85,21 @@ pub fn render(ui: &mut Ui, doc: &mut DocumentMut) {
 }
 
 /// Every entry of a table, in the order the document wrote them.
-fn table(ui: &mut Ui, t: &mut Table, path: &mut Vec<String>) {
+fn table(ui: &mut Ui, t: &mut Table, path: &mut Vec<String>, policy: &dyn Policy) {
     // Taken before the loop borrows the table, so a row can say whether the
     // name being typed into it is one of its own siblings.
     let siblings: Vec<String> = t.iter().map(|(k, _)| k.to_owned()).collect();
     let mut change = None;
+    let mut rows = Siblings {
+        names: &siblings,
+        change: &mut change,
+    };
 
     for (key, item) in t.iter_mut() {
         let name = key.get().to_owned();
         let above = comment_lines(key.leaf_decor().prefix());
         path.push(name.clone());
-        entry(ui, &name, item, above, path, &siblings, &mut change);
+        entry(ui, &name, item, above, path, &mut rows, policy);
         path.pop();
     }
 
@@ -86,13 +117,13 @@ fn entry(
     item: &mut Item,
     above: Vec<String>,
     path: &mut Vec<String>,
-    siblings: &[String],
-    change: &mut Option<Change>,
+    siblings: &mut Siblings<'_>,
+    policy: &dyn Policy,
 ) {
     match item {
         // A key that was removed. Nothing was written for it and nothing shows.
         Item::None => {}
-        Item::Value(v) => value(ui, name, v, above, path, siblings, change),
+        Item::Value(v) => value(ui, name, v, above, path, siblings, policy),
         Item::Table(t) => {
             // A `[header]` carries its own comments rather than the key's.
             let comments = joined(&comment_lines(t.decor().prefix()));
@@ -100,20 +131,20 @@ fn entry(
                 // Inside the section rather than beside its header: a
                 // `CollapsingHeader` draws its body as well as its title, and a
                 // body laid out sideways is what putting one in a row gives.
-                controls(ui, name, path, siblings, change);
-                table(ui, t, path);
+                controls(ui, name, path, siblings, policy);
+                table(ui, t, path, policy);
             });
         }
         Item::ArrayOfTables(a) => {
             // Neither a section nor a leaf under §4's first sentence: a section
             // whose children are numbered sections, one per table.
             section(ui, name, joined(&above).as_deref(), |ui| {
-                controls(ui, name, path, siblings, change);
+                controls(ui, name, path, siblings, policy);
                 for (n, t) in a.iter_mut().enumerate() {
                     let comments = joined(&comment_lines(t.decor().prefix()));
                     let label = format!("[{n}]");
                     path.push(label.clone());
-                    section(ui, &label, comments.as_deref(), |ui| table(ui, t, path));
+                    section(ui, &label, comments.as_deref(), |ui| table(ui, t, path, policy));
                     path.pop();
                 }
             });
@@ -128,8 +159,8 @@ fn value(
     v: &mut Value,
     above: Vec<String>,
     path: &mut Vec<String>,
-    siblings: &[String],
-    change: &mut Option<Change>,
+    siblings: &mut Siblings<'_>,
+    policy: &dyn Policy,
 ) {
     // A comment after the value on its own line sits in the value's suffix.
     let mut comments = above;
@@ -139,12 +170,12 @@ fn value(
     match v {
         Value::InlineTable(t) => {
             section(ui, name, comment.as_deref(), |ui| {
-                controls(ui, name, path, siblings, change);
-                inline_table(ui, t, path);
+                controls(ui, name, path, siblings, policy);
+                inline_table(ui, t, path, policy);
             });
         }
-        _ => row(ui, name, comment.as_deref(), path, siblings, change, |ui| {
-            scalar(ui, v, path);
+        _ => row(ui, name, comment.as_deref(), path, siblings, policy, |ui| {
+            scalar(ui, v, path, policy);
         }),
     }
 }
@@ -157,15 +188,19 @@ fn value(
 /// is how somebody comes to press one twice and wonder what is broken. Being
 /// written on one line is a fact about how it is laid out and not about what
 /// can be done to it.
-fn inline_table(ui: &mut Ui, t: &mut InlineTable, path: &mut Vec<String>) {
+fn inline_table(ui: &mut Ui, t: &mut InlineTable, path: &mut Vec<String>, policy: &dyn Policy) {
     let siblings: Vec<String> = t.iter().map(|(k, _)| k.to_owned()).collect();
     let mut change = None;
+    let mut rows = Siblings {
+        names: &siblings,
+        change: &mut change,
+    };
 
     for (key, v) in t.iter_mut() {
         let name = key.get().to_owned();
         let above = comment_lines(key.leaf_decor().prefix());
         path.push(name.clone());
-        value(ui, &name, v, above, path, &siblings, &mut change);
+        value(ui, &name, v, above, path, &mut rows, policy);
         path.pop();
     }
 
@@ -177,47 +212,42 @@ fn inline_table(ui: &mut Ui, t: &mut InlineTable, path: &mut Vec<String>) {
     }
 }
 
-/// Whether this key is one SPEC §2.2 requires, or one holding it.
-///
-/// A protected key is shown and not edited, renamed, or deleted. `payload` is
-/// protected as well as `payload.file`, because deleting or renaming the table
-/// takes the required key inside it with it, which the value being read-only
-/// would not have stopped.
-fn is_protected(path: &[String]) -> bool {
-    let joined = path.join(".");
-    [slpc::VERSION_KEY, slpc::PAYLOAD_FILE_KEY]
-        .iter()
-        .any(|required| *required == joined || required.starts_with(&format!("{joined}.")))
-}
-
 /// What a string value reads as in the tree.
 ///
-/// A protected string is a display rather than a field — [`is_protected`]
-/// disables the widget — and one of the two, `payload.file`, is a member name.
-/// SPEC §3 requires a name be shown escaped, which the card does through
-/// `slpc::display_name` and this did not: a payload called
-/// `report<U+202E>fdp.exe` read `report\u{202E}fdp.exe` on the card and
-/// `reportfdp.exe` two rows below it, because egui gives a bidirectional
-/// formatting character zero advance width. The tree was showing the spoof the
-/// escaping exists to prevent, under a card that was not.
-///
-/// Found by hand on Windows on 2026-08-29 against
-/// `accept/payload-name-bidi-override`, while running the card's item 3 — which
-/// asks about the card, so macOS and Linux had both ticked it without looking
-/// two rows down. The code is shared and all three platforms had this.
+/// A protected string is a display rather than a field — the policy disables
+/// the widget — and it is the policy's to say how it reads. slipcase-desktop's
+/// escapes it, because one of its two protected strings is a member name and
+/// SPEC §3 requires a name be shown escaped: a payload called
+/// `report<U+202E>fdp.exe` once read `reportfdp.exe` in this tree, two rows
+/// under a card that escaped it, because egui gives a bidirectional formatting
+/// character zero advance width. Found by hand on Windows on 2026-08-29; the
+/// measurement is on `RequiredKeys` in `src/lib.rs`, where the escape now is.
 ///
 /// **An editable string is deliberately left alone**, which is why this takes
-/// the flag rather than escaping everything. Escaping a value somebody can type
-/// into is lossy: the eight characters `\u{202E}` would be written back as
-/// themselves the first time the field was touched, so a document merely
-/// mentioning such a character would gain them. `src/main.rs` records the same
-/// reasoning where the Extract-to dialog prefills a filename.
-fn displayed(value: &str, editable: bool) -> Cow<'_, str> {
+/// the flag rather than passing everything through the policy. A display
+/// transformation on a value somebody can type into is lossy: the eight
+/// characters `\u{202E}` would be written back as themselves the first time
+/// the field was touched, so a document merely mentioning such a character
+/// would gain them. `src/main.rs` records the same reasoning where the
+/// Extract-to dialog prefills a filename.
+fn displayed<'a>(value: &'a str, editable: bool, policy: &dyn Policy) -> Cow<'a, str> {
     if editable {
         Cow::Borrowed(value)
     } else {
-        slpc::display_name(value)
+        policy.display_protected(value)
     }
+}
+
+/// What a row knows about the table it is drawn in: the names already taken,
+/// so it can refuse one, and the one change the table will make once its rows
+/// have been drawn, so it can ask for it.
+///
+/// The two always travel together, and they are one argument rather than two
+/// because a row is drawn through several functions that each carry the path,
+/// the policy, and the widget besides.
+struct Siblings<'a> {
+    names: &'a [String],
+    change: &'a mut Option<Change>,
 }
 
 /// A change to a table's own entries, gathered while its rows are drawn and
@@ -263,13 +293,13 @@ fn apply_inline(t: &mut InlineTable, change: Change) {
 /// Reads the current value to seed the widget and returns a replacement rather
 /// than writing through the borrow it is holding. [`set_value`] puts back the
 /// decor the old value carried.
-fn scalar(ui: &mut Ui, v: &mut Value, path: &[String]) {
-    let editable = !is_protected(path);
+fn scalar(ui: &mut Ui, v: &mut Value, path: &[String], policy: &dyn Policy) {
+    let editable = !policy.protected(path);
     let id = ui.make_persistent_id(path.join("."));
 
     let replacement = match &*v {
         Value::String(s) => {
-            let mut text = displayed(s.value(), editable).into_owned();
+            let mut text = displayed(s.value(), editable, policy).into_owned();
             let field = egui::TextEdit::singleline(&mut text).desired_width(VALUE_WIDTH);
             ui.add_enabled(editable, field)
                 .changed()
@@ -425,14 +455,14 @@ fn row(
     name: &str,
     comment: Option<&str>,
     path: &[String],
-    siblings: &[String],
-    change: &mut Option<Change>,
+    siblings: &mut Siblings<'_>,
+    policy: &dyn Policy,
     value: impl FnOnce(&mut Ui),
 ) {
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             ui.set_min_width(KEY_WIDTH);
-            key_name(ui, name, path, siblings, change);
+            key_name(ui, name, path, siblings, policy);
         });
         value(ui);
         // The comment is capped so it cannot eat the room the remove control
@@ -450,13 +480,13 @@ fn row(
         // to the full window width, which `an_integer_stays_beside_its_key`
         // forbids for its own reason, and that test caught it.
         if let Some(c) = comment {
-            let room = (ui.available_width() - remove_room(ui, path)).max(0.0);
+            let room = (ui.available_width() - remove_room(ui, path, policy)).max(0.0);
             ui.scope(|ui| {
                 ui.set_max_width(room);
                 ui.add(egui::Label::new(comment_text(c)).truncate());
             });
         }
-        delete_button(ui, name, path, change);
+        delete_button(ui, name, path, siblings.change, policy);
     });
 }
 
@@ -468,8 +498,8 @@ fn row(
 /// here would be right at one text size and wrong at every other, which is the
 /// case the defect showed up in. Protected keys have no such control and get
 /// the whole row.
-fn remove_room(ui: &Ui, path: &[String]) -> f32 {
-    if is_protected(path) {
+fn remove_room(ui: &Ui, path: &[String], policy: &dyn Policy) -> f32 {
+    if policy.protected(path) {
         return 0.0;
     }
     let spacing = ui.spacing();
@@ -481,18 +511,18 @@ fn controls(
     ui: &mut Ui,
     name: &str,
     path: &[String],
-    siblings: &[String],
-    change: &mut Option<Change>,
+    siblings: &mut Siblings<'_>,
+    policy: &dyn Policy,
 ) {
-    if is_protected(path) {
+    if policy.protected(path) {
         return;
     }
     ui.horizontal(|ui| {
         ui.scope(|ui| {
             ui.set_min_width(KEY_WIDTH);
-            key_name(ui, name, path, siblings, change);
+            key_name(ui, name, path, siblings, policy);
         });
-        delete_button(ui, name, path, change);
+        delete_button(ui, name, path, siblings.change, policy);
     });
 }
 
@@ -501,10 +531,10 @@ fn key_name(
     ui: &mut Ui,
     name: &str,
     path: &[String],
-    siblings: &[String],
-    change: &mut Option<Change>,
+    siblings: &mut Siblings<'_>,
+    policy: &dyn Policy,
 ) {
-    if is_protected(path) {
+    if policy.protected(path) {
         ui.label(egui::RichText::new(name).strong());
         return;
     }
@@ -517,15 +547,15 @@ fn key_name(
     let typed: Option<String> = ui.data_mut(|d| d.get_temp(id));
     if ui.memory(|m| m.has_focus(id)) {
         if let Some(t) = &typed {
-            if t.is_empty() || (t != name && siblings.iter().any(|s| s == t)) {
+            if t.is_empty() || (t != name && siblings.names.iter().any(|s| s == t)) {
                 ui.label(egui::RichText::new("name taken").italics().weak());
             }
         }
     }
 
     if let Some(to) = committed {
-        if !to.is_empty() && to != name && !siblings.contains(&to) {
-            *change = Some(Change::Rename(name.to_owned(), to));
+        if !to.is_empty() && to != name && !siblings.names.contains(&to) {
+            *siblings.change = Some(Change::Rename(name.to_owned(), to));
         }
     }
 }
@@ -555,8 +585,14 @@ fn key_field(ui: &mut Ui, id: egui::Id, current: &str) -> Option<String> {
 }
 
 /// The way to remove a key, where removing it is allowed.
-fn delete_button(ui: &mut Ui, name: &str, path: &[String], change: &mut Option<Change>) {
-    if is_protected(path) {
+fn delete_button(
+    ui: &mut Ui,
+    name: &str,
+    path: &[String],
+    change: &mut Option<Change>,
+    policy: &dyn Policy,
+) {
+    if policy.protected(path) {
         return;
     }
     // One press, and nothing reaches the container until Save. DESIGN.md §5
@@ -653,35 +689,45 @@ fn joined(lines: &[String]) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{array_text, comment_lines, displayed, render};
+    use std::borrow::Cow;
+
+    use super::{array_text, comment_lines, displayed, render, Policy};
+    use crate::RequiredKeys;
     use slpc::toml_edit::DocumentMut;
 
-    /// A payload name whose bidirectional override the tree swallowed.
-    ///
-    /// Without the escape the field read `reportfdp.exe` — egui gives U+202E
-    /// zero advance width — which is a name one character short of the file on
-    /// disk, shown two rows under a card that escapes it. That is the spoof
-    /// SPEC §3's escaping exists to prevent, and it was in the one field this
-    /// application will not let anybody edit.
-    #[test]
-    fn a_protected_name_is_shown_escaped() {
-        assert_eq!(
-            displayed("report\u{202E}fdp.exe", false),
-            "report\\u{202E}fdp.exe"
-        );
+    /// A policy that would rewrite every string it was shown, so that a
+    /// string reaching it is the finding.
+    struct Rewriting;
+
+    impl Policy for Rewriting {
+        fn display_protected<'a>(&self, _value: &'a str) -> Cow<'a, str> {
+            Cow::Owned("rewritten".to_owned())
+        }
     }
 
-    /// Escaping a field somebody can type into writes the escape back.
+    /// A protected string is shown the way the policy says.
     ///
-    /// The eight characters `\u{202E}` are what `display_name` produces, and a
-    /// `TextEdit` bound to them returns them as themselves the moment the field
-    /// is touched. A container whose metadata merely mentions such a character
-    /// would gain them, which is a rewrite of somebody's document to make a
-    /// display safer that was already safe: nothing here is a member name.
+    /// The tree once did this itself, with an escape of its own; what it
+    /// checks now is that the policy's answer is what reaches the screen.
+    /// slipcase-desktop's escape, and the bidirectional override it exists
+    /// for, are tested on `RequiredKeys` in `src/lib.rs`.
+    #[test]
+    fn a_protected_string_is_shown_the_way_the_policy_says() {
+        assert_eq!(displayed("anything", false, &Rewriting), "rewritten");
+    }
+
+    /// A display transformation on a field somebody can type into writes the
+    /// transformation back.
+    ///
+    /// A `TextEdit` bound to what it shows returns it as itself the moment the
+    /// field is touched, so a document whose value merely mentioned something
+    /// the policy rewrites would gain the rewrite. So an editable string never
+    /// reaches the policy, and a policy that rewrites everything is how that
+    /// is checked.
     #[test]
     fn an_editable_string_is_shown_as_it_is() {
         assert_eq!(
-            displayed("report\u{202E}fdp.exe", true),
+            displayed("report\u{202E}fdp.exe", true, &Rewriting),
             "report\u{202E}fdp.exe"
         );
     }
@@ -729,7 +775,7 @@ id = 2
     #[test]
     fn every_toml_type_renders() {
         let mut doc = parsed();
-        eframe::egui::__run_test_ui(|ui| render(ui, &mut doc));
+        eframe::egui::__run_test_ui(|ui| render(ui, &mut doc, &RequiredKeys));
     }
 
     /// TOML wants two digits in an hour. A field a person types into should
@@ -791,7 +837,7 @@ id = 2
         let mut content = 0.0;
         eframe::egui::__run_test_ui(|ui| {
             ui.set_max_width(900.0);
-            render(ui, &mut doc);
+            render(ui, &mut doc, &RequiredKeys);
             content = ui.min_rect().width();
         });
 
@@ -857,7 +903,7 @@ id = 2
 
         let mut output = ctx.run_ui(input, |ui| {
             ui.set_max_width(WIDTH);
-            render(ui, &mut doc);
+            render(ui, &mut doc, &RequiredKeys);
         });
         // The shapes are what this is about; the texture deltas belong to a
         // painter there is not one of here, and egui panics if they are dropped
@@ -892,29 +938,6 @@ id = 2
                  available, so the comment took the room it needed"
             ),
         }
-    }
-
-    /// The keys SPEC §2.2 requires are shown and not edited, and so is the
-    /// table holding one: deleting `[payload]` would take `payload.file` with
-    /// it, which making the value read-only would not have stopped.
-    ///
-    /// A key of the same name under another table is a different key, and a
-    /// sibling of a required key is not required.
-    #[test]
-    fn the_required_keys_and_what_holds_them_are_protected() {
-        let path =
-            |parts: &[&str]| -> Vec<String> { parts.iter().map(|p| (*p).to_owned()).collect() };
-
-        assert!(super::is_protected(&path(&["slipcase_version"])));
-        assert!(super::is_protected(&path(&["payload", "file"])));
-        assert!(super::is_protected(&path(&["payload"])));
-
-        assert!(!super::is_protected(&path(&["title"])));
-        assert!(!super::is_protected(&path(&["payload", "size"])));
-        assert!(!super::is_protected(&path(&[
-            "elsewhere",
-            "slipcase_version"
-        ])));
     }
 
     /// §4: document order is preserved and never sorted. Authoring order

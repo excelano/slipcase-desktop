@@ -26,7 +26,7 @@ use eframe::egui::{self, Shape};
 use slipcase_desktop::tree::render;
 use slipcase_desktop::{
     add_inline_key, add_key, remove_inline_key, remove_key, rename_inline_key, rename_key,
-    set_value, NewKey,
+    set_value, NewKey, RequiredKeys,
 };
 use slpc::toml_edit::{Datetime, DocumentMut, InlineTable, Item, Table, Value};
 
@@ -113,7 +113,7 @@ fn shapes_at(doc: &mut DocumentMut, ppp: f32) -> String {
     };
     let mut output = ctx.run_ui(input, |ui| {
         ui.set_max_width(WIDTH);
-        render(ui, doc);
+        render(ui, doc, &RequiredKeys);
     });
     let shapes = std::mem::take(&mut output.shapes);
     output.drop_without_applying_deltas();
