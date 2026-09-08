@@ -16,19 +16,30 @@ page. `packaging/windows/identity.psd1` is the same and has an
 
 ## The order
 
-1. **Linux**, which needs no other machine and where most shared work lands.
-2. **Windows.**
-3. **macOS.**
-4. **Back on Linux**, for the readiness review across all three.
+1. **Debian first.** Linux needs no other machine, most shared work lands
+   there, and apt is our own repository: publishing is one command,
+   unpublishing is a prune, and nothing sits in anybody's review queue. The
+   release is cut here, from `preflight.sh` green: the tag, the GitHub
+   release, the crate, and apt.
+2. **Then each store when its platform is ready**, in whichever order the
+   machines are available: Windows on the Windows lane, macOS on the Mac
+   lane. A submission goes in when that platform's readiness review passes,
+   and it does not wait for the other platform.
 
-**Nothing is submitted until step 4.** Both stores treat a submission as an
-event with a queue behind it, and the point of the review is that the thing in
-the queue is one somebody looked at across every platform.
+**Amended 2026-09-08.** The order was Linux, Windows, macOS, and back on Linux
+for one readiness review across all three, with nothing submitted until then.
+It held every store behind the slowest lane, and it had stopped describing what
+happened: duckling 0.1.0 shipped with its Mac step unfinished, and 0.1.5 here
+and flyleaf 0.2.1 both reached apt with the store sessions days away, each an
+exception the rule had to be argued around. What the rule bought is kept: a
+person reads the listing against the built artefact before it enters a queue.
+That reading is now per platform, at that platform's submission; *The
+readiness review* below says what it covers.
 
-**apt is the exception, taken deliberately.** It is our own repository:
-publishing is one command and unpublishing is a prune, and nothing sits in
-anybody's review queue meanwhile. What that costs is a rule of its own — see
-*What apt costs* below.
+**What apt being first costs** is that apt may be ahead of a store for a
+while. That is a stated fact rather than an exception: a store gets the same
+tag when its lane is ready, or a later one if a fix landed in between, which
+the version scheme allows. *What apt costs* below has the mechanics.
 
 ---
 
@@ -110,10 +121,10 @@ cross-compiles and there is no arm64 machine to run a build on, so an arm64
 
 ### What apt costs
 
-Publishing to apt before the stores is allowed and the rest of the rule is not
-suspended: the readiness review still gates both submissions, and it has one
-more thing to check — that what apt is serving is a version the stores also
-have, or a later one whose difference is understood.
+Publishing to apt before the stores is the rule since 2026-09-08, under *The
+order*. What it costs each platform's readiness review is one check: that what
+apt is serving is the tag being submitted, or a later one whose difference is
+understood.
 
 `apt-ship -n` followed by `-y` used to abort — the dry run's prune had already
 taken the old version, so the second run found nothing to prune while the remote
@@ -351,23 +362,27 @@ looking for the Windows dependency defect's counterpart found the Linux one.
 
 ---
 
-## The readiness review, back here
+## The readiness review, per platform
 
-Somebody looks at all three platforms together, which no platform session can
-do. What it covers:
+Before a platform's submission, against that platform's built artefact, on
+whichever machine has it. Until 2026-09-08 this was one review across all
+three platforms, back on Linux; the amendment under *The order* says why it is
+not. What it covers:
 
-- **Every claim in the store listings is true of the built artefacts.** This is
-  the error this project has caught most often — a sentence written before
+- **Every claim in that store's listing is true of the built artefact.** This
+  is the error this project has caught most often — a sentence written before
   anybody looked — and it has been caught in the listing, in the changelog and
   twice on the privacy page.
-- **The version is the same number in all three spellings**, both changelogs
-  name it, and what apt serves is understood against what the stores have.
-- **`CHECKLIST.md`'s hand items have been run on every platform they apply to**,
-  and anything found is in a commit.
-- **The three CI workflows are green**, the corpus agrees on every platform that
-  has run it, and `preflight.sh` passes.
+- **The version is the same number in the spellings that platform reads**,
+  both changelogs name it, and what apt serves is the tag being submitted or
+  a later one whose difference is understood.
+- **`CHECKLIST.md`'s hand items for that platform have been run** against the
+  packaged application, and anything found is in a commit.
+- **That platform's CI workflow is green on the tagged commit**, the corpus
+  agrees there, and `preflight.sh` passed when the tag was cut.
 
-Then, and only then, both submissions go in.
+Then that submission goes in, and the other platform's waits only on its own
+review.
 
 ---
 
