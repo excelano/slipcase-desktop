@@ -216,6 +216,17 @@ fi
 # sub-frameworks beneath them; scoping to `Headers` reported five false
 # positives from those two alone.
 #
+# **And the search follows symlinks**, because an umbrella's sub-frameworks
+# are not all real directories. `winit` links `CGDisplayCreateUUIDFromDisplayID`
+# through ApplicationServices, the public header declaring it is ColorSync's,
+# and in every SDK on the Mac (14, 15.5, 26, 26.2) `ApplicationServices
+# .framework/Versions/A/Frameworks/ColorSync.framework` is a symlink up to the
+# top-level framework, which a plain `find` does not enter. Measured
+# 2026-09-08 in flyleaf, whose first Mac build this refused for two symbols
+# the accepted Store bundle of this application carries: without `-L` the
+# umbrella yields 59 headers and no `ColorSyncDevice.h`; with `-L`, 1281
+# headers and the declaration.
+#
 # Measured on the refused binary: two findings, both correct, in 3.5 seconds.
 # On the patched one: none.
 private_symbols() {
@@ -251,7 +262,7 @@ private_symbols() {
         [ -d "$dir" ] || continue
         awk -v f="$framework" '$1 == f { print $2 }' "${scratch}/pairs" |
             sort -u > "${scratch}/wanted"
-        find "$dir" -name '*.h' -print0 2>/dev/null |
+        find -L "$dir" -name '*.h' -print0 2>/dev/null |
             xargs -0 grep -hoFw -f "${scratch}/wanted" 2>/dev/null |
             sort -u > "${scratch}/declared"
         comm -23 "${scratch}/wanted" "${scratch}/declared" |
