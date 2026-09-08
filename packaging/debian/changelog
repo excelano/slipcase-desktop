@@ -1,3 +1,12 @@
+slipcase-desktop (0.1.5) unstable; urgency=medium
+
+  * The metadata editor is the general one shared with Tommy Flyleaf: a kind
+    menu on every value, editable arrays and comments, undo and redo.
+  * The buttons and the file dialog say "Open a container".
+  * The conformance runner is no longer a second executable in the crate.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Mon, 07 Sep 2026 22:20:00 -0500
+
 slipcase-desktop (0.1.4) unstable; urgency=medium
 
   * Depend on slipcase-common for the media type and the icon a container is

@@ -17,6 +17,27 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.5] - 2026-09-07
+
+### Added
+
+The metadata editor is now the general one shared with Tommy Flyleaf, from
+which it was extracted and published as the `flyleaf` crate. Every value has a
+kind menu offering the conversions it allows, arrays are editable, comments can
+be edited, added and removed above a key, beside a value and at the end of a
+table, and undo and redo (Ctrl+Z, Ctrl+Shift+Z) run through everything. A
+save still keeps the comments, key order, whitespace and quoting of everything
+you did not touch, and the goldens that record what an edit writes held through
+the move.
+
+### Changed
+
+The buttons and the file dialog say "Open a container", now that the format is
+spelled Slipcase; a container is what you open. `cargo install slipcase-desktop`
+no longer puts a second executable, the conformance runner, on your PATH; it is
+an example in the source now. The package's homepage points at the product
+page.
+
 ## [0.1.4] - 2026-08-31
 
 ### Changed

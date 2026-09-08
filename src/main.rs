@@ -572,7 +572,7 @@ impl App {
         // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
         egui::Panel::top("bar").show(ui, |ui| {
             ui.horizontal(|ui| {
-                press(ui, !picking, "Open a slipcase…", Pressed::Open);
+                press(ui, !picking, "Open a container…", Pressed::Open);
                 // Off until there is something to write, because DESIGN.md
                 // §5 does not write a container nothing has changed in and
                 // a button that does nothing should not invite a press.
@@ -761,7 +761,7 @@ impl App {
             let mut dialog = rfd::FileDialog::new();
             dialog = match what {
                 For::Container => dialog
-                    .set_title("Open a slipcase")
+                    .set_title("Open a container")
                     .add_filter("slipcases", &["slpc"])
                     .add_filter("All files", &["*"]),
                 // No filter on either of these: a payload is any file at all,
@@ -1147,12 +1147,12 @@ impl App {
                 ui.vertical_centered(|ui| {
                     ui.add_space(72.0);
                     ui.heading("Slipcase");
-                    ui.label("Open a slipcase to see what is in it.");
+                    ui.label("Open a container to see what is in it.");
                     ui.add_space(12.0);
                     if ui
                         .add_enabled(
                             self.picking.is_none(),
-                            egui::Button::new("Open a slipcase…"),
+                            egui::Button::new("Open a container…"),
                         )
                         .clicked()
                     {
