@@ -40,13 +40,17 @@ Limits, so a later edit does not overrun them:
 | --- | --- | --- |
 | App name | unmeasured | 30 |
 | Description | 10,000 | 4,000 |
-| Short description | 1,000 | — |
+| Short description | 500 | — |
 | Subtitle | — | 30 |
 | Promotional text | — | 170 |
 | Keywords | 7 terms | 100 characters |
 
-The Mac App Store's 30 is the one that binds; the Microsoft Store's limit is far
-above anything here and is left unmeasured rather than written down wrong.
+The Mac App Store's 30 binds the subtitle. **The short description's 500 is the
+submission API's, measured on Duckling 2026-09-09** - Partner Center's form takes
+1,000 and this listing carried 811 for a year, which is why 0.1.6 rewrites it: the
+API copies the published listing into every new submission and refuses it over 500,
+so the old text would block an upload before it started. fenster's `LIMITS.md`
+carries the measurement and `check-listing.ps1` is what catches it.
 
 ---
 
@@ -101,14 +105,11 @@ Metadata that travels along
 
 Open a container, read the metadata travelling with the file inside it, edit that metadata in place, and hand the file to whatever opens it.
 
-## Short description (Microsoft Store, 1,000)
+## Short description (Microsoft Store, 500)
 
-A Slipcase container is one file holding a document of any type together with metadata describing it, so the metadata travels with the document instead of living in a filename, a sidecar file, or somebody else's database.
+A Slipcase container is one file holding a document together with the metadata that describes it, so the metadata travels with the document instead of living in a filename, a sidecar, or somebody else's database.
 
-Slipcase opens a container and shows what is in it: the payload's name and size, what your computer says would open it, and the metadata as a tree you can edit. Open hands the payload to the application registered for that kind of file. Extract writes it where you choose. Replace swaps it for another file. Save writes edited metadata back.
-
-It tells you what it found and lets you decide. Where your computer will not say what opens a file, Slipcase says nothing rather than guessing. It ships no list matching filenames to file types and never inspects a payload to guess at one.
-
+Slipcase makes containers and opens them: the payload, what would open it on your computer, and the metadata as a tree you can edit, with Open, Extract, Replace and Save. Where your computer will not say what opens a file, Slipcase says nothing rather than guessing.
 ## App features (Microsoft Store, up to 20 bullets of 200 characters)
 
     Metadata travels with the document: one file holds the payload and the metadata describing it.
@@ -172,6 +173,22 @@ OPEN SOURCE
 
 Slipcase is open source, and so is the format it reads and the library that reads it. Every claim above is checkable: github.com/excelano/slipcase-desktop.
 
+## Release notes
+
+*What's new in this version* on the Microsoft Store and *What's New* on the Mac
+App Store, one version's text each, written from `CHANGELOG.md` and kept latest
+first. Read it for the person it reaches: **the Store serves 0.1.2**, so what a
+customer upgrading from it meets is everything since, and 0.1.3 and 0.1.4 are
+not in it because one was a Mac submission fix and the other was Linux
+packaging - neither changed anything a person on this store can see.
+
+### 0.1.6
+
+Slipcase makes containers now. *New container...* asks which file to put in and where the container should go, writes it, and opens it, so the metadata editor is where you fill it in. A large payload packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not allow as a payload is refused when you choose it, not after you have said where the container goes.
+
+The metadata editor is the general one shared with Tommy Flyleaf. Every value has a kind menu offering the conversions it allows, arrays are editable, comments can be edited, added and removed, and undo and redo run through all of it. A save still keeps the comments, key order, whitespace and quoting of everything you did not touch.
+
+The buttons and the file dialog say "Open a container", now that the format is spelled Slipcase.
 ## Keywords
 
 **Mac App Store** (100 characters, comma-separated, no spaces after commas):
