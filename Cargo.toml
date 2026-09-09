@@ -40,6 +40,17 @@ slpc = { version = "0.3.10", features = ["fs", "provenance"] }
 # other, and two versions in the graph would make that two types. Its `egui`
 # is the one `eframe` re-exports, for the same reason about a `Ui`.
 flyleaf = { version = "0.2", default-features = false }
+# The language the window draws in, and the reader for the `.po` catalogues in
+# `po/`. Written in this repository and moved out on 2026-09-09, the same day
+# and for the same reason the editor moved to `flyleaf`: the metadata tree draws
+# inside this window and carries its own strings, and a published crate cannot
+# reach into this one's `src/`. From crates.io at a published version, as `slpc`
+# and `flyleaf` are — never a path or git dependency in a committed manifest.
+#
+# It compiles no C and runs no build script. Its two dependencies are
+# platform-gated and are the operating system's own answer to which language a
+# person reads; both are already in this tree on their platforms.
+potext = "0.1"
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
@@ -96,13 +107,7 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 # lands on the container's own volume — `NSPathUtilities` is what names that
 # second one's directory constant. `NSError` is what both report through. All
 # three are features of a crate already here, so none adds anything to the tree.
-# `NSLocale` and `NSArray` are the language the person reads, which `potext`
-# has no other way to ask for here: `LANG` is set by Terminal and by nothing
-# else, so an application opened from Finder or the Dock has an empty
-# environment and every German-speaking Mac would get the English window.
-# `preferredLanguages` returns an `NSArray<NSString>`, which is why the second
-# one is named. Both are features of a crate already in the tree.
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "NSFileManager", "NSPathUtilities", "NSError", "NSLocale", "NSArray", "block2", "objc2-core-services"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "NSFileManager", "NSPathUtilities", "NSError", "block2", "objc2-core-services"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # What the desktop says about light and dark. `winit` answers this on the other

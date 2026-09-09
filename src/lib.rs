@@ -7,8 +7,21 @@
 #![warn(missing_docs, clippy::pedantic)]
 
 pub mod opens_with;
-pub mod potext;
 mod staging;
+
+/// The messages this application draws, in the language the desktop asks for.
+///
+/// `potext::catalog!` declares the catalogue and its four lookups **in this
+/// crate**, which is the point of it being a macro: a single global inside
+/// `potext` would be one catalogue shared by everything linked against it, and
+/// `flyleaf` — which draws the metadata tree inside this window — has to carry
+/// its own. The only thing that crosses either boundary is a language tag.
+/// DESIGN.md §10.
+pub mod i18n {
+    pub use potext::fill;
+
+    potext::catalog!();
+}
 
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -18,7 +31,7 @@ use std::sync::Arc;
 use flyleaf::flyleaf_core::Document;
 use slpc::Verdict;
 
-use potext::{fill, t, tn};
+use i18n::{fill, t, tn};
 
 // The editor's operations come from `flyleaf-core` now, and are re-exported
 // under the names this crate has always had so that nothing calling them

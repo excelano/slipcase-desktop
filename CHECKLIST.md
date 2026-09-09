@@ -251,7 +251,7 @@ property of the release profile and passes vacuously in debug.
 
 Neither has been run and both are Windows's to run.
 
-- **`potext::platform` reads `Control Panel\International\LocaleName` through
+- **`potext`'s Windows arm reads `Control Panel\International\LocaleName` through
   `windows-registry`**, because a launched application has no `LANG` and the
   FFI call that would be the textbook answer cannot be made under this crate's
   `deny(unsafe_code)`. Written on Linux, typechecked with
@@ -460,7 +460,7 @@ foreground process, and nothing can be associated with it.
 
 Neither has been run and both are macOS's to run.
 
-- **`potext::platform` calls `NSLocale::preferredLanguages`**, and this is the
+- **`potext`'s macOS arm calls `NSLocale::preferredLanguages`**, and this is the
   one platform where nothing else would work: `LANG` is set by Terminal and by
   nothing else, so a bundle opened from Finder or the Dock has an empty
   environment. A developer run from a shell will therefore come up German for

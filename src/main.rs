@@ -37,7 +37,7 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
-use slipcase_desktop::potext::{self, fill, t};
+use slipcase_desktop::i18n::{self, fill, t};
 use slipcase_desktop::{
     create, extract, extract_at, why_not_a_payload, Created, Extracted, Opened, Payload,
     RequiredKeys, Saved, Watch,
@@ -238,9 +238,9 @@ fn main() -> eframe::Result {
     //
     // This is the only call to `activate` in the application, and the rest of
     // the program never asks what language it is in — a lookup that finds
-    // nothing hands back the English it was given. `potext` says why the test
-    // suite is deliberately outside this.
-    potext::activate(&[
+    // nothing hands back the English it was given. The `potext` crate says why
+    // the test suite is deliberately outside this.
+    i18n::activate(&[
         ("de", include_str!("../po/de.po")),
         // The pseudolocale, in a debug build and never in a release one: it
         // translates nothing, accents everything and runs 40% long, so a

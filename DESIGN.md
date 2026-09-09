@@ -431,8 +431,11 @@ A container opened this way also records its folder for the Open dialog, the sam
 ## 10. The language a person reads
 
 The window draws in German where the desktop asks for German, and in English
-everywhere else. `src/potext.rs` is the whole mechanism and its own header
-carries the reasoning; this section is what the rest of the application is
+everywhere else. The mechanism is the `potext` crate, written in this repository
+and moved out on 2026-09-09 so that `flyleaf` could use it too; `git log` here
+carries the reasoning for the format and that crate's own source carries the
+reasoning for the reader. `i18n` in `src/lib.rs` is where this application's
+catalogue is declared. This section is what the rest of the application is
 allowed to assume.
 
 **A message is looked up by its English text, never by a key.** `t("Save")`
@@ -468,10 +471,10 @@ this document keeps in §1 and `CLAUDE.md` repeats. Closing it means translating
 `slpc`, and that is a decision about that repository rather than this one.
 
 **The metadata tree.** `flyleaf::render` draws inside this window and carries
-its own strings; a published crate cannot reach into this one's `src/`. The
-`potext` module is written to be lifted out as a crate for exactly this reason,
-and the tree's chrome — *Add*, *Remove this key*, *name taken* — follows when it
-is. The TOML type names it also shows — *table*, *array*, *inline table* — stay
+its own strings; a published crate cannot reach into this one's `src/`, which is
+why `potext` is a crate rather than a module here. The tree's chrome — *Add*,
+*Remove this key*, *name taken* — follows when that repository declares a
+catalogue of its own and takes a language tag from this one. The TOML type names it also shows — *table*, *array*, *inline table* — stay
 in English deliberately, the way SQL keywords do: they name what the format
 calls things rather than describing them.
 

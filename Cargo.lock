@@ -2540,6 +2540,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "potext"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f159e61eae8435457c058453dbabdd495fb552cc96391c15c6c2a9250e8a62bb"
+dependencies = [
+ "objc2-foundation 0.3.2",
+ "windows-registry",
+]
+
+[[package]]
 name = "presser"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2925,6 +2935,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "objc2-uniform-type-identifiers 0.3.2",
  "opener",
+ "potext",
  "rfd",
  "slpc",
  "tempfile",

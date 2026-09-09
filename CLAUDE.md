@@ -311,13 +311,12 @@ build that only a hand can check, run it, and write down what it found.
     src/opens_with.rs   what the platform says would open a payload
     src/staging.rs      where a rewrite waits, and how it lands on the original
     src/system_theme.rs which way the desktop's light and dark setting points
-    src/potext.rs       the language the window draws in: a `.po` reader and the
-                        three platforms' ways of saying which language that is.
-                        Written to be lifted out as the `potext` crate, which is
-                        what the second consumer needs; DESIGN.md §10
     po/                 the catalogues and the two commands that keep them
                         current — update-po.sh after changing any sentence, and
-                        pseudo.sh for the run that finds the ones that got away
+                        pseudo.sh for the run that finds the ones that got away.
+                        The reader is the `potext` crate, written here and moved
+                        out on 2026-09-09; `i18n` in src/lib.rs is where this
+                        application's catalogue lives. DESIGN.md §10
     src/opened_document.rs
                         the document macOS delivers by Apple Event rather than
                         argv — the crate's only unsafe, and the rule above says
