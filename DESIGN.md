@@ -474,7 +474,16 @@ this document keeps in §1 and `CLAUDE.md` repeats. Closing it means translating
 its own strings; a published crate cannot reach into this one's `src/`, which is
 why `potext` is a crate rather than a module here. The tree's chrome — *Add*,
 *Remove this key*, *name taken* — follows when that repository declares a
-catalogue of its own and takes a language tag from this one. The TOML type names it also shows — *table*, *array*, *inline table* — stay
+catalogue of its own and takes a language tag from this one.
+
+**Amended 2026-09-09.** This said the TOML type names the tree shows — *table*,
+*array*, *inline table* — would stay in English deliberately, the way SQL
+keywords do. Building flyleaf's half showed that wrong: they are the editor's
+words rather than the format's, and the tell is that it says *text* where TOML
+says *string*. A German reader is owed *Tabelle* and *Ganzzahl* for the same
+reason they are owed *Speichern*. `flyleaf-core::Kind::label` stays the
+canonical English because the model's name for a kind is not a label, and the
+tree translates one where it draws it. The TOML type names it also shows — *table*, *array*, *inline table* — stay
 in English deliberately, the way SQL keywords do: they name what the format
 calls things rather than describing them.
 
