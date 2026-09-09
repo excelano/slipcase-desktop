@@ -52,9 +52,9 @@ issues and both fixed upstream rather than worked around here.
 The tree is `flyleaf::render`, called once from `src/main.rs` with
 `RequiredKeys`, this application's answer to which keys are protected; the
 edit operations come from `flyleaf-core`, re-exported from `src/lib.rs` under
-their old names. That repository's `PROMPT.md` holds the extraction plan in
-slices, and `tests/golden/` here is what every slice is measured against: what
-the tree draws and what an edit saves, held byte for byte. Where the editor
+their old names. That repository's `DESIGN.md` is the authority on the widget,
+and `tests/golden/` here is what the extraction was measured against and what
+still holds it: what the tree draws and what an edit saves, byte for byte. Where the editor
 needs behaviour the widget lacks, the behaviour goes there, the same rule as
 for `slpc`.
 
