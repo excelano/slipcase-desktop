@@ -463,18 +463,23 @@ with it — which is recorded in `potext`'s own comment and in `git log`.
 
 ### What is still in English, and why
 
-**A verdict.** `Outcome::Unreadable` translates *cannot be read* and leaves the
-reason after the colon as `slpc` wrote it, and a judged container states itself
+**A verdict**, and only a verdict — the tree's half of this section closed on
+the day it was written. `Outcome::Unreadable` translates *cannot be read* and
+leaves the reason after the colon as `slpc` wrote it, and a judged container
+states itself
 in [`Verdict`]'s own words. Restating either here would be a table mapping the
 library's sentences to German, which is the library worked around — the rule
 this document keeps in §1 and `CLAUDE.md` repeats. Closing it means translating
 `slpc`, and that is a decision about that repository rather than this one.
 
-**The metadata tree.** `flyleaf::render` draws inside this window and carries
-its own strings; a published crate cannot reach into this one's `src/`, which is
-why `potext` is a crate rather than a module here. The tree's chrome — *Add*,
-*Remove this key*, *name taken* — follows when that repository declares a
-catalogue of its own and takes a language tag from this one.
+**The metadata tree — closed 2026-09-09.** `flyleaf::render` draws inside this
+window and carries its own strings; a published crate cannot reach into this
+one's `src/`, which is why `potext` is a crate rather than a module here. That
+repository declared its catalogue and published it as 0.2.2, and `main` hands
+it the tag it read from the platform, so the tree is in the same language as
+the window around it. The kept shape is the one the extraction argued for: a
+language tag crosses, never a catalogue, so a version skew between the two
+costs nothing.
 
 **Amended 2026-09-09.** This said the TOML type names the tree shows — *table*,
 *array*, *inline table* — would stay in English deliberately, the way SQL

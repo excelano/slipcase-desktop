@@ -240,16 +240,33 @@ fn main() -> eframe::Result {
     // the program never asks what language it is in — a lookup that finds
     // nothing hands back the English it was given. The `potext` crate says why
     // the test suite is deliberately outside this.
-    i18n::activate(&[
-        ("de", include_str!("../po/de.po")),
-        // The pseudolocale, in a debug build and never in a release one: it
-        // translates nothing, accents everything and runs 40% long, so a
-        // string that never went through `t` and a label built to the width of
-        // English both show themselves on sight. `po/pseudo.sh` writes it and
-        // says what each of its three findings looks like.
-        #[cfg(debug_assertions)]
-        ("en-x-pseudo", include_str!("../po/en-x-pseudo.po")),
-    ]);
+    // One reading of the platform, handed to this application and to the widget
+    // that draws the metadata tree inside its window. `flyleaf` carries its own
+    // catalogue — a published crate has to — and takes a tag rather than a
+    // catalogue, so a version skew between the two costs nothing. Asked once
+    // and passed on rather than asked twice, because a tree in a different
+    // language from the window around it would be worse than an English one.
+    if let Some(language) = potext::preferred() {
+        i18n::set_language(
+            &language,
+            &[
+                ("de", include_str!("../po/de.po")),
+                // The pseudolocale, in a debug build and never in a release
+                // one: it translates nothing, accents everything and runs 40%
+                // long, so a string that never went through `t` and a label
+                // built to the width of English both show themselves on sight.
+                // `po/pseudo.sh` writes it and says what each of its three
+                // findings looks like.
+                #[cfg(debug_assertions)]
+                ("en-x-pseudo", include_str!("../po/en-x-pseudo.po")),
+            ],
+        );
+        // The answer says which of flyleaf's catalogues matched, and nothing
+        // here does anything differently for it: a language that widget has no
+        // catalogue for is a tree in English inside a German window, which is
+        // the gap DESIGN.md §10 already describes and not a failure to report.
+        let _ = flyleaf::set_language(&language);
+    }
 
     // One positional path, which is what a file manager hands an application it
     // was asked to open a document with. A dialog and a drop arrive in slice 5,

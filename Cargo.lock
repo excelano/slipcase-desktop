@@ -995,7 +995,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1079,20 +1079,23 @@ dependencies = [
 
 [[package]]
 name = "flyleaf"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d9fc4ad764c7c9d1bb3046b2e92366a8e06bab4042595a94c29f5becb491758"
+checksum = "e788df7762b7790cae19c98c9c32f52ffaf5a9102ddaadae1aba72b4ad43e98a"
 dependencies = [
  "egui",
  "flyleaf-core",
+ "potext",
 ]
 
 [[package]]
 name = "flyleaf-core"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "516568a33c7efaefcec8da511c8b64fe460ce18dc890df3f06ac44c77706c2dc"
+checksum = "5a447ff9b4026b1c61e5c79043246eed98d495b966bf9b539743b35dbf0f234c"
 dependencies = [
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
  "tempfile",
  "toml_edit",
 ]
@@ -2766,7 +2769,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3113,7 +3116,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3312,7 +3315,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3841,7 +3844,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
