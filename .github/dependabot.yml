@@ -33,6 +33,27 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
+    # **`windows-registry` is held at the 0.6 line, and the reason is a claim in
+    # `Cargo.toml` rather than anything broken.** 0.100.0 is windows-rs
+    # re-basing its support crates onto a new line rather than an ordinary step,
+    # and it does not share a generation with what `eframe` already pulls: the
+    # lockfile gains `windows-link`, `windows-result` and `windows-strings` at
+    # 0.100.0 while eframe's 0.2.1, 0.4.1 and 0.5.1 all stay, so both
+    # generations compile. The comment above that dependency says its three
+    # dependencies "were already in the tree under `eframe`, so it compiles one
+    # new crate", and cheapness was the whole argument for taking it. Windows CI
+    # is green on the bump, so this is not about the API; it is about not
+    # quadrupling the cost of a dependency taken because it cost one crate, for
+    # no fix and no feature anything here needs.
+    #
+    # **Lift it when `eframe` moves to the 0.100 line**, which is the day the
+    # cheapness argument comes back and this rule stops being true. `>= 0.7`
+    # rather than an update-type, because Dependabot reads 0.6 to 0.100 as a
+    # *minor* step — both majors are zero — so an ignore on major updates would
+    # not have caught it and would have looked like it did.
+    ignore:
+      - dependency-name: "windows-registry"
+        versions: [">= 0.7"]
     groups:
       cargo:
         patterns:
