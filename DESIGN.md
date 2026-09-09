@@ -466,8 +466,7 @@ with it — which is recorded in `potext`'s own comment and in `git log`.
 **A verdict**, and only a verdict — the tree's half of this section closed on
 the day it was written. `Outcome::Unreadable` translates *cannot be read* and
 leaves the reason after the colon as `slpc` wrote it, and a judged container
-states itself
-in [`Verdict`]'s own words. Restating either here would be a table mapping the
+states itself in [`Verdict`]'s own words. Restating either here would be a table mapping the
 library's sentences to German, which is the library worked around — the rule
 this document keeps in §1 and `CLAUDE.md` repeats. Closing it means translating
 `slpc`, and that is a decision about that repository rather than this one.
