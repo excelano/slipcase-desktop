@@ -112,6 +112,7 @@ It tells you what it found and lets you decide. Where your computer will not say
 ## App features (Microsoft Store, up to 20 bullets of 200 characters)
 
     Metadata travels with the document: one file holds the payload and the metadata describing it.
+    Makes a container out of a file you choose, then opens it so the metadata is filled in where the rest gets edited. A large payload packs with a progress bar and a Stop.
     Edit the metadata in place and save. Comments, key order and whitespace you did not touch survive the rewrite.
     Hands the payload to whatever your computer has registered for that kind of file. No preview, no guessing at types.
     Says when a container arrived from elsewhere, and marks the payload you extract so your computer treats it with the same caution.
@@ -135,7 +136,7 @@ equivalent of this field.
 
 A Slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
 
-Slipcase opens a container and shows what is inside.
+Slipcase opens a container and shows what is inside, and makes one out of a file you choose.
 
 WHAT YOU SEE
 
@@ -147,11 +148,13 @@ Open hands the payload to whatever application is registered for that kind of fi
 
 A rewrite is read back and checked before it replaces anything, so a save that would produce a container the format does not accept changes nothing on disk. A container you did not change is not rewritten at all.
 
+New container asks which file to put in and where the container should go, writes it, and then opens it, so the metadata is filled in where the rest of it gets edited. A large payload packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not accept as a payload is refused when you choose it, rather than after you have said where the container goes.
+
 WHAT IT TELLS YOU, AND DOES NOT DECIDE FOR YOU
 
 Slipcase reports. It does not gate.
 
-If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the payload you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the metadata and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards.
+If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the payload you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the metadata and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards. It travels the other way too: a file that arrived from elsewhere still says so on the container you pack it into.
 
 On macOS it tells you when a payload was stored as an executable file, and that the copy you extract will not be. That is read out of the container rather than guessed from its name.
 
