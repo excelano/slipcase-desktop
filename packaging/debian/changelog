@@ -1,3 +1,16 @@
+slipcase-desktop (0.1.6) unstable; urgency=medium
+
+  * New container...: make a container out of a file, then fill in its
+    metadata in the tree. Until now the only way to make one was the
+    slipcase command or a ZIP archiver.
+  * A large payload packs with a progress bar and a Stop; stopping leaves
+    nothing behind.
+  * A file that arrived from elsewhere says so on the container it is packed
+    into, and still says so when it comes back out.
+  * The two buttons on the opening screen are centred.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Tue, 08 Sep 2026 21:15:00 -0500
+
 slipcase-desktop (0.1.5) unstable; urgency=medium
 
   * The metadata editor is the general one shared with Tommy Flyleaf: a kind
