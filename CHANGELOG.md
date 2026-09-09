@@ -17,6 +17,24 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [Unreleased]
+
+### Added
+
+**Slipcase makes containers now.** *New container…*, in the bar and on the
+opening screen, asks which file to put in and where the container should go,
+writes it, and then opens it — so the metadata editor is where you fill it in,
+starting from the two keys the format requires. Until now the only way to make
+a container was the `slipcase` command or a ZIP archiver driven by hand.
+
+The second dialog offers the payload's name with `.slpc` after it and starts in
+the folder the file came from; type something else and that is your container's
+name. A large payload packs with a progress bar and a Stop, and stopping leaves
+nothing behind. A file the format will not let be a payload is refused when you
+choose it rather than after you have said where the container goes. If the file
+you packed arrived from elsewhere, the container says so, and the payload still
+says so when it comes back out.
+
 ## [0.1.5] - 2026-09-07
 
 ### Added

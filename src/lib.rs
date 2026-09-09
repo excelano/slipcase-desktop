@@ -264,6 +264,149 @@ fn copy(payload: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slp
     Ok(Extracted::Done(PathBuf::new()))
 }
 
+/// What became of making a container.
+pub enum Created {
+    /// Written, read back, and conformant. The container is at this path.
+    Written {
+        /// Where it is.
+        path: PathBuf,
+        /// What the platform records about where the payload came from and
+        /// would not put on the container, where it would not. The card reads
+        /// that record, so a container it could not be written onto is one the
+        /// card will call local whatever the payload was.
+        provenance: Option<String>,
+    },
+    /// Stopping was asked for, and nothing was left at the destination.
+    Cancelled,
+    /// What was written did not read back as a conformant container, so nothing
+    /// was put at the destination.
+    Refused(Verdict),
+}
+
+/// A payload being read into a container: counted, and stoppable.
+///
+/// [`slpc::pack_reader`] asks a payload for nothing but `Read`, which is what
+/// lets both of those live here rather than in the library. `pack_file` is the
+/// shorter call and has nowhere to put either, so a two-gigabyte payload would
+/// pack behind a window that had stopped answering.
+struct Watched<'a, R> {
+    inner: R,
+    watch: &'a Watch,
+}
+
+impl<R: Read> Read for Watched<'_, R> {
+    /// An error rather than a quiet end of file, which is the difference
+    /// between a cancel that cannot be committed by accident and one that can.
+    /// Reporting the end of the payload would have `pack_reader` finish
+    /// successfully on a truncated one, and every caller from then on would be
+    /// one forgotten check away from committing it.
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        if self.watch.is_cancelled() {
+            return Err(std::io::Error::other("packing was stopped"));
+        }
+        let n = self.inner.read(buffer)?;
+        self.watch.advance(n);
+        Ok(n)
+    }
+}
+
+/// Make a container holding `payload`, at `into`, watchably.
+///
+/// The metadata is empty, and the two keys SPEC §2.2 requires are the
+/// library's to write: `pack_reader` puts `slipcase_version` and
+/// `payload.file` in whatever it is handed. What a person wants to say about
+/// the payload they say in the tree afterwards, which is the editor DESIGN.md
+/// §4 and §5 already describe — this application has no schema with which to
+/// ask them for anything else, and inventing a form here would be inventing a
+/// vocabulary the specification does not define.
+///
+/// `into` is replaced where something is there, because the save dialog that
+/// named it has already asked. `Destination` writes to a temporary file beside
+/// it and renames, so nothing exists at `into` until the container is whole and
+/// has been read back — the same reasoning, and the same call, as [`extract_at`].
+///
+/// # Errors
+///
+/// Returns whatever the library says about reading the payload or writing the
+/// container. A payload whose name SPEC §2.3 forbids is one of them, and
+/// [`why_not_a_payload`] is how the window refuses it earlier and in the same
+/// words.
+pub fn create(payload: &Path, into: &Path, watch: &Watch) -> slpc::Result<Created> {
+    let name = payload_name(payload)?;
+    let source = std::fs::File::open(payload)?;
+    let mut destination = slpc::Destination::new(into, true)?;
+
+    let mut watched = Watched {
+        inner: source,
+        watch,
+    };
+    let packed = slpc::pack_reader(
+        name,
+        &mut watched,
+        slpc::toml_edit::DocumentMut::new(),
+        destination.writer(),
+    );
+    // Asked before the error is, because a cancel arrives as one and because a
+    // cancel arriving at the last read looks like a payload that ended. Either
+    // way `destination` drops here and takes its temporary file with it, so
+    // nothing was ever at `into`.
+    if watch.is_cancelled() {
+        return Ok(Created::Cancelled);
+    }
+    packed?;
+
+    // Read back before anything is put where a person will look for it, which
+    // is what `save` does for the same reason: a container is replaced or
+    // created on evidence rather than on faith.
+    let verdict = slpc::validate_with(destination.written()?, LIMITS)?;
+    if !verdict.is_conformant() {
+        return Ok(Created::Refused(verdict));
+    }
+    destination.commit()?;
+
+    // **Packing launders a download without this, and that is a defect rather
+    // than a nicety.** A payload the platform marked as having arrived from
+    // elsewhere goes into a container this process wrote, which carries no
+    // mark; `copy_out` then extracts it, asks `provenance::carry` about a
+    // container that records nothing, and hands the platform an unmarked copy
+    // of a file it had gated. The mark is carried here so that the round trip
+    // through a container is not a way to remove one.
+    //
+    // Not fatal, which is `staging.rs`'s decision for the same question and for
+    // the same reason: `carry` refuses when the copy would be ungated where the
+    // original was gated, and that rule is written for a payload about to be
+    // handed to the system. This is a container, and what opens a container is
+    // this application, which reports provenance rather than acting on it. So
+    // the container is kept and what could not be carried is said, rather than
+    // a container that validated being thrown away over a line on a card.
+    let provenance = slpc::provenance::carry(payload, into)
+        .err()
+        .map(|why| why.to_string());
+
+    Ok(Created::Written {
+        path: into.to_owned(),
+        provenance,
+    })
+}
+
+/// What the payload will be called inside the container.
+///
+/// `payload.file` is a TOML string, so a filename that is not UTF-8 is one this
+/// format cannot express. `pack_file` makes the same refusal and keeps it in
+/// the library; this is here because the count and the cancel above need
+/// `pack_reader`, which takes the name rather than working it out.
+fn payload_name(path: &Path) -> slpc::Result<&str> {
+    path.file_name()
+        .and_then(std::ffi::OsStr::to_str)
+        .ok_or_else(|| {
+            std::io::Error::other(format!(
+                "{} has a name that is not UTF-8, and payload.file is a TOML string",
+                path.display()
+            ))
+            .into()
+        })
+}
+
 /// A path, and what the library made of it.
 pub struct Opened {
     /// The container as it was named, kept because the window shows it.
@@ -1660,5 +1803,109 @@ mod windows_extraction_tests {
             !out.to_string_lossy().starts_with(r"\\?\"),
             "a person's own path came back in the verbatim form"
         );
+    }
+
+}
+
+#[cfg(test)]
+mod create_tests {
+    use super::{Opened, Outcome};
+
+    /// A container this application made is one it can open, and the two keys
+    /// SPEC §2.2 requires are in it without this code having written either.
+    ///
+    /// **The defect this catches is a New container… that produces something
+    /// nothing will open.** Every other path in this application starts from a
+    /// container somebody else wrote, so nothing here had ever asserted that
+    /// what `create` writes is a container at all — and the metadata it hands
+    /// `pack_reader` is empty, which is only conformant because the library
+    /// fills the two keys in. A change that stopped it doing so would leave a
+    /// window happily writing files that fail their own read-back.
+    #[test]
+    fn a_container_made_here_reads_back_conformant() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let payload = dir.path().join("report.pdf");
+        std::fs::write(&payload, b"the payload").expect("writes the payload");
+        let into = dir.path().join("report.pdf.slpc");
+
+        let watch = super::Watch::new();
+        let made = super::create(&payload, &into, &watch).expect("makes a container");
+        let super::Created::Written { path, .. } = made else {
+            panic!("a container was not made");
+        };
+        assert_eq!(path, into);
+
+        let opened = Opened::open(&into);
+        assert!(
+            matches!(opened.outcome, Outcome::Judged(slpc::Verdict::Conformant)),
+            "{}",
+            opened.verdict_line()
+        );
+        let payload_in_it = opened.payload.expect("a card");
+        assert_eq!(payload_in_it.name, "report.pdf");
+        assert_eq!(payload_in_it.size, "the payload".len() as u64);
+
+        let tree = opened.metadata.expect("a document");
+        let tree = tree.tree();
+        assert!(tree.get(slpc::VERSION_KEY).is_some(), "no version key");
+        assert_eq!(
+            tree["payload"]["file"].as_str(),
+            Some("report.pdf"),
+            "payload.file is not the name the payload went in under"
+        );
+        // And the count reached the end, or the progress bar is decoration.
+        assert_eq!(watch.done(), "the payload".len() as u64);
+    }
+
+    /// Stopping leaves nothing at the destination, and does not report failure.
+    ///
+    /// **The defect this catches is a stop reported as a failure, and a
+    /// truncated container under the name somebody asked for.** Broken
+    /// deliberately: with the `is_cancelled` line taken out of `create`, this
+    /// fails on the error `Watched::read` raises rather than on the file, which
+    /// is the half that bites.
+    ///
+    /// The other half is why that read raises an error rather than reporting
+    /// the end of the payload, and no test can reach it: reporting the end
+    /// would have `pack_reader` return `Ok` on a container holding part of a
+    /// payload, and only that one line would stand between it and a commit.
+    /// Belt and braces, and this test holds the braces.
+    #[test]
+    fn a_container_that_is_stopped_is_not_left_behind() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let payload = dir.path().join("report.pdf");
+        std::fs::write(&payload, vec![0u8; 512 * 1024]).expect("writes the payload");
+        let into = dir.path().join("report.pdf.slpc");
+
+        let watch = super::Watch::new();
+        watch.cancel();
+        let made = super::create(&payload, &into, &watch).expect("stops rather than failing");
+
+        assert!(
+            matches!(made, super::Created::Cancelled),
+            "a stop was reported as something else"
+        );
+        assert!(!into.exists(), "a container was left at the destination");
+    }
+
+    /// A file the specification will not let be a payload does not become one,
+    /// and nothing is left where the container was going.
+    ///
+    /// **The defect this catches is a half-written destination.**
+    /// `Destination` is reserved before the payload is read, so a name refused
+    /// inside `pack_reader` is refused after there is a temporary file — and
+    /// the guarantee that nothing appears at the destination rests on that
+    /// temporary file being dropped rather than committed.
+    #[test]
+    fn a_file_that_cannot_be_a_payload_makes_no_container() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        // The one name SPEC §2.3 reserves: the metadata member's own.
+        let payload = dir.path().join(slpc::METADATA_MEMBER);
+        std::fs::write(&payload, b"title = \"not a payload\"\n").expect("writes the file");
+        let into = dir.path().join("refused.slpc");
+
+        let refused = super::create(&payload, &into, &super::Watch::new());
+        assert!(refused.is_err(), "the reserved name was accepted");
+        assert!(!into.exists(), "something was left at the destination");
     }
 }

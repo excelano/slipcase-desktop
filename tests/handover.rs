@@ -283,3 +283,61 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
         "the edit did not land"
     );
 }
+
+/// A payload that arrived from elsewhere still says so after a trip through a
+/// container this application made.
+///
+/// **The defect this catches is packing as a way to launder a download.** A
+/// container this process writes carries no mark of its own, so without
+/// `create` carrying the payload's onto it the round trip is complete: pack a
+/// downloaded file, open the container — which the card then calls local —
+/// press Open, and `copy_out` asks `provenance::carry` about a container that
+/// records nothing and hands the platform an unmarked copy of a file it had
+/// gated. Every step of that is somebody's ordinary use of the window.
+///
+/// The whole trip rather than the container alone, because the container's own
+/// mark is not what matters to anybody: what matters is the file the operating
+/// system is handed at the end of it. Break it by taking the `carry` out of
+/// `create` and this fails on the extracted payload as well as on the card.
+///
+/// Skipped where the filesystem will not hold a mark, announced rather than
+/// passed quietly, which is what `saving_an_edit_keeps_where_the_container_came_from`
+/// above does for the same reason.
+#[test]
+fn packing_a_download_does_not_launder_it() {
+    let dir = tempfile::tempdir().expect("a temporary directory");
+    let payload = dir.path().join("report.pdf");
+    std::fs::write(&payload, b"the payload").expect("writes the payload");
+
+    if !mark_as_downloaded(&payload) {
+        eprintln!("skipped: this filesystem will not hold a mark");
+        return;
+    }
+
+    let into = dir.path().join("report.pdf.slpc");
+    let made = slipcase_desktop::create(&payload, &into, &slipcase_desktop::Watch::new())
+        .expect("makes a container");
+    let slipcase_desktop::Created::Written { provenance, .. } = made else {
+        panic!("a container was not made");
+    };
+    assert_eq!(provenance, None, "the mark could not be carried");
+
+    // What the card reads.
+    assert!(
+        slipcase_desktop::Opened::open(&into).from_elsewhere,
+        "the container does not say where its payload came from"
+    );
+
+    // And what the operating system would be handed.
+    let out = scratch();
+    let extracted = match slipcase_desktop::extract(&into, out.path(), &slipcase_desktop::Watch::new())
+    {
+        Ok(slipcase_desktop::Extracted::Done(path)) => path,
+        Ok(slipcase_desktop::Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
+        Err(e) => panic!("extraction failed: {e}"),
+    };
+    assert!(
+        slpc::provenance::arrived_from_elsewhere(&extracted),
+        "the payload came back out of the container unmarked"
+    );
+}

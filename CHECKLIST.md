@@ -129,12 +129,65 @@ anyway, which is item 6.
    doing early and it is cheap: open any container, press Open, and see whether
    Preview shows the PDF or an error.
 
+7. **New container… makes a container out of a file.** Press it, choose any
+   file, and look at the second dialog before answering it: it should be a save
+   dialog, it should have opened in the folder the file came out of, and its
+   name should be that file's name with `.slpc` after it. Answer it, and the
+   window should end up showing the container that was made — its name, its
+   path, `conformant`, a card naming the file that went in at its own length,
+   and a tree carrying `slipcase_version` and `payload.file` and nothing else,
+   both protected. The bar should read *Made.*
+
+   **Both dialogs are one at a time**, which is the thing to watch for rather
+   than the thing to assume: while either is up, every button in the bar and on
+   the card is greyed, and while the pack is running the bar carries a progress
+   bar and a Stop. Pack something large enough to see that — a few hundred
+   megabytes — and press Stop. Nothing should be left at the destination.
+
+   Then answer the first dialog and cancel the second. Nothing should happen at
+   all: no container, no message, and the file chosen a moment ago must not be
+   waiting for the next press.
+
+   None of this can be tested from here. The window's own tests reach
+   `take_new_payload` and `poll_creating` directly, because a file dialog on
+   this platform is another process behind the portal — measured 2026-09-08 by
+   trying: `xdotool` presses the button, the application greys correctly, and
+   the dialog is a Wayland client invisible to anything X can screenshot.
+
+8. **The empty state's two buttons are centred, and its messages appear.**
+   Start with no argument. *Open a container…* and *New container…* sit side by
+   side under the heading, centred as a pair. They drew hard against the left
+   edge until 2026-09-08 and every assertion in `src/main.rs` passed against
+   that, because `vertical_centered` centres a child by the size that child
+   asked for and `ui.horizontal` asks for the whole width — a screenshot is
+   what found it and `row_width` is what fixes it. Then press *New container…*
+   and choose a file that cannot be a payload — anything called
+   `slipcase.metadata.toml` — and the refusal should appear here, in red, with
+   no second dialog behind it.
+
 ### Not yet done by hand
 
-All six are done on every platform they apply to; item 6 is macOS only. The last
-platform to run the list found what the first two had ticked past, which is the
-argument for running a hand item on every arm rather than on the one that owns
-the code.
+Items 1 to 6 are done on every platform they apply to; item 6 is macOS only. The
+last platform to run the list found what the first two had ticked past, which is
+the argument for running a hand item on every arm rather than on the one that
+owns the code.
+
+- **Items 7 and 8 are done on Linux and on no other platform**, both added
+  2026-09-08 with the stage they belong to. Windows should be routine: the write
+  goes through `slpc::Destination::new`, which is the call extraction has always
+  made into a folder somebody named in a save dialog.
+
+  **macOS is not routine and item 7 is the one to run first there.** Under the
+  App Sandbox a grant covers the file a person chose and not the directory
+  holding it, which is why `src/staging.rs` exists at all —
+  `Destination::in_place` could not make a sibling of a container chosen through
+  the *open* panel and Save stopped with *Operation not permitted*. Making a
+  container reserves a sibling the same way, in a folder named through the
+  *save* panel, which is a different grant; extraction has been going through
+  that panel since 0.1.0 without complaint, so this is very likely fine. Very
+  likely is not measured, and the sentence `DESIGN.md` §2 keeps repeating —
+  a dependency on the toolchain is invisible from inside the toolchain — has a
+  sandbox-shaped counterpart here. **Run it before the next store submission.**
 
 ## Windows
 

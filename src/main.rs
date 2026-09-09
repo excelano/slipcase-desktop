@@ -32,13 +32,14 @@ mod opened_document;
 // argued and tested.
 mod system_theme;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 use eframe::egui;
 
 use slipcase_desktop::{
-    extract, extract_at, why_not_a_payload, Extracted, Opened, Payload, RequiredKeys, Saved, Watch,
+    create, extract, extract_at, why_not_a_payload, Created, Extracted, Opened, Payload,
+    RequiredKeys, Saved, Watch,
 };
 
 /// The window's identity to the desktop environment.
@@ -310,8 +311,9 @@ fn main() -> eframe::Result {
                 opened,
                 scratch: None,
                 extraction: Extraction::Idle,
+                creating: Creating::Idle,
                 replacing: None,
-                save_said: None,
+                said: None,
                 picking: None,
                 focus_open,
             }))
@@ -336,8 +338,10 @@ struct App {
     /// rather than two writes with a window between them where a failure leaves
     /// half of what was asked for.
     replacing: Option<PathBuf>,
-    /// What the last Save did.
-    save_said: Option<Said>,
+    /// A container being made out of a file somebody chose.
+    creating: Creating,
+    /// What the last write said, whether it saved a container or made one.
+    said: Option<Said>,
     /// A file dialog open on another thread, and what its answer is for.
     picking: Option<Picking>,
     /// Whether the Open button still has to be given keyboard focus.
@@ -370,6 +374,10 @@ enum For {
     ExtractTo,
     /// A file to become the payload.
     Replacement,
+    /// A file to make a container out of.
+    NewPayload,
+    /// Where that container goes.
+    NewContainer,
 }
 
 /// Where an extraction is going.
@@ -387,12 +395,43 @@ enum Extraction {
     /// Nothing has been asked for.
     Idle,
     /// A copy is under way on another thread.
-    Running(Job),
+    Running(Job<Extraction>),
     /// The payload is on disk, here.
     Done(PathBuf),
     /// The copy was stopped, and nothing of it was left behind.
     Cancelled,
     /// It could not be extracted, or could not be handed over.
+    Failed(String),
+}
+
+/// A container being made out of a file, from the press to the answer.
+///
+/// Two dialogs and a copy, because neither half of it may be guessed. Which
+/// file goes in is the whole of what the person is asking for, and where the
+/// container lands is a location — DESIGN.md §5 has this application choosing
+/// one only when nobody asked it to, and `slipcase pack`'s default of writing
+/// beside the payload is a convention a command line can afford and a window
+/// pressing a button cannot.
+enum Creating {
+    /// Nothing has been asked for.
+    Idle,
+    /// A file has been chosen, and the second dialog is asking where its
+    /// container goes.
+    Naming(PathBuf),
+    /// The container is being written on another thread.
+    Running(Job<Made>),
+}
+
+/// What became of making a container.
+enum Made {
+    /// It is at this path, and this is what could not be carried onto it.
+    Done(PathBuf, Option<String>),
+    /// Stopping was asked for, and nothing was left at the destination.
+    Stopped,
+    /// It could not be made, in the library's words. A container that was
+    /// written and did not read back conformant arrives here too, for the
+    /// reason [`Saved::Refused`] does at the bar: nothing is at the
+    /// destination either way, and the sentence is what differs.
     Failed(String),
 }
 
@@ -438,14 +477,19 @@ struct Said {
     wrong: bool,
 }
 
-/// A copy under way.
-struct Job {
+/// A copy under way, and what its thread will say when it stops.
+///
+/// Generic over that answer because both of this window's long copies want the
+/// same three things — something to watch, something to measure it against,
+/// and one message at the end — and they finish in different vocabularies.
+struct Job<T> {
     /// Shared with the thread doing the copying.
     watch: Watch,
-    /// What the central directory said the payload measures.
+    /// How much there is to copy: what the central directory said the payload
+    /// measures, or what the file being packed measures on disk.
     total: u64,
     /// The one message the thread sends when it is done.
-    outcome: mpsc::Receiver<Extraction>,
+    outcome: mpsc::Receiver<T>,
 }
 
 /// What to tell a person about a handover the platform refused.
@@ -537,7 +581,7 @@ impl App {
         // A file chosen to replace the payload of the container being closed
         // is not a file to replace the payload of the next one.
         self.replacing = None;
-        self.save_said = None;
+        self.said = None;
     }
 
     /// What the bar has to say about the container.
@@ -552,18 +596,31 @@ impl App {
     fn notes(&self) -> (bool, Option<&Said>) {
         let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited)
             || self.replacing.is_some();
-        (edited, self.save_said.as_ref())
+        (edited, self.said.as_ref())
     }
 
-    /// The bar across the top: open, save, undo, redo, and what the last
-    /// save said. Returns the button pressed, if one was.
+    /// Whether a press that would put another container on screen has to wait.
+    ///
+    /// A dialog is up, or a container is being made and will be shown the
+    /// moment it is. Both end with something replacing what the window is
+    /// holding, and two of them at once is two answers arriving in an order
+    /// nobody chose — which is the reason `For` already allows one dialog at a
+    /// time, applied to the other thing that finishes by calling `show`.
+    fn busy(&self) -> bool {
+        self.picking.is_some() || matches!(self.creating, Creating::Running(_))
+    }
+
+    /// The bar across the top: open, new, save, undo, redo, and what the last
+    /// write said. Returns the button pressed, if one was.
     fn bar(&self, ui: &mut egui::Ui) -> Option<Pressed> {
         let (edited, said) = self.notes();
         let history = self.opened.as_ref().and_then(|o| o.metadata.as_ref());
         let (can_undo, can_redo) =
             history.map_or((false, false), |d| (d.can_undo(), d.can_redo()));
-        let picking = self.picking.is_some();
+        let busy = self.busy();
         let mut pressed = None;
+        // Not through `press` below, which holds `pressed` for the whole panel.
+        let mut stop = false;
         let mut press = |ui: &mut egui::Ui, enabled: bool, label: &str, what: Pressed| {
             if ui.add_enabled(enabled, egui::Button::new(label)).clicked() {
                 pressed = Some(what);
@@ -572,7 +629,8 @@ impl App {
         // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
         egui::Panel::top("bar").show(ui, |ui| {
             ui.horizontal(|ui| {
-                press(ui, !picking, "Open a container…", Pressed::Open);
+                press(ui, !busy, "Open a container…", Pressed::Open);
+                press(ui, !busy, "New container…", Pressed::New);
                 // Off until there is something to write, because DESIGN.md
                 // §5 does not write a container nothing has changed in and
                 // a button that does nothing should not invite a press.
@@ -590,8 +648,12 @@ impl App {
                         text.weak()
                     });
                 }
+                stop = making(ui, &self.creating);
             });
         });
+        if stop {
+            return Some(Pressed::StopMaking);
+        }
         pressed
     }
 
@@ -628,7 +690,7 @@ impl App {
             // is also what clears the replacement: it is in there now.
             self.show(Opened::open(&path));
         }
-        self.save_said = Some(said);
+        self.said = Some(said);
     }
 
     /// Take a file chosen to become the payload, or say why it cannot be one.
@@ -640,11 +702,11 @@ impl App {
     fn take_replacement(&mut self, file: PathBuf) {
         if let Some(why) = why_not_a_payload(&file) {
             self.replacing = None;
-            self.save_said = Some(Said { text: why, wrong: true });
+            self.said = Some(Said { text: why, wrong: true });
             return;
         }
         self.replacing = Some(file);
-        self.save_said = None;
+        self.said = None;
     }
 
     /// Take the thread's answer, once it has one.
@@ -661,6 +723,103 @@ impl App {
                     Extraction::Failed("the extraction stopped without saying why".to_owned());
             }
         }
+    }
+
+    /// Take the packing thread's answer, once it has one.
+    fn poll_creating(&mut self) {
+        let Creating::Running(job) = &self.creating else {
+            return;
+        };
+        let made = match job.outcome.try_recv() {
+            Err(mpsc::TryRecvError::Empty) => return,
+            Ok(made) => made,
+            // The thread ended without sending, which it has no path to do.
+            Err(mpsc::TryRecvError::Disconnected) => {
+                Made::Failed("the container was not made, and nothing said why".to_owned())
+            }
+        };
+        self.creating = Creating::Idle;
+
+        match made {
+            Made::Done(path, provenance) => {
+                // The answer to New container… is the container, so it takes
+                // the window the way one opened through the dialog does. That
+                // is also what puts the tree in front of somebody who has just
+                // made a container carrying nothing but the two keys the
+                // library wrote: the metadata is added here, in the editor
+                // that already exists, rather than in a form this application
+                // has no vocabulary to draw.
+                last_folder::write(&path);
+                self.show(Opened::open(&path));
+                // After `show`, which clears what the last container said.
+                self.said = Some(match provenance {
+                    None => Said {
+                        text: "Made.".to_owned(),
+                        wrong: false,
+                    },
+                    // A container that does not record where its payload came
+                    // from is one the card will call local, and one whose
+                    // payload leaves ungated when it is extracted. Said rather
+                    // than logged: the person is holding the container it is
+                    // true of.
+                    Some(why) => Said {
+                        text: format!(
+                            "Made. Where the payload came from could not be carried onto it: {why}"
+                        ),
+                        wrong: true,
+                    },
+                });
+            }
+            Made::Stopped => {
+                self.said = Some(Said {
+                    text: "Stopped. Nothing was left behind.".to_owned(),
+                    wrong: false,
+                });
+            }
+            Made::Failed(why) => self.said = Some(Said { text: why, wrong: true }),
+        }
+    }
+
+    /// Start packing a container, on a thread of its own.
+    ///
+    /// On a thread for the reason extraction is: a payload is a file of
+    /// arbitrary size and the window has to keep drawing while it is read, so
+    /// that it can say how far along it is and offer to stop.
+    fn start_creating(&mut self, payload: PathBuf, into: PathBuf, ctx: &egui::Context) {
+        // What the payload measures on disk, which is what the count in
+        // `create` advances against. Zero where it cannot be asked, which the
+        // progress bar reads as done rather than as an error — the copy itself
+        // is what will report a file it cannot read.
+        let total = std::fs::metadata(&payload).map_or(0, |m| m.len());
+        let watch = Watch::new();
+        let (sender, outcome) = mpsc::channel();
+
+        let theirs = watch.clone();
+        let ctx = ctx.clone();
+        std::thread::spawn(move || {
+            let made = match create(&payload, &into, &theirs) {
+                Ok(Created::Written { path, provenance }) => Made::Done(path, provenance),
+                Ok(Created::Cancelled) => Made::Stopped,
+                // The two halves of a container that is not there: one was
+                // never written, and one was written and read back as
+                // something this application will not put in front of anybody.
+                // `save` splits the same pair into the same two sentences.
+                Ok(Created::Refused(v)) => Made::Failed(format!(
+                    "Not made. What was written did not read back conformant: {v}"
+                )),
+                Err(e) => Made::Failed(format!("Not made: {e}")),
+            };
+            let _ = sender.send(made);
+            // A pack that finishes while nothing is touching the window leaves
+            // it asleep, and the frame that would have polled never comes.
+            ctx.request_repaint();
+        });
+
+        self.creating = Creating::Running(Job {
+            watch,
+            total,
+            outcome,
+        });
     }
 
     /// Start extracting the payload, on a thread of its own.
@@ -743,9 +902,25 @@ impl App {
         let (sender, answer) = mpsc::channel();
         let ctx = ctx.clone();
 
+        // The file about to be packed, where there is one. Both of the two
+        // questions a new container asks are about it.
+        let packing = match &self.creating {
+            Creating::Naming(payload) => Some(payload.clone()),
+            Creating::Idle | Creating::Running(_) => None,
+        };
         // Where the last container came from, so everything is found beside it
-        // rather than from wherever the dialog would otherwise start.
-        let start_in = last_folder::read();
+        // rather than from wherever the dialog would otherwise start. The one
+        // exception is where a new container goes: the folder somebody just
+        // chose a file out of is nearer to hand than the folder they last
+        // opened a container from, and `slipcase pack` writes there by default.
+        let start_in = match what {
+            For::NewContainer => packing
+                .as_deref()
+                .and_then(Path::parent)
+                .map(Path::to_owned)
+                .or_else(last_folder::read),
+            _ => last_folder::read(),
+        };
         // The payload's own name, offered where the question is what to call
         // the file coming out. Somebody renaming it is choosing to.
         let suggested = match what {
@@ -754,7 +929,16 @@ impl App {
                 .as_ref()
                 .and_then(|o| o.payload.as_ref())
                 .map(|p| p.name.clone()),
-            For::Container | For::Replacement => None,
+            // The naming convention SPEC §4 leaves as one: the payload's name
+            // with `.slpc` after it. Offered rather than imposed — nothing
+            // reads a container's name to find out what is inside it, so a
+            // person who types something else has typed the name of their
+            // container.
+            For::NewContainer => packing
+                .as_deref()
+                .and_then(Path::file_name)
+                .map(|name| format!("{}.slpc", name.to_string_lossy())),
+            For::Container | For::Replacement | For::NewPayload => None,
         };
 
         std::thread::spawn(move || {
@@ -768,6 +952,11 @@ impl App {
                 // which is what SPEC §2.3 leaves open.
                 For::ExtractTo => dialog.set_title("Extract the payload to"),
                 For::Replacement => dialog.set_title("Replace the payload with"),
+                For::NewPayload => dialog.set_title("Make a container out of"),
+                For::NewContainer => dialog
+                    .set_title("Write the container to")
+                    .add_filter("slipcases", &["slpc"])
+                    .add_filter("All files", &["*"]),
             };
             if let Some(folder) = start_in {
                 dialog = dialog.set_directory(folder);
@@ -792,8 +981,8 @@ impl App {
             // A save dialog for the one question that names a file that does
             // not exist yet, so the platform asks before overwriting.
             let chosen = match what {
-                For::ExtractTo => dialog.save_file(),
-                For::Container | For::Replacement => dialog.pick_file(),
+                For::ExtractTo | For::NewContainer => dialog.save_file(),
+                For::Container | For::Replacement | For::NewPayload => dialog.pick_file(),
             };
             let _ = sender.send(chosen);
             // Nothing has been touching the window while the dialog was up, so
@@ -805,7 +994,10 @@ impl App {
     }
 
     /// Take the dialog's answer, once it has one.
-    fn poll_picking(&mut self) {
+    ///
+    /// Takes the context because one of the answers is a question: choosing a
+    /// file to pack is what opens the dialog asking where its container goes.
+    fn poll_picking(&mut self, ctx: &egui::Context) {
         let Some(picking) = &self.picking else {
             return;
         };
@@ -819,6 +1011,10 @@ impl App {
         self.picking = None;
 
         let Some(path) = chosen else {
+            // A dialog closed without an answer ends what it was part of. The
+            // file already chosen for a container nobody named a place for is
+            // not a file waiting for the next press.
+            self.creating = Creating::Idle;
             return;
         };
         match what {
@@ -828,7 +1024,33 @@ impl App {
             }
             For::ExtractTo => self.start_extraction(Target::Chosen(path)),
             For::Replacement => self.take_replacement(path),
+            For::NewPayload => self.take_new_payload(path, ctx),
+            For::NewContainer => {
+                let Creating::Naming(payload) = std::mem::replace(&mut self.creating, Creating::Idle)
+                else {
+                    return;
+                };
+                self.start_creating(payload, path, ctx);
+            }
         }
+    }
+
+    /// Take a file chosen to be packed, or say why it cannot be one.
+    ///
+    /// Refused here rather than at the moment of packing, which is the same
+    /// decision `take_replacement` records and the same call: a name SPEC §2.3
+    /// forbids is a fact about the choice, and hearing it before the second
+    /// dialog costs nobody a second question about a container that was never
+    /// going to be written.
+    fn take_new_payload(&mut self, payload: PathBuf, ctx: &egui::Context) {
+        if let Some(why) = why_not_a_payload(&payload) {
+            self.creating = Creating::Idle;
+            self.said = Some(Said { text: why, wrong: true });
+            return;
+        }
+        self.said = None;
+        self.creating = Creating::Naming(payload);
+        self.start_picking(ctx, For::NewContainer);
     }
 }
 
@@ -836,9 +1058,133 @@ impl App {
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Pressed {
     Open,
+    New,
     Save,
     Undo,
     Redo,
+    StopMaking,
+}
+
+/// Take the undo and redo chords before anything can answer them itself.
+///
+/// Before anything draws, so that a field with focus does not answer Ctrl+Z
+/// with its own undo of its own text: the document's undo is the window's, the
+/// way it is in Tommy Flyleaf. Redo is asked first, since its chord contains
+/// undo's.
+fn chords(ui: &egui::Ui) -> (bool, bool) {
+    let redo = ui.input_mut(|i| {
+        i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::Z)
+            || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
+    });
+    let undo = ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z));
+    (undo, redo)
+}
+
+/// The window before anything has been opened.
+///
+/// A function of its own for the reason `bar` and `card` are, and it earned
+/// that when it stopped being a heading and a button: this is the one state
+/// with no bar, and a container can be made from here, so what a press comes
+/// to has to appear here or nowhere. Returns the button pressed, if one was.
+/// The two ways into a container, in the order they are offered.
+const WAYS_IN: [(&str, Pressed); 2] = [
+    ("Open a container…", Pressed::Open),
+    ("New container…", Pressed::New),
+];
+
+/// What a row of buttons will measure, so that something can be centred on it.
+///
+/// Asked of the style rather than written down, because the answer moves with
+/// the font, the button padding and the scale: a constant here would be right
+/// on this machine and wrong on a panel at 150%. `Button::ui` adds the same
+/// padding to the same galley, which is what
+/// `the_row_of_ways_in_measures_what_the_buttons_measure` holds this to.
+fn row_width(ui: &egui::Ui, buttons: &[(&str, Pressed)]) -> f32 {
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let padding = 2.0 * ui.spacing().button_padding.x;
+    let labels: f32 = buttons
+        .iter()
+        .map(|(label, _)| {
+            ui.painter()
+                .layout_no_wrap((*label).to_owned(), font.clone(), egui::Color32::PLACEHOLDER)
+                .size()
+                .x
+                + padding
+        })
+        .sum();
+    #[allow(clippy::cast_precision_loss)]
+    let gaps = buttons.len().saturating_sub(1) as f32;
+    labels + gaps * ui.spacing().item_spacing.x
+}
+
+fn nothing_open(
+    ui: &mut egui::Ui,
+    creating: &Creating,
+    said: Option<&Said>,
+    busy: bool,
+) -> Option<Pressed> {
+    let mut pressed = None;
+    ui.vertical_centered(|ui| {
+        ui.add_space(72.0);
+        ui.heading("Slipcase");
+        ui.label("Open a container to see what is in it, or make one out of a file.");
+        ui.add_space(12.0);
+        // The width is measured and handed over rather than left to the
+        // layout, and looking at the window is what settled that.
+        // `vertical_centered` centres each child it is given by the size that
+        // child asked for, and `ui.horizontal` asks for the whole width it is
+        // offered — so a full-width row inside a centred column put both
+        // buttons hard against the left edge under a centred heading, which is
+        // how this drew until somebody looked. Every assertion in this file
+        // passed against it.
+        let row = egui::vec2(row_width(ui, &WAYS_IN), 0.0);
+        ui.allocate_ui_with_layout(row, egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            for (label, what) in WAYS_IN {
+                if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
+                    pressed = Some(what);
+                }
+            }
+        });
+        if making(ui, creating) {
+            pressed = Some(Pressed::StopMaking);
+        }
+        if let Some(said) = said {
+            let text = egui::RichText::new(&said.text);
+            ui.label(if said.wrong {
+                text.color(error_colour(ui.visuals()))
+            } else {
+                text.weak()
+            });
+        }
+    });
+    pressed
+}
+
+/// How far a container being made has got, and the way to stop it.
+///
+/// Drawn in two places and written once: the bar has it while a container is on
+/// screen, and the empty state has it while one is not, because a person can
+/// press New container… from either and the answer has to appear where they
+/// are looking. Returns whether stopping was asked for.
+fn making(ui: &mut egui::Ui, creating: &Creating) -> bool {
+    let Creating::Running(job) = creating else {
+        return false;
+    };
+    let done = job.watch.done();
+    #[allow(clippy::cast_precision_loss)]
+    let fraction = if job.total == 0 {
+        1.0
+    } else {
+        done as f32 / job.total as f32
+    };
+    // A width of its own, because a `ProgressBar` in a row takes whatever is
+    // left and the bar's row has a sentence after it.
+    ui.add(
+        egui::ProgressBar::new(fraction)
+            .desired_width(160.0)
+            .show_percentage(),
+    );
+    ui.button("Stop").clicked()
 }
 
 /// The payload card: what it is, and what can be done with it.
@@ -1091,7 +1437,7 @@ impl App {
     /// it rather than defer it.
     #[cfg(target_os = "macos")]
     fn poll_opened_document(&mut self) {
-        if self.picking.is_some() {
+        if self.busy() {
             return;
         }
         if let Some(path) = opened_document::taken() {
@@ -1105,13 +1451,16 @@ impl App {
 
     fn render(&mut self, ui: &mut egui::Ui) {
         self.poll();
-        self.poll_picking();
+        self.poll_creating();
+        self.poll_picking(ui.ctx());
         #[cfg(target_os = "macos")]
         self.poll_opened_document();
         // A copy under way is the one thing here that changes without anybody
         // touching the window, so it is the one thing that has to ask to be
-        // drawn again.
-        if matches!(self.extraction, Extraction::Running(_)) {
+        // drawn again. Both of them: a container being made is a copy too.
+        if matches!(self.extraction, Extraction::Running(_))
+            || matches!(self.creating, Creating::Running(_))
+        {
             ui.ctx().request_repaint();
         }
 
@@ -1119,16 +1468,13 @@ impl App {
         // panel holds a borrow of the state a click changes.
         let mut asked = None;
         let mut pick_clicked = false;
+        let mut new_clicked = false;
+        let mut stop_making = false;
 
-        // Taken before anything draws, so that a field with focus does not
-        // answer Ctrl+Z with its own undo of its own text: the document's
-        // undo is the window's, the way it is in Tommy Flyleaf. Redo is
-        // asked first, since its chord contains undo's.
-        let redo = ui.input_mut(|i| {
-            i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::Z)
-                || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
-        });
-        let undo = ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z));
+        let (undo, redo) = chords(ui);
+
+        // Read before the panels, which borrow the state it asks about.
+        let busy = self.busy();
 
         let pressed = if self.opened.is_some() {
             self.bar(ui)
@@ -1138,28 +1484,25 @@ impl App {
         if matches!(pressed, Some(Pressed::Open)) {
             pick_clicked = true;
         }
+        if matches!(pressed, Some(Pressed::New)) {
+            new_clicked = true;
+        }
+        if matches!(pressed, Some(Pressed::StopMaking)) {
+            stop_making = true;
+        }
         let save_clicked = matches!(pressed, Some(Pressed::Save));
         let undo_clicked = matches!(pressed, Some(Pressed::Undo));
         let redo_clicked = matches!(pressed, Some(Pressed::Redo));
 
         egui::CentralPanel::default().show(ui, |ui| match &mut self.opened {
-            None => {
-                ui.vertical_centered(|ui| {
-                    ui.add_space(72.0);
-                    ui.heading("Slipcase");
-                    ui.label("Open a container to see what is in it.");
-                    ui.add_space(12.0);
-                    if ui
-                        .add_enabled(
-                            self.picking.is_none(),
-                            egui::Button::new("Open a container…"),
-                        )
-                        .clicked()
-                    {
-                        pick_clicked = true;
-                    }
-                });
-            }
+            None => match nothing_open(ui, &self.creating, self.said.as_ref(), busy) {
+                Some(Pressed::Open) => pick_clicked = true,
+                Some(Pressed::New) => new_clicked = true,
+                Some(Pressed::StopMaking) => stop_making = true,
+                // Nothing else is drawn here: there is no container to save,
+                // and no document to take an edit back out of.
+                Some(Pressed::Save | Pressed::Undo | Pressed::Redo) | None => {}
+            },
             Some(opened) => {
                 ui.heading(opened.name());
                 ui.label(opened.path.display().to_string());
@@ -1174,7 +1517,7 @@ impl App {
                         opened.from_elsewhere,
                         &self.extraction,
                         self.replacing.as_deref(),
-                        self.picking.is_some(),
+                        busy,
                         &mut self.focus_open,
                     );
                 }
@@ -1209,6 +1552,19 @@ impl App {
             self.start_picking(ui.ctx(), For::Container);
         }
 
+        if new_clicked {
+            // The first of the two questions. `poll_picking` asks the second
+            // once this one is answered, so that the pair stays one dialog at
+            // a time like every other.
+            self.start_picking(ui.ctx(), For::NewPayload);
+        }
+
+        if stop_making {
+            if let Creating::Running(job) = &self.creating {
+                job.watch.cancel();
+            }
+        }
+
         if save_clicked {
             self.save();
         }
@@ -1220,7 +1576,7 @@ impl App {
             Some(Ask::Replace) => self.start_picking(ui.ctx(), For::Replacement),
             Some(Ask::Undo) => {
                 self.replacing = None;
-                self.save_said = None;
+                self.said = None;
             }
         }
     }
@@ -1228,7 +1584,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use super::{why, App, Ask, Extraction};
+    use super::{why, App, Ask, Creating, Extraction};
     use slipcase_desktop::{Opened, Payload};
     use slpc::toml_edit::DocumentMut;
 
@@ -1397,8 +1753,9 @@ mod tests {
             opened,
             scratch: None,
             extraction: Extraction::Idle,
+            creating: Creating::Idle,
             replacing: None,
-            save_said: None,
+            said: None,
             picking: None,
             focus_open,
         }
@@ -1526,6 +1883,159 @@ mod tests {
 
         // And the card says what will happen, rather than saying nothing until
         // the write has already happened.
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// A file the specification will not let be a payload is refused where it
+    /// was chosen, and no second dialog is opened for a container that was
+    /// never going to be written.
+    ///
+    /// **The defect this catches is asking somebody where to put a container
+    /// and then refusing to make it.** `take_new_payload` runs the same check
+    /// `take_replacement` does, and it runs it before the second question
+    /// rather than inside the packing thread. Break it by moving the check
+    /// after `start_picking` and this fails on `creating`, which would be
+    /// `Naming` with a file that cannot be a payload in it.
+    #[test]
+    fn a_file_that_cannot_be_packed_is_refused_before_the_second_dialog() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(None);
+
+        eframe::egui::__run_test_ui(|ui| {
+            app.take_new_payload(dir.path().join("slipcase.metadata.toml"), ui.ctx());
+        });
+
+        assert!(
+            matches!(app.creating, Creating::Idle),
+            "a container is still being made out of a file that cannot be a payload"
+        );
+        assert!(app.picking.is_none(), "a second dialog was opened anyway");
+        let (_, said) = app.notes();
+        let said = said.expect("it says why");
+        assert!(said.wrong, "{}", said.text);
+        assert!(said.text.contains("slipcase.metadata.toml"), "{}", said.text);
+    }
+
+    /// The row the empty state centres on measures what the buttons in it
+    /// measure, under a style that is not the default one.
+    ///
+    /// **The defect this catches is two buttons drawn against the left edge
+    /// under a centred heading**, which is how the empty state looked until
+    /// somebody took a screenshot: `vertical_centered` centres a child by the
+    /// size that child asked for, and `ui.horizontal` asks for the whole width
+    /// it is offered. `row_width` is what the row asks for instead, and it is
+    /// only worth having if it agrees with the buttons — a number too small
+    /// clips the second button, and one too large puts the pair off centre by
+    /// half the error.
+    ///
+    /// Asked under a changed style as well as the default, because the failure
+    /// this guards against is somebody replacing the measurement with a
+    /// constant that happens to be right on the machine they wrote it on.
+    /// Broken deliberately by writing the default padding in as a number: the
+    /// row then asks for 24 where the buttons measure 56.
+    ///
+    /// **It does not reach the text.** `__run_test_ui` carries no font data —
+    /// measured, and a galley for any string comes back zero wide — so what
+    /// this compares is the padding and the spacing on both sides while both
+    /// labels measure nothing. The half about text was checked by looking at
+    /// the window, which is the only place it can be, and `CHECKLIST.md` is
+    /// where that run is recorded.
+    #[test]
+    fn the_row_of_ways_in_measures_what_the_buttons_measure() {
+        for padding in [4.0_f32, 12.0] {
+            eframe::egui::__run_test_ui(|ui| {
+                ui.spacing_mut().button_padding.x = padding;
+                let asked = super::row_width(ui, &super::WAYS_IN);
+                let drawn = ui
+                    .horizontal(|ui| {
+                        let mut union: Option<eframe::egui::Rect> = None;
+                        for (label, _) in super::WAYS_IN {
+                            let rect = ui.button(label).rect;
+                            union = Some(union.map_or(rect, |a| a.union(rect)));
+                        }
+                        union.expect("a button was drawn")
+                    })
+                    .inner
+                    .width();
+                assert!(
+                    (asked - drawn).abs() < 0.5,
+                    "the row asks for {asked} and the buttons measure {drawn} at padding {padding}"
+                );
+            });
+        }
+    }
+
+    /// A container that has been made takes the window, and says so.
+    ///
+    /// **The defect this catches is a press that answers with silence.**
+    /// Making a container is the one long action that can be started with
+    /// nothing on screen, so its answer has nowhere to go unless the new
+    /// container becomes what the window is holding — which is also what puts
+    /// the tree in front of somebody whose container carries nothing but the
+    /// two keys the library wrote. Break `poll_creating` by dropping the
+    /// `show` and this fails on `opened`.
+    #[test]
+    fn a_container_that_was_made_takes_the_window() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = a_container(dir.path());
+        let mut app = app(None);
+
+        let (sender, outcome) = std::sync::mpsc::channel();
+        sender.send(super::Made::Done(path.clone(), None)).expect("sends");
+        app.creating = Creating::Running(super::Job {
+            watch: slipcase_desktop::Watch::new(),
+            total: 0,
+            outcome,
+        });
+
+        app.poll_creating();
+
+        assert!(matches!(app.creating, Creating::Idle), "still making one");
+        assert_eq!(
+            app.opened.as_ref().map(|o| o.path.clone()),
+            Some(path),
+            "the container that was made is not the one on screen"
+        );
+        let (_, said) = app.notes();
+        let said = said.expect("it says what happened");
+        assert!(!said.wrong, "{}", said.text);
+        // And the empty state is not what draws, so the answer is visible.
+        eframe::egui::__run_test_ui(|ui| app.render(ui));
+    }
+
+    /// Nothing that would replace what is on screen may be pressed while a
+    /// container is being made.
+    ///
+    /// **The defect this catches is two answers arriving in an order nobody
+    /// chose.** A container being made ends by calling `show`, exactly as
+    /// opening one does, so a person who opens a container while one is being
+    /// packed watches it replaced a moment later by a container they asked for
+    /// earlier — and any unsaved edit to the one they opened goes with it. The
+    /// window already allowed one dialog at a time for the same reason; this
+    /// is that rule reaching the other thing that finishes by replacing the
+    /// container.
+    #[test]
+    fn nothing_else_is_offered_while_a_container_is_being_made() {
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let mut app = app(Some(Opened::open(a_container(dir.path()))));
+        assert!(!app.busy(), "nothing has been asked for yet");
+
+        let (_sender, outcome) = std::sync::mpsc::channel();
+        app.creating = Creating::Running(super::Job {
+            watch: slipcase_desktop::Watch::new(),
+            total: 1,
+            outcome,
+        });
+
+        assert!(app.busy(), "a container being made is not a reason to wait");
+        // The card's three buttons go with it, for the same reason.
+        let payload = payload(None);
+        for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
+            assert!(
+                !ask.offered(&payload, app.busy()),
+                "a button on the card was still offered"
+            );
+        }
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
@@ -1697,7 +2207,7 @@ mod tests {
 
 #[cfg(all(test, unix))]
 mod save_failure_tests {
-    use super::{App, Extraction};
+    use super::{App, Creating, Extraction};
     use slipcase_desktop::{set_value, Opened};
     use slpc::toml_edit::{DocumentMut, Value};
     use std::os::unix::fs::PermissionsExt;
@@ -1729,8 +2239,9 @@ mod save_failure_tests {
             opened: Some(Opened::open(&path)),
             scratch: None,
             extraction: Extraction::Idle,
+            creating: Creating::Idle,
             replacing: None,
-            save_said: None,
+            said: None,
             picking: None,
             focus_open: true,
         };

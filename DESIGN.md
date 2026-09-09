@@ -12,6 +12,8 @@
 
 A desktop application that opens a `.slpc` file, shows its metadata, and hands the payload to whatever application the operating system has registered for it. It is presented to a person as **Slipcase**; the crate and the binary are `slipcase-desktop`, so nothing on `PATH` collides with the command-line tool.
 
+**Amended 2026-09-08: it makes containers as well as opening them.** Every sentence here was about a container that already existed, and the only way to get a first one was `slipcase pack` or a ZIP archiver driven by hand — so the application that a person is given to work with slipcases could not produce one. `§5` says what New container… does and `§7` records it as the stage it is. Nothing else in this document moves: making a container is `slpc::pack_reader` the way opening one is `slpc::validate`, and this application still parses none of it.
+
 The application parses no containers. Every read, every write, and every verdict comes from `slpc`, the library in `excelano/slpc-rust`. Where it needs behavior the library lacks, the behavior goes into the library.
 
 The specification in `excelano/slipcase` is the authority on the format, and this document neither restates nor amends it. Read `SPEC.md` before implementing anything. Do not infer format rules from this document.
@@ -145,6 +147,16 @@ Switching to a clipped `ScrollArea` was the alternative and is not obviously wro
 
 **A container nothing has changed in is not written.**
 
+**Amended 2026-09-08: making a container is two questions and no third.** New container… asks which file goes in and where the container goes, and then packs it through `slpc::pack_reader` and shows the result. The metadata it writes is empty, and the two keys SPEC §2.2 requires are the library's to fill in — `pack_reader` puts `slipcase_version` and `payload.file` into whatever document it is handed, and a `--meta` file is the command line's way of saying more, not a window's. What a person wants to say about the payload they say in the tree afterwards, which is the editor `§4` and this section already describe: `§4`'s first sentence is that there is no schema here, so a form asking for anything else would be this application inventing a vocabulary the specification does not define.
+
+Neither question may be guessed. Which file goes in is the whole of what is being asked for. Where the container lands is a location, and the paragraph below has this application choosing one only when nobody asked it to — `slipcase pack` defaults to writing beside the payload, which is a convention a command line can afford and a button cannot. The second dialog is a save dialog, so the platform asks before overwriting and the answer to that question is the only permission this needs.
+
+The naming convention is offered rather than imposed: the second dialog is prefilled with the payload's name and `.slpc` after it, and a person who types something else has typed the name of their container. Nothing here reads a container's name to find out what is inside it.
+
+**The payload's mark comes with it, and without that, packing is a way to launder a download.** A container this process writes carries no mark of its own. Pack a file the platform had gated, open the container — which the card would then call local — and press Open, and the extraction asks `provenance::carry` about a container recording nothing and hands the operating system an unmarked copy of a file it had gated. Every step is somebody's ordinary use of the window. So `create` carries the payload's mark onto the container, and `tests/handover.rs` walks the whole trip rather than the container alone, because what matters is the file the platform is handed at the end of it. A carry that fails is said and not fatal, which is the decision this section already records for `staging.rs` and for the same reason: what opens a container is this application, which reports provenance rather than acting on it. The `slipcase` command has this gap and it is the library's to close, not this application's to work around.
+
+**One write at a time.** Making a container ends by showing it, exactly as opening one does, so a person who opens a container while one is being packed would watch it replaced a moment later by a container they asked for earlier, taking any unsaved edit with it. The window already allowed one dialog at a time for that reason; a pack under way now disables the same presses, the card's three included.
+
 **Payload: extract and replace, as explicit actions.** No temporary-file watching and no save interception. The user says when they are done and the application does not guess.
 
 **A replacement waits for a Save.** Choosing the file is not writing it. It waits beside the metadata edits so that one press writes one container. Writing on the press would rewrite the same archive twice with a window between the two where a failure leaves half of what was asked for, and it would put an arbitrarily large write inside a file dialog.
@@ -191,6 +203,10 @@ SPEC §2 and §3 define these conditions. The list is not exhaustive, and none o
 2. **Editing the metadata**, and writing it back with `Repack` into a `Destination::in_place`. **Shipped.**
 3. **Extracting and replacing the payload**, as the two explicit actions `§5` describes. **Shipped.**
 4. **File association**, per platform, per `§8`. **Shipped on all three.** Each was built and looked at on the platform itself rather than cross-compiled and assumed; `packaging/` holds what each decided and the amendments below say where the platforms disagreed. The one place this stage cost more than association was macOS, which does not deliver a double-clicked document as an argument at all — recorded twice below, once wrongly.
+
+5. **Making a container**, from a file a person chooses. Added 2026-09-08. Not in the original list, and the omission is the interesting part: every stage above is about a container that already exists, and nothing here could produce a first one — so the application a person is given for slipcases sent them to the command line to make one. `§5` holds what it does and what it refuses to guess. **Shipped on Linux, and the two arms below are what it is waiting on.**
+
+   **What the other two platforms owe it.** The write goes through `slpc::Destination::new`, which is the same call extraction already makes into a folder a person named in a save dialog, so on Windows there is nothing new. On macOS there is a question and it is `§5`'s: under the App Sandbox `Destination::in_place` cannot make a sibling of a file chosen through the *open* panel, which is why `src/staging.rs` exists. A save panel is a different grant and extraction has been going through it since 0.1.0, so this is very likely fine — *very likely* is not measured, and `CHECKLIST.md` carries the run.
 
 Stage 1 is a whole program rather than a preview of one: it opens a container and shows what is in it.
 

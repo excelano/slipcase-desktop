@@ -4,7 +4,7 @@ A desktop application for [Slipcase](https://slipcaseformat.org) containers.
 
 A `.slpc` file is a ZIP archive holding a payload file of any type together with a TOML metadata document describing it. The two become one file, so copying, moving, or sending the payload carries its metadata along.
 
-Slipcase opens a container, shows what is in it, and hands the payload to whatever application the operating system has registered for it. It parses no containers itself: every read, every write, and every verdict comes from [`slpc`](https://github.com/excelano/slpc-rust).
+Slipcase opens a container, shows what is in it, and hands the payload to whatever application the operating system has registered for it. It makes one too: *New container…* asks for a file and writes a container around it, which the metadata editor then fills in. It parses no containers itself: every read, every write, and every verdict comes from [`slpc`](https://github.com/excelano/slpc-rust).
 
 The specification lives in [`excelano/slipcase`](https://github.com/excelano/slipcase) and is the authority on the format. <https://slipcaseformat.org> publishes it as pages.
 
@@ -56,7 +56,10 @@ ships. `packaging/README.md` has the detail.
 
 All four stages of `DESIGN.md` §7 ship: opening a container and rendering every
 state the design names, editing the metadata and writing it back, extracting and
-replacing the payload, and file association.
+replacing the payload, and file association. A fifth was added on 2026-09-08 and
+ships on Linux: making a container out of a file. It goes through the same
+library call the command-line `pack` verb does, and `CHECKLIST.md` says what the
+other two platforms owe it before the next store submission.
 
 Association ships on all three platforms, each built and walked through by hand
 on the platform itself. `packaging/` holds what each decided and `CHECKLIST.md`
@@ -91,8 +94,9 @@ cargo run --example corpus -- /path/to/slipcase/conformance
 It puts every fixture through this application's own reading of them: the
 verdict, whether a metadata tree and a payload card are shown, extraction at the
 declared length, the pre-flight answer against what extraction then does, a full
-rewrite round trip with key order preserved, a rename, and a payload
-replacement under two names.
+rewrite round trip with key order preserved, a rename, a payload replacement
+under two names, and every payload packed into a container of its own and read
+back.
 
 ## License
 

@@ -31,7 +31,9 @@ use std::process::ExitCode;
 use slpc::toml_edit::DocumentMut;
 use slpc::Error;
 
-use slipcase_desktop::{add_key, extract_at, rename_key, Kind, Opened, Saved, Watch};
+use slipcase_desktop::{
+    add_key, create, extract_at, rename_key, Created, Kind, Opened, Saved, Watch,
+};
 
 /// One disagreement, for the report: which case, what this build said about it,
 /// and whatever the manifest had to say.
@@ -123,6 +125,7 @@ struct Report {
     rewritten: usize,
     renamed: usize,
     replaced: usize,
+    packed: usize,
     /// Payloads the card refused before anything was pressed, in the same words
     /// extraction then used.
     foretold: usize,
@@ -165,6 +168,10 @@ impl Report {
             println!(
                 "{} had their payload replaced, under its own name and under a new one.",
                 self.replaced
+            );
+            println!(
+                "{} payloads were packed into a container of their own and read back conformant.",
+                self.packed
             );
             return Ok(());
         }
@@ -283,12 +290,103 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
         if !replaces(c, scratch, report) {
             ok = false;
         }
+        if !packs(c, &opened, scratch, report) {
+            ok = false;
+        }
     }
 
     if ok {
         report.agreed += 1;
     }
     Ok(())
+}
+
+/// Whether a payload can be packed into a container of its own.
+///
+/// The other direction from every other pass here, and the reason it belongs
+/// in the harness rather than in a fixture of its own: what `create` is handed
+/// is a file on disk under whatever name a container recorded, and the corpus
+/// is where the awkward ones are. `accept/payload-name-bidi-override` alone is
+/// worth the pass — its payload is called `report<U+202E>fdp.exe`, and packing
+/// it means writing that name into `payload.file` and getting it back.
+///
+/// It extracts again rather than being handed what `extracts` already wrote.
+/// That check is about the card and what pressing Open comes to, and threading
+/// a path out of it to serve this would make it about two things; the second
+/// extraction costs a copy of a payload the corpus already bounds.
+///
+/// Skipped where the payload cannot be decoded, which is the one conformant
+/// container SPEC §2.5 leaves out of reach — there is nothing to pack.
+fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool {
+    if opened.payload.as_ref().is_some_and(|p| !p.can_be_decoded()) {
+        return true;
+    }
+    // A failure here is already reported by `extracts`, which asks the same
+    // question first.
+    let Ok(payload) = opened.extract_to(scratch) else {
+        return true;
+    };
+    // Named after the case rather than after the payload, because payload names
+    // repeat across the corpus and this one has to be read back.
+    let into = scratch.join(format!("{}.packed.slpc", c.id.replace('/', "-")));
+
+    let made = match create(&payload, &into, &Watch::new()) {
+        Ok(Created::Written { .. }) => Opened::open(&into),
+        Ok(Created::Cancelled) => {
+            report.disagree(
+                "packing: an unwatched pack was stopped".to_owned(),
+                c,
+                "nothing asked it to",
+            );
+            return false;
+        }
+        Ok(Created::Refused(v)) => {
+            report.disagree(
+                "packing: what was packed did not read back conformant".to_owned(),
+                c,
+                &v.to_string(),
+            );
+            return false;
+        }
+        Err(e) => {
+            report.disagree("packing: the payload would not pack".to_owned(), c, &e.to_string());
+            return false;
+        }
+    };
+
+    let Some(card) = &made.payload else {
+        report.disagree(
+            "packing: the container that was packed showed no card".to_owned(),
+            c,
+            &made.verdict_line(),
+        );
+        return false;
+    };
+
+    // The name the payload went in under is the name the container reports, and
+    // it came off a file on disk rather than out of the container it started
+    // in — which is what makes the awkward names worth packing.
+    let expected = payload.file_name().unwrap_or_default().to_string_lossy();
+    if card.name != expected {
+        report.disagree(
+            "packing: the container names a payload other than the file that went in".to_owned(),
+            c,
+            &format!("{:?} went in, payload.file says {:?}", expected, card.name),
+        );
+        return false;
+    }
+    let declared = opened.payload.as_ref().map_or(0, |p| p.size);
+    if card.size != declared {
+        report.disagree(
+            "packing: the packed payload is a different length".to_owned(),
+            c,
+            &format!("{} bytes went in, {} came back", declared, card.size),
+        );
+        return false;
+    }
+
+    report.packed += 1;
+    true
 }
 
 /// Whether the payload can be replaced, DESIGN.md §5's second explicit action.

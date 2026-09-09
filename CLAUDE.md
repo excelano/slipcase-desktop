@@ -37,9 +37,10 @@ disease. `git log` is where their content went.
 ## What this is
 
 A desktop application that opens a `.slpc` container, shows its metadata as an
-editable tree, and hands the payload to whatever the operating system has
-registered for it. Presented to a person as **Slipcase**; the crate and the
-binary are `slipcase-desktop`.
+editable tree, hands the payload to whatever the operating system has
+registered for it, and makes a container out of a file a person chooses.
+Presented to a person as **Slipcase**; the crate and the binary are
+`slipcase-desktop`.
 
 **It parses no containers.** Every read, every write, and every verdict comes
 from `slpc`, the library in `excelano/slpc-rust`. Where it needs behaviour
@@ -87,7 +88,7 @@ of why everything is the way it is, and it is written to be read.
 and a test that has to choose between skipping quietly and failing on a machine
 that was never going to have those things is worse than a command run on
 purpose. It is the harness that matters — every fixture across verdict, tree,
-card, extraction, rewrite, rename, replacement, and pre-flight:
+card, extraction, rewrite, rename, replacement, packing, and pre-flight:
 
     cargo run --example corpus -- /path/to/slipcase/conformance
 
@@ -272,8 +273,9 @@ build that only a hand can check, run it, and write down what it found.
 
 ## Layout
 
-    src/lib.rs          state, the save path, extraction, and RequiredKeys,
-                        which is what the tree is told about this format
+    src/lib.rs          state, the save path, extraction, packing a new
+                        container, and RequiredKeys, which is what the tree is
+                        told about this format
     src/main.rs         the window: panels, dialogs, threading, the card;
                         the tree itself is flyleaf::render
     src/opens_with.rs   what the platform says would open a payload
