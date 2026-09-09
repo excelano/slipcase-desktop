@@ -1,0 +1,211 @@
+# German translation for Slipcase.
+# Copyright (C) 2026 David M. Anderson
+# This file is distributed under the same licence as the slipcase-desktop package.
+# David M. Anderson <david.anderson@excelano.com>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: slipcase-desktop\n"
+"Report-Msgid-Bugs-To: https://github.com/excelano/slipcase-desktop/issues\n"
+"POT-Creation-Date: 2026-09-09 07:38-0500\n"
+"PO-Revision-Date: 2026-09-09 07:26-0500\n"
+"Last-Translator: David M. Anderson <david.anderson@excelano.com>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/lib.rs:406 src/lib.rs:550
+msgid "{file} has a name that is not UTF-8, and payload.file is a TOML string"
+msgstr ""
+"{file} hat einen Namen, der nicht UTF-8 ist, und payload.file ist eine TOML-"
+"Zeichenkette"
+
+#: src/lib.rs:557
+msgid "{name} cannot be a payload's name: {reason}"
+msgstr "{name} kann kein Name einer Nutzlast sein: {reason}"
+
+#: src/lib.rs:627
+msgid "{n} byte"
+msgid_plural "{n} bytes"
+msgstr[0] "{n} Byte"
+msgstr[1] "{n} Bytes"
+
+#: src/lib.rs:646
+msgid "{size} {unit} ({n} bytes)"
+msgstr "{size} {unit} ({n} Bytes)"
+
+#: src/lib.rs:741
+msgid "cannot be read: {reason}"
+msgstr "kann nicht gelesen werden: {reason}"
+
+#: src/main.rs:652 src/main.rs:1124
+msgid "Open a container…"
+msgstr "Container öffnen …"
+
+#: src/main.rs:653 src/main.rs:1125
+msgid "New container…"
+msgstr "Neuer Container …"
+
+#: src/main.rs:657
+msgid "Save"
+msgstr "Speichern"
+
+#: src/main.rs:658 src/main.rs:1370
+msgid "Undo"
+msgstr "Rückgängig"
+
+#: src/main.rs:659
+msgid "Redo"
+msgstr "Wiederholen"
+
+#: src/main.rs:661
+msgid "edited"
+msgstr "geändert"
+
+#: src/main.rs:690
+msgid "Saved."
+msgstr "Gespeichert."
+
+#: src/main.rs:694
+msgid "Nothing had changed, so nothing was written."
+msgstr "Nichts hatte sich geändert, also wurde nichts geschrieben."
+
+#: src/main.rs:699
+msgid "Not saved. What was written did not read back conformant: {verdict}"
+msgstr ""
+"Nicht gespeichert. Das Geschriebene wurde nicht als konform zurückgelesen: "
+"{verdict}"
+
+#: src/main.rs:705
+msgid "Not saved: {reason}"
+msgstr "Nicht gespeichert: {reason}"
+
+#: src/main.rs:746
+msgid "the extraction stopped without saying why"
+msgstr "das Entpacken wurde beendet, ohne einen Grund zu nennen"
+
+#: src/main.rs:761
+msgid "the container was not made, and nothing said why"
+msgstr "der Container wurde nicht erstellt, und nichts nannte einen Grund"
+
+#: src/main.rs:780
+msgid "Made."
+msgstr "Erstellt."
+
+#: src/main.rs:790
+msgid ""
+"Made. Where the payload came from could not be carried onto it: {reason}"
+msgstr ""
+"Erstellt. Die Herkunft der Nutzlast konnte nicht auf sie übertragen werden: "
+"{reason}"
+
+#: src/main.rs:799 src/main.rs:1394
+msgid "Stopped. Nothing was left behind."
+msgstr "Angehalten. Es blieb nichts zurück."
+
+#: src/main.rs:832
+msgid "Not made. What was written did not read back conformant: {verdict}"
+msgstr ""
+"Nicht erstellt. Das Geschriebene wurde nicht als konform zurückgelesen: "
+"{verdict}"
+
+#: src/main.rs:836
+msgid "Not made: {reason}"
+msgstr "Nicht erstellt: {reason}"
+
+#: src/main.rs:887
+msgid "{file} was extracted, and the system would not open it: {reason}"
+msgstr ""
+"{file} wurde entpackt, und das System wollte die Datei nicht öffnen: {reason}"
+
+#: src/main.rs:975
+msgid "Open a container"
+msgstr "Einen Container öffnen"
+
+#: src/main.rs:976 src/main.rs:985
+msgid "slipcases"
+msgstr "Slipcase-Dateien"
+
+#: src/main.rs:977 src/main.rs:986
+msgid "All files"
+msgstr "Alle Dateien"
+
+#: src/main.rs:980
+msgid "Extract the payload to"
+msgstr "Nutzlast entpacken nach"
+
+#: src/main.rs:981
+msgid "Replace the payload with"
+msgstr "Nutzlast ersetzen durch"
+
+#: src/main.rs:982
+msgid "Make a container out of"
+msgstr "Container erstellen aus"
+
+#: src/main.rs:984
+msgid "Write the container to"
+msgstr "Container schreiben nach"
+
+#: src/main.rs:1164
+msgid "Open a container to see what is in it, or make one out of a file."
+msgstr ""
+"Einen Container öffnen, um zu sehen, was darin ist, oder einen aus einer "
+"Datei erstellen."
+
+#: src/main.rs:1221
+msgid "Stop"
+msgstr "Anhalten"
+
+#: src/main.rs:1261
+msgid "Opens with {application}"
+msgstr "Wird geöffnet mit {application}"
+
+#: src/main.rs:1268
+msgid "Cannot be opened here: {reason}"
+msgstr "Kann hier nicht geöffnet werden: {reason}"
+
+#: src/main.rs:1284
+msgid ""
+"The payload is an executable file; the extracted copy will not be executable."
+msgstr ""
+"Die Nutzlast ist eine ausführbare Datei; die entpackte Kopie wird nicht "
+"ausführbar sein."
+
+#: src/main.rs:1300
+msgid "This container arrived from elsewhere, and the payload will carry that."
+msgstr "Dieser Container kam von anderswo, und die Nutzlast trägt das weiter."
+
+#: src/main.rs:1318
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: src/main.rs:1325
+msgid "Open"
+msgstr "Öffnen"
+
+#: src/main.rs:1326
+msgid "Extract…"
+msgstr "Entpacken …"
+
+#: src/main.rs:1327
+msgid "Replace…"
+msgstr "Ersetzen …"
+
+#: src/main.rs:1363
+msgid "Will be replaced by {file} when this is saved."
+msgstr "Wird beim Speichern durch {file} ersetzt."
+
+#: src/main.rs:1384
+msgid "Extracted to {file}"
+msgstr "Entpackt nach {file}"
+
+#: src/main.rs:1438
+msgid "no temporary directory to extract into: {reason}"
+msgstr "kein temporäres Verzeichnis zum Entpacken vorhanden: {reason}"
+
+#: src/main.rs:1449
+msgid "no temporary directory to extract into"
+msgstr "kein temporäres Verzeichnis zum Entpacken vorhanden"

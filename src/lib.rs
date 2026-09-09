@@ -7,6 +7,7 @@
 #![warn(missing_docs, clippy::pedantic)]
 
 pub mod opens_with;
+pub mod potext;
 mod staging;
 
 use std::io::{Read, Write};
@@ -16,6 +17,8 @@ use std::sync::Arc;
 
 use flyleaf::flyleaf_core::Document;
 use slpc::Verdict;
+
+use potext::{fill, t, tn};
 
 // The editor's operations come from `flyleaf-core` now, and are re-exported
 // under the names this crate has always had so that nothing calling them
@@ -399,9 +402,9 @@ fn payload_name(path: &Path) -> slpc::Result<&str> {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| {
-            std::io::Error::other(format!(
-                "{} has a name that is not UTF-8, and payload.file is a TOML string",
-                path.display()
+            std::io::Error::other(fill(
+                t("{file} has a name that is not UTF-8, and payload.file is a TOML string"),
+                &[("file", &path.display().to_string())],
             ))
             .into()
         })
@@ -543,14 +546,17 @@ pub enum Saved {
 pub fn why_not_a_payload(path: &Path) -> Option<String> {
     let name = path.file_name()?.to_str();
     let Some(name) = name else {
-        return Some(format!(
-            "{} has a name that is not UTF-8, and payload.file is a TOML string",
-            path.display()
+        return Some(fill(
+            t("{file} has a name that is not UTF-8, and payload.file is a TOML string"),
+            &[("file", &path.display().to_string())],
         ));
     };
     match slpc::check_payload_name(name) {
         Ok(()) => None,
-        Err(why) => Some(format!("{name} cannot be a payload's name: {why}")),
+        Err(why) => Some(fill(
+            t("{name} cannot be a payload's name: {reason}"),
+            &[("name", name), ("reason", &why.to_string())],
+        )),
     }
 }
 
@@ -615,7 +621,10 @@ impl Payload {
     pub fn size_line(&self) -> String {
         let n = self.size;
         if n < 1024 {
-            return format!("{n} {}", if n == 1 { "byte" } else { "bytes" });
+            // The only plural in the application, and the reason `tn` exists.
+            // German shares English's two forms and its rule, so the catalogue
+            // chooses between them the same way this line used to.
+            return fill(tn("{n} byte", "{n} bytes", n), &[("n", &n.to_string())]);
         }
         // The exact count stays: a card that only said "1.2 MiB" would have
         // rounded away the number somebody opened the container to read.
@@ -630,7 +639,17 @@ impl Payload {
             scaled /= 1024.0;
             unit = next;
         }
-        format!("{scaled:.1} {unit} ({n} bytes)")
+        // The unit is a placeholder rather than part of the sentence: KiB and
+        // MiB are the same in every language, and a translator given the whole
+        // line as text would be invited to translate them.
+        fill(
+            t("{size} {unit} ({n} bytes)"),
+            &[
+                ("size", &format!("{scaled:.1}")),
+                ("unit", unit),
+                ("n", &n.to_string()),
+            ],
+        )
     }
 }
 
@@ -714,7 +733,13 @@ impl Opened {
     #[must_use]
     pub fn verdict_line(&self) -> String {
         match &self.outcome {
-            Outcome::Unreadable(why) => format!("cannot be read: {why}"),
+            Outcome::Unreadable(why) => {
+                // The reason is `slpc`'s own sentence and stays in English: a
+                // table mapping the library's wording to German here would be
+                // the library worked around, which this repository does not do.
+                // DESIGN.md §10 records the gap and what closes it.
+                fill(t("cannot be read: {reason}"), &[("reason", why)])
+            }
             Outcome::Judged(v) => v.to_string(),
         }
     }

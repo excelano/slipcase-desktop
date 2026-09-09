@@ -189,6 +189,33 @@ owns the code.
   a dependency on the toolchain is invisible from inside the toolchain — has a
   sandbox-shaped counterpart here. **Run it before the next store submission.**
 
+## Every platform: the language the window comes up in
+
+Added 2026-09-09 with German. Two runs, and the second one needs no German.
+
+**In German.** Set the machine's language to German, or run with
+`POTEXT_LANG=de` where a shell can reach the binary, and open a container.
+Every sentence in the bar, on the card and in the file dialogs is German; the
+verdict line and the metadata tree are the two documented exceptions and
+`DESIGN.md` §10 says why. Then press through what a person does — save, undo,
+extract, cancel an extraction, make a container, stop one being made — because
+the messages that follow an action are the half a screenshot does not reach.
+
+**In the pseudolocale.** `./po/pseudo.sh`, then a debug build with
+`POTEXT_LANG=en-x-pseudo`. Every string the application owns comes back
+bracketed, accented and 40% long. Three things are defects and each looks
+different: a sentence still in plain English never went through `t`; a sentence
+with no brackets is one the catalogue never saw; a label with its end cut off is
+a layout built to the width of English, which is what German will meet first.
+
+It is worth running before the German, not after: it finds a missing string
+without anybody reading German, and it found one the first time it was run — the
+size line stayed English because a `#, fuzzy` mark on the catalogue's header was
+taking the plural rule down with it. No test then in the suite would have caught
+it, and none of the German in the window looked wrong.
+
+---
+
 ## Windows
 
 Run against a release build, because the console-window item below is a
@@ -219,6 +246,23 @@ property of the release profile and passes vacuously in debug.
    `HKCU\Software\Classes` for the type or the extension, no `FileExts\.slpc`,
    no Add/Remove Programs entry, no shortcut. Explorer should go back to
    calling it `SLPC File`.
+
+### The language, and the package's declaration of it
+
+Neither has been run and both are Windows's to run.
+
+- **`potext::platform` reads `Control Panel\International\LocaleName` through
+  `windows-registry`**, because a launched application has no `LANG` and the
+  FFI call that would be the textbook answer cannot be made under this crate's
+  `deny(unsafe_code)`. Written on Linux, typechecked with
+  `cargo check --target x86_64-pc-windows-msvc`, and never once run: set the
+  machine to German and see whether the window comes up German.
+- **The package declares one language and the listing is a separate object.**
+  `AppxManifest.xml.in`'s `<Resources>` and the `/dq` given to `makepri` both
+  say `en-us` and have to agree; a second language is added in both places or
+  in neither. The Store listing is not controlled by either and is added on the
+  Store listings page — `DESIGN.md` §8 records the day that question was
+  settled, and §10 records that it applies again to German.
 
 ### The handover, with real-time protection on
 
@@ -381,6 +425,11 @@ reads the mime database once per session.
 - **A second desktop.** Everything here is GNOME on Wayland with Adwaita. The
   icon defect was a property of which theme carried which name, so KDE or XFCE
   could reach a different answer by the same mechanism.
+- **The desktop entry in German.** `Comment[de]`, `GenericName[de]` and
+  `Keywords[de]` were added 2026-09-09 and `desktop-file-validate` accepts
+  them, which says the syntax is right and nothing about what a German session
+  shows. Log into one and look at the overview: the German comment under the
+  name, and the application found by a German keyword.
 
 ### What lintian gates on
 
@@ -406,6 +455,25 @@ foreground process, and nothing can be associated with it.
     cargo build --release
     ./packaging/macos/build-app.sh
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f dist/Slipcase.app
+
+### The language, and what the bundle says about it
+
+Neither has been run and both are macOS's to run.
+
+- **`potext::platform` calls `NSLocale::preferredLanguages`**, and this is the
+  one platform where nothing else would work: `LANG` is set by Terminal and by
+  nothing else, so a bundle opened from Finder or the Dock has an empty
+  environment. A developer run from a shell will therefore come up German for
+  the *wrong reason* — the environment answered — and prove nothing about the
+  arm. **Open the bundle from Finder on a Mac set to German.** Written on
+  Linux, typechecked with `cargo check --target aarch64-apple-darwin`, never
+  run.
+- **`Info.plist.in` names no `CFBundleLocalizations`.** Without it the bundle
+  claims English alone, which is what App Store Connect reads for the
+  *Languages* row on the product page, and the App Store listing is a separate
+  object again with its own per-language text. Adding German to the bundle and
+  adding it to the listing are two edits, and §8's rule about the two settings
+  is the same rule.
 
 ### The association
 

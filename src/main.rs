@@ -37,6 +37,7 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
+use slipcase_desktop::potext::{self, fill, t};
 use slipcase_desktop::{
     create, extract, extract_at, why_not_a_payload, Created, Extracted, Opened, Payload,
     RequiredKeys, Saved, Watch,
@@ -231,6 +232,25 @@ mod last_folder {
 }
 
 fn main() -> eframe::Result {
+    // Before anything that could put a sentence in front of somebody, which on
+    // this line is the container named on the command line: a path that is not
+    // a container is judged here and its verdict is read off the card.
+    //
+    // This is the only call to `activate` in the application, and the rest of
+    // the program never asks what language it is in — a lookup that finds
+    // nothing hands back the English it was given. `potext` says why the test
+    // suite is deliberately outside this.
+    potext::activate(&[
+        ("de", include_str!("../po/de.po")),
+        // The pseudolocale, in a debug build and never in a release one: it
+        // translates nothing, accents everything and runs 40% long, so a
+        // string that never went through `t` and a label built to the width of
+        // English both show themselves on sight. `po/pseudo.sh` writes it and
+        // says what each of its three findings looks like.
+        #[cfg(debug_assertions)]
+        ("en-x-pseudo", include_str!("../po/en-x-pseudo.po")),
+    ]);
+
     // One positional path, which is what a file manager hands an application it
     // was asked to open a document with. A dialog and a drop arrive in slice 5,
     // and nothing here is a command-line interface: `slipcase` is that.
@@ -629,16 +649,16 @@ impl App {
         // egui 0.36 folded `TopBottomPanel` and `SidePanel` into one `Panel`.
         egui::Panel::top("bar").show(ui, |ui| {
             ui.horizontal(|ui| {
-                press(ui, !busy, "Open a container…", Pressed::Open);
-                press(ui, !busy, "New container…", Pressed::New);
+                press(ui, !busy, t("Open a container…"), Pressed::Open);
+                press(ui, !busy, t("New container…"), Pressed::New);
                 // Off until there is something to write, because DESIGN.md
                 // §5 does not write a container nothing has changed in and
                 // a button that does nothing should not invite a press.
-                press(ui, edited, "Save", Pressed::Save);
-                press(ui, can_undo, "Undo", Pressed::Undo);
-                press(ui, can_redo, "Redo", Pressed::Redo);
+                press(ui, edited, t("Save"), Pressed::Save);
+                press(ui, can_undo, t("Undo"), Pressed::Undo);
+                press(ui, can_redo, t("Redo"), Pressed::Redo);
                 if edited {
-                    ui.label(egui::RichText::new("edited").italics().weak());
+                    ui.label(egui::RichText::new(t("edited")).italics().weak());
                 }
                 if let Some(said) = said {
                     let text = egui::RichText::new(&said.text);
@@ -667,19 +687,22 @@ impl App {
 
         let said = match &outcome {
             Ok(Saved::Written) => Said {
-                text: "Saved.".to_owned(),
+                text: t("Saved.").to_owned(),
                 wrong: false,
             },
             Ok(Saved::Unchanged) => Said {
-                text: "Nothing had changed, so nothing was written.".to_owned(),
+                text: t("Nothing had changed, so nothing was written.").to_owned(),
                 wrong: false,
             },
             Ok(Saved::Refused(v)) => Said {
-                text: format!("Not saved. What was written did not read back conformant: {v}"),
+                text: fill(
+                    t("Not saved. What was written did not read back conformant: {verdict}"),
+                    &[("verdict", &v.to_string())],
+                ),
                 wrong: true,
             },
             Err(e) => Said {
-                text: format!("Not saved: {e}"),
+                text: fill(t("Not saved: {reason}"), &[("reason", &e.to_string())]),
                 wrong: true,
             },
         };
@@ -720,7 +743,7 @@ impl App {
             // The thread ended without sending, which it has no path to do.
             Err(mpsc::TryRecvError::Disconnected) => {
                 self.extraction =
-                    Extraction::Failed("the extraction stopped without saying why".to_owned());
+                    Extraction::Failed(t("the extraction stopped without saying why").to_owned());
             }
         }
     }
@@ -735,7 +758,7 @@ impl App {
             Ok(made) => made,
             // The thread ended without sending, which it has no path to do.
             Err(mpsc::TryRecvError::Disconnected) => {
-                Made::Failed("the container was not made, and nothing said why".to_owned())
+                Made::Failed(t("the container was not made, and nothing said why").to_owned())
             }
         };
         self.creating = Creating::Idle;
@@ -754,7 +777,7 @@ impl App {
                 // After `show`, which clears what the last container said.
                 self.said = Some(match provenance {
                     None => Said {
-                        text: "Made.".to_owned(),
+                        text: t("Made.").to_owned(),
                         wrong: false,
                     },
                     // A container that does not record where its payload came
@@ -763,8 +786,9 @@ impl App {
                     // than logged: the person is holding the container it is
                     // true of.
                     Some(why) => Said {
-                        text: format!(
-                            "Made. Where the payload came from could not be carried onto it: {why}"
+                        text: fill(
+                            t("Made. Where the payload came from could not be carried onto it: {reason}"),
+                            &[("reason", &why)],
                         ),
                         wrong: true,
                     },
@@ -772,7 +796,7 @@ impl App {
             }
             Made::Stopped => {
                 self.said = Some(Said {
-                    text: "Stopped. Nothing was left behind.".to_owned(),
+                    text: t("Stopped. Nothing was left behind.").to_owned(),
                     wrong: false,
                 });
             }
@@ -804,10 +828,14 @@ impl App {
                 // never written, and one was written and read back as
                 // something this application will not put in front of anybody.
                 // `save` splits the same pair into the same two sentences.
-                Ok(Created::Refused(v)) => Made::Failed(format!(
-                    "Not made. What was written did not read back conformant: {v}"
+                Ok(Created::Refused(v)) => Made::Failed(fill(
+                    t("Not made. What was written did not read back conformant: {verdict}"),
+                    &[("verdict", &v.to_string())],
                 )),
-                Err(e) => Made::Failed(format!("Not made: {e}")),
+                Err(e) => Made::Failed(fill(
+                    t("Not made: {reason}"),
+                    &[("reason", &e.to_string())],
+                )),
             };
             let _ = sender.send(made);
             // A pack that finishes while nothing is touching the window leaves
@@ -855,10 +883,9 @@ impl App {
                         Ok(()) => Extraction::Done(path),
                         // Extraction worked and the handover did not, which is a
                         // different sentence: the payload is on disk either way.
-                        Err(e) => Extraction::Failed(format!(
-                            "{} was extracted, and the system would not open it: {}",
-                            slpc::display_path(&path),
-                            why(&e)
+                        Err(e) => Extraction::Failed(fill(
+                            t("{file} was extracted, and the system would not open it: {reason}"),
+                            &[("file", &slpc::display_path(&path)), ("reason", &why(&e))],
                         )),
                     },
                 },
@@ -945,18 +972,18 @@ impl App {
             let mut dialog = rfd::FileDialog::new();
             dialog = match what {
                 For::Container => dialog
-                    .set_title("Open a container")
-                    .add_filter("slipcases", &["slpc"])
-                    .add_filter("All files", &["*"]),
+                    .set_title(t("Open a container"))
+                    .add_filter(t("slipcases"), &["slpc"])
+                    .add_filter(t("All files"), &["*"]),
                 // No filter on either of these: a payload is any file at all,
                 // which is what SPEC §2.3 leaves open.
-                For::ExtractTo => dialog.set_title("Extract the payload to"),
-                For::Replacement => dialog.set_title("Replace the payload with"),
-                For::NewPayload => dialog.set_title("Make a container out of"),
+                For::ExtractTo => dialog.set_title(t("Extract the payload to")),
+                For::Replacement => dialog.set_title(t("Replace the payload with")),
+                For::NewPayload => dialog.set_title(t("Make a container out of")),
                 For::NewContainer => dialog
-                    .set_title("Write the container to")
-                    .add_filter("slipcases", &["slpc"])
-                    .add_filter("All files", &["*"]),
+                    .set_title(t("Write the container to"))
+                    .add_filter(t("slipcases"), &["slpc"])
+                    .add_filter(t("All files"), &["*"]),
             };
             if let Some(folder) = start_in {
                 dialog = dialog.set_directory(folder);
@@ -1087,10 +1114,17 @@ fn chords(ui: &egui::Ui) -> (bool, bool) {
 /// with no bar, and a container can be made from here, so what a press comes
 /// to has to appear here or nowhere. Returns the button pressed, if one was.
 /// The two ways into a container, in the order they are offered.
-const WAYS_IN: [(&str, Pressed); 2] = [
-    ("Open a container…", Pressed::Open),
-    ("New container…", Pressed::New),
-];
+///
+/// A function rather than the constant this was until German arrived: a
+/// `const` cannot call a lookup, and these are the same two labels the toolbar
+/// draws, so they have to come from the same catalogue entry or the window
+/// says one thing in two places.
+fn ways_in() -> [(&'static str, Pressed); 2] {
+    [
+        (t("Open a container…"), Pressed::Open),
+        (t("New container…"), Pressed::New),
+    ]
+}
 
 /// What a row of buttons will measure, so that something can be centred on it.
 ///
@@ -1127,7 +1161,7 @@ fn nothing_open(
     ui.vertical_centered(|ui| {
         ui.add_space(72.0);
         ui.heading("Slipcase");
-        ui.label("Open a container to see what is in it, or make one out of a file.");
+        ui.label(t("Open a container to see what is in it, or make one out of a file."));
         ui.add_space(12.0);
         // The width is measured and handed over rather than left to the
         // layout, and looking at the window is what settled that.
@@ -1137,9 +1171,9 @@ fn nothing_open(
         // buttons hard against the left edge under a centred heading, which is
         // how this drew until somebody looked. Every assertion in this file
         // passed against it.
-        let row = egui::vec2(row_width(ui, &WAYS_IN), 0.0);
+        let row = egui::vec2(row_width(ui, &ways_in()), 0.0);
         ui.allocate_ui_with_layout(row, egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            for (label, what) in WAYS_IN {
+            for (label, what) in ways_in() {
                 if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
                     pressed = Some(what);
                 }
@@ -1184,7 +1218,7 @@ fn making(ui: &mut egui::Ui, creating: &Creating) -> bool {
             .desired_width(160.0)
             .show_percentage(),
     );
-    ui.button("Stop").clicked()
+    ui.button(t("Stop")).clicked()
 }
 
 /// The payload card: what it is, and what can be done with it.
@@ -1224,14 +1258,14 @@ fn card(
             // Silent where the platform would not answer, rather than saying it
             // does not know.
             if let Some(application) = &payload.opens_with {
-                ui.label(format!("Opens with {application}"));
+                ui.label(fill(t("Opens with {application}"), &[("application", application)]));
             }
             // After what the payload is, because both are true at once: the
             // platform would open a file of that name, and this build cannot
             // get the bytes out to give it one.
             if let Some(why) = &payload.unreadable {
                 ui.label(
-                    egui::RichText::new(format!("Cannot be opened here: {why}"))
+                    egui::RichText::new(fill(t("Cannot be opened here: {reason}"), &[("reason", why)]))
                         .color(error_colour(ui.visuals())),
                 );
             }
@@ -1246,9 +1280,9 @@ fn card(
             // walkthrough found nobody reads.
             if payload.executable {
                 ui.label(
-                    egui::RichText::new(
+                    egui::RichText::new(t(
                         "The payload is an executable file; the extracted copy will not be executable.",
-                    )
+                    ))
                     .color(warn_colour(ui.visuals())),
                 );
             }
@@ -1262,9 +1296,9 @@ fn card(
             // found nobody reads.
             if from_elsewhere {
                 ui.label(
-                    egui::RichText::new(
+                    egui::RichText::new(t(
                         "This container arrived from elsewhere, and the payload will carry that.",
-                    )
+                    ))
                     .color(warn_colour(ui.visuals())),
                 );
             }
@@ -1281,16 +1315,16 @@ fn card(
                         done as f32 / job.total as f32
                     };
                     ui.add(egui::ProgressBar::new(fraction).show_percentage());
-                    if ui.button("Cancel").clicked() {
+                    if ui.button(t("Cancel")).clicked() {
                         job.watch.cancel();
                     }
                 }
                 _ => {
                     ui.horizontal(|ui| {
                         for (label, ask) in [
-                            ("Open", Ask::Open),
-                            ("Extract…", Ask::Extract),
-                            ("Replace…", Ask::Replace),
+                            (t("Open"), Ask::Open),
+                            (t("Extract…"), Ask::Extract),
+                            (t("Replace…"), Ask::Replace),
                         ] {
                             // Off while a dialog is up, because there is one
                             // dialog at a time and a second press would be
@@ -1325,15 +1359,15 @@ fn card(
             if let Some(file) = replacing {
                 ui.horizontal(|ui| {
                     ui.label(
-                        egui::RichText::new(format!(
-                            "Will be replaced by {} when this is saved.",
-                            file.display()
+                        egui::RichText::new(fill(
+                            t("Will be replaced by {file} when this is saved."),
+                            &[("file", &file.display().to_string())],
                         ))
                         .italics(),
                     );
                     // Somewhere to go after choosing the wrong file. Without
                     // this the only way out is closing the container.
-                    if ui.button("Undo").clicked() {
+                    if ui.button(t("Undo")).clicked() {
                         asked = Some(Ask::Undo);
                     }
                 });
@@ -1346,9 +1380,9 @@ fn card(
                     // about the name inside the path, which is the payload's
                     // and is attacker-controlled. Both, so the line says where
                     // the file is and what it is called.
-                    ui.label(format!(
-                        "Extracted to {}",
-                        slpc::display_name(&slpc::display_path(path))
+                    ui.label(fill(
+                        t("Extracted to {file}"),
+                        &[("file", &slpc::display_name(&slpc::display_path(path)))],
                     ));
                 }
                 Extraction::Cancelled => {
@@ -1357,7 +1391,7 @@ fn card(
                     // so stopping destroyed a file somebody had chosen to
                     // replace and then deleted it. Nothing is opened at the
                     // destination until the payload is whole.
-                    ui.label("Stopped. Nothing was left behind.");
+                    ui.label(t("Stopped. Nothing was left behind."));
                 }
                 Extraction::Failed(why) => {
                     // The same red the bar gives a save that did not happen.
@@ -1399,7 +1433,12 @@ impl App {
             }
             let made = builder
                 .tempdir()
-                .map_err(|e| format!("no temporary directory to extract into: {e}"))?;
+                .map_err(|e| {
+                    fill(
+                        t("no temporary directory to extract into: {reason}"),
+                        &[("reason", &e.to_string())],
+                    )
+                })?;
             self.scratch = Some(made);
         }
         // Not `unwrap_or_default`: an empty path here would be a relative one,
@@ -1407,7 +1446,7 @@ impl App {
         // one thing DESIGN.md §5 says never to do.
         match &self.scratch {
             Some(dir) => Ok(dir.path().to_owned()),
-            None => Err("no temporary directory to extract into".to_owned()),
+            None => Err(t("no temporary directory to extract into").to_owned()),
         }
     }
 }
@@ -1945,11 +1984,11 @@ mod tests {
         for padding in [4.0_f32, 12.0] {
             eframe::egui::__run_test_ui(|ui| {
                 ui.spacing_mut().button_padding.x = padding;
-                let asked = super::row_width(ui, &super::WAYS_IN);
+                let asked = super::row_width(ui, &super::ways_in());
                 let drawn = ui
                     .horizontal(|ui| {
                         let mut union: Option<eframe::egui::Rect> = None;
-                        for (label, _) in super::WAYS_IN {
+                        for (label, _) in super::ways_in() {
                             let rect = ui.button(label).rect;
                             union = Some(union.map_or(rect, |a| a.union(rect)));
                         }

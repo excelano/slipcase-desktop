@@ -61,6 +61,11 @@ ships on Linux: making a container out of a file. It goes through the same
 library call the command-line `pack` verb does, and `CHECKLIST.md` says what the
 other two platforms owe it before the next store submission.
 
+The window draws in German where the desktop asks for German, added 2026-09-09,
+with the English falling back to wherever a sentence has none. `DESIGN.md` §10
+is the mechanism and the two places English still shows; `po/` holds the
+catalogues and the two commands that keep them current.
+
 Association ships on all three platforms, each built and walked through by hand
 on the platform itself. `packaging/` holds what each decided and `CHECKLIST.md`
 records what only a hand could test, along with the defects the tests and the

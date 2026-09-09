@@ -428,6 +428,63 @@ A container opened this way also records its folder for the Open dialog, the sam
 **Signing, encryption, and fixity.** SPEC §5 leaves all three out of this version of the format.
 
 ---
+## 10. The language a person reads
+
+The window draws in German where the desktop asks for German, and in English
+everywhere else. `src/potext.rs` is the whole mechanism and its own header
+carries the reasoning; this section is what the rest of the application is
+allowed to assume.
+
+**A message is looked up by its English text, never by a key.** `t("Save")`
+returns the German for *Save* or, where there is none, `Save` itself. So a call
+site reads as the sentence a person sees, an untranslated message is the
+original rather than a placeholder, and a catalogue that has fallen behind the
+source degrades to English one message at a time.
+
+**A translation that has gone stale is not shown.** When a message's English
+changes, `msgmerge` carries the old German onto the new text and marks it
+`#, fuzzy`; `potext` will not load a fuzzy entry, so the window falls back to
+English until a person has looked at it. This is the property the whole choice
+of format rests on, and it is why `.po` beat a key-value catalogue that has no
+way to say *this was true of a sentence we no longer show*.
+
+**`po/update-po.sh` is the only way the catalogues move.** It re-reads every
+string out of `src/`, merges each catalogue, and refuses one that will not
+compile. Run it after changing any sentence a person reads.
+
+**`po/pseudo.sh` writes a fourth thing to run by hand.** The pseudolocale
+translates nothing and changes everything, so a string that never went through
+`t`, and a layout built to the width of English, both show themselves on sight.
+It found a defect on its first run — a fuzzy header taking the plural rule down
+with it — which is recorded in `potext`'s own comment and in `git log`.
+
+### What is still in English, and why
+
+**A verdict.** `Outcome::Unreadable` translates *cannot be read* and leaves the
+reason after the colon as `slpc` wrote it, and a judged container states itself
+in [`Verdict`]'s own words. Restating either here would be a table mapping the
+library's sentences to German, which is the library worked around — the rule
+this document keeps in §1 and `CLAUDE.md` repeats. Closing it means translating
+`slpc`, and that is a decision about that repository rather than this one.
+
+**The metadata tree.** `flyleaf::render` draws inside this window and carries
+its own strings; a published crate cannot reach into this one's `src/`. The
+`potext` module is written to be lifted out as a crate for exactly this reason,
+and the tree's chrome — *Add*, *Remove this key*, *name taken* — follows when it
+is. The TOML type names it also shows — *table*, *array*, *inline table* — stay
+in English deliberately, the way SQL keywords do: they name what the format
+calls things rather than describing them.
+
+**The store listings and the two other platforms' package metadata.** A
+`.desktop` entry carries its own translations and this repository's does. The
+macOS bundle wants `CFBundleLocalizations` and the MSIX package a second
+language in `<Resources>` with `makepri /dq` agreeing, and each store's listing
+is a separate object in its own console that no manifest controls — §8's rule
+that the manifest language and the listing language are two settings applies
+again here. Those are edits inside the macOS and Windows arms, and `CLAUDE.md`
+keeps a session inside its own; `CHECKLIST.md` carries the item for each.
+
+---
 
 ## License
 

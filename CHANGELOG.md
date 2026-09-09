@@ -17,6 +17,25 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [Unreleased]
+
+### Added
+
+**Slipcase speaks German.** On a machine set to German the window comes up in
+German — the bar, the card, the messages that follow a save or an extraction,
+and the file dialogs' titles. Nothing has to be chosen: the application reads
+the language the desktop already knows, and falls back to English for every
+other one.
+
+Two things stay in English on purpose. A container's verdict is the sentence the
+`slpc` library writes, and the metadata tree comes from Tommy Flyleaf, which is
+a separate program sharing this one's editor; both follow in their own time.
+
+A translation is never shown once the English it was made for has changed. It
+falls back to English instead, until somebody has read the new sentence and
+written the German for it, so a message is either current or plainly in
+English and never quietly wrong.
+
 ## [0.1.6] - 2026-09-08
 
 ### Added

@@ -145,9 +145,39 @@ The rule means the outcome, so check the outcome:
     cargo build --release
     target=$(cargo metadata --format-version 1 --no-deps |
         sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
-    find "${target}/release/build" \
-        \( -name '*.o' -o -name '*.a' \) -print -quit    # must print nothing
-    ldd "${target}/release/slipcase-desktop"               # libc, libgcc, libm
+    ours=$(cargo tree --prefix none | awk '{print $1}' | sort -u)
+    find "${target}/release/build" \( -name '*.o' -o -name '*.a' \) |
+        while read -r artefact; do
+            package=$(basename "$(dirname "$(dirname "$artefact")")" |
+                sed 's/-[0-9a-f]\{16\}$//')
+            printf '%s\n' "$ours" | grep -qx "$package" && echo "$artefact"
+        done                                       # must print nothing
+    ldd "${target}/release/slipcase-desktop"       # libc, libgcc, libm
+
+**The replacement was wrong too, and for the reason the paragraph above it
+already names.** Measured 2026-09-09, while German was being built: the `find`
+as it stood printed `ring`'s `mem.o`, and `ring` is in no version of this
+project — `cargo tree -i ring` answers *did not match any packages*. The
+machine's `~/.cargo/config.toml` sets `[build] target-dir` to one directory the
+whole fleet shares, which is the configuration the note further down about
+`./target` warns of wearing its other face, so `release/build` holds every
+repository's build scripts and not this one's. The check was reading another
+project's artefacts and would have gone on saying *nothing compiled C* on the
+day something here did, because the answer it printed was never about here.
+
+So each artefact is now asked which package it belongs to, and only the ones
+this tree names are kept. Cargo's build directory is `<package>-<16 hex>`, and
+the count is anchored in the `sed` because a name stripped by a looser pattern
+is a package quietly excused from the rule.
+
+It was made to bite before it was written down, the way a test is: an empty
+`shim.o` planted under a `wayland-backend-<hash>/out` — that package and that
+feature being precisely what the margin above is about — and the check named it
+on the next run and went quiet when it was removed.
+
+`linux.yml` carries the same check and is left alone deliberately: a GitHub
+runner's target directory is its own, so nothing foreign can appear in it and
+the unscoped `find` is exact there. The two differ because the machines do.
 
 Nothing is compiled today and nothing beyond those three is linked, so what
 `DESIGN.md` §2 buys still holds. The margin is one feature: `wayland-backend`
@@ -281,6 +311,13 @@ build that only a hand can check, run it, and write down what it found.
     src/opens_with.rs   what the platform says would open a payload
     src/staging.rs      where a rewrite waits, and how it lands on the original
     src/system_theme.rs which way the desktop's light and dark setting points
+    src/potext.rs       the language the window draws in: a `.po` reader and the
+                        three platforms' ways of saying which language that is.
+                        Written to be lifted out as the `potext` crate, which is
+                        what the second consumer needs; DESIGN.md §10
+    po/                 the catalogues and the two commands that keep them
+                        current — update-po.sh after changing any sentence, and
+                        pseudo.sh for the run that finds the ones that got away
     src/opened_document.rs
                         the document macOS delivers by Apple Event rather than
                         argv — the crate's only unsafe, and the rule above says
