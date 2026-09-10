@@ -65,15 +65,16 @@
   </Dependencies>
 
   <Resources>
-    <!-- US English. It said `en-gb` until 2026-08-31 and neutral `en` until
-         2026-09-06; the reasoning below is 2026-08-31's and stands. The package
-         carries no localised resources, so this tag is not choosing between
-         translations: it is the language the Store reports the application in,
-         and the language Partner Center opens a store listing under. `en-gb`
-         is how the first submission came to be filed as English (United
-         Kingdom), which is narrower than the listing is — there is one
-         listing and it is meant for every English-speaking market. The copy in
-         `packaging/store-listing.md` goes on spelling *recognise* and
+    <!-- US English and German. It said `en-gb` until 2026-08-31 and neutral
+         `en` until 2026-09-06; the reasoning below is 2026-08-31's and stands.
+         The package carries no localised PRI resources - the German lives in
+         the application's own catalogues - so these tags are not choosing
+         between resource sets: they are the languages the Store reports the
+         application in, and the languages Partner Center opens a store listing
+         under. `en-gb` is how the first submission came to be filed as English
+         (United Kingdom), which is narrower than the listing is — there is one
+         English listing and it is meant for every English-speaking market. The
+         copy in `packaging/store-listing.md` goes on spelling *recognise* and
          *organisation*, which is a house style rather than a locale.
 
          `en-us` rather than the neutral `en` is a fleet decision taken
@@ -83,11 +84,18 @@
          Neutral `en` would have served as well; what was not worth keeping was
          three products spelling it three ways.
 
+         `de-de` joined it 2026-09-10, because the application now speaks
+         German. Expect a German listing to appear beside the English one and
+         to arrive empty: a declared language adds a listing rather than
+         renaming one, measured on duckling 2026-09-09, with
+         `~/fenster/LIMITS.md` the long-form record.
+
          This is the only place in the repository that names a language, and
-         `build-msix.ps1` spells the same tag a second time for `makepri`.
-         Changing one without the other is the silent failure that file's
-         comment describes. -->
+         `build-msix.ps1` spells the same pair a second time for `makepri`, as
+         `en-US_de-DE`. Changing one without the other is the silent failure
+         that file's comment describes. -->
     <Resource Language="en-us" />
+    <Resource Language="de-de" />
   </Resources>
 
   <Applications>

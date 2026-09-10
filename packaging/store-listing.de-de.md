@@ -1,31 +1,16 @@
 # Store listing text, German
 
-The German half of `store-listing.md`, one file per language so that a diff
-shows one language and a translator opens one file. The headings are that
-file's headings and `fenster`'s parser reads both the same way.
+The German half of `store-listing.md`, one file per language. The headings are
+that file's headings and stay in English, because `fenster`'s parser reads both
+files the same way; only what sits under them is German. Only the fields a store
+shows a reader are here.
 
-**Three fields are written in German rather than translated, and that is not a
-liberty.** German runs 15 to 35 per cent longer than the same English, and the
-English short description is 480 of 500, the subtitle 27 of 30, and the
-description 3,687 of 4,000. A faithful translation of any of them overflows a
-limit the store enforces. So each says what the English says and is composed to
-fit, which is why `fenster/check-listing.ps1` is run on this file rather than
-trusted.
+**Terminology is the application's own, out of `po/de.po`** — a listing that
+calls a thing something the window does not teaches the customer a word the
+product has no use for. Where the catalogue has a term, it wins.
 
-**The terminology is the application's own, out of `po/de.po`**, because a
-listing that calls the thing something the window does not is worse than a
-clumsy sentence: **Container**, never *Behälter*; **Nutzlast** for the payload;
-**Entpacken**, **Ersetzen**, **Speichern**, **Öffnen** for the four verbs;
-**Slipcase-Dateien** for what the file dialog filters on. `Slipcase` itself is
-a product name and is never translated.
-
-**What the German says less of, deliberately.** The description is the field\nwith no room: 3,687 English characters become 3,981 German ones against a limit\nof 4,000, so two clauses the English carries are not in it - that a rejected\npayload is refused when you choose it *rather than after you have said where\nthe container goes*, and the longer phrasing of the two verdicts that are\nneither pass nor failure. Both survive in the feature bullets and the release\nnotes. Anything added to the English description from here needs this file\nre-measured, not re-translated.
-
-**The macOS-only paragraph is cut from the Microsoft Store listing**, the same
-as in English and for the same reason: an executable bit is not what makes a
-file executable on Windows, so on that store the sentence describes something
-nobody will see.
-
+**German runs longer than English.** Run `fenster/check-listing.ps1` on this file
+after any edit to either language rather than trusting a translation to fit.
 ## Subtitle (Mac App Store, 30)
 
 Metadaten, die mitreisen
@@ -104,7 +89,7 @@ Slipcase spricht Deutsch. Auf einem deutsch eingestellten Rechner erscheint das 
 
 Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
 
-Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Felder sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
+Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Listen sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
 
 Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
 
@@ -112,7 +97,7 @@ Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das For
 
 Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
 
-Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Felder sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
+Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Listen sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
 
 Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
 
@@ -125,6 +110,3 @@ Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das For
 **Microsoft Store** (seven terms):
 
     Metadaten, Container, slpc, TOML, Archiv, Dokument, Dateibetrachter
-
-Author: David M. Anderson
-Built with AI assistance (Claude, Anthropic)
