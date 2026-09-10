@@ -98,6 +98,16 @@ Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothe
 0.1.2 aus, deshalb steht hier alles seither; 0.1.3 und 0.1.4 fehlen, weil das
 eine eine Mac-Einreichung und das andere Linux-Paketierung betraf.
 
+### 0.1.7
+
+Slipcase spricht Deutsch. Auf einem deutsch eingestellten Rechner erscheint das Fenster auf Deutsch: die Leiste, die Karte, die Meldungen nach dem Speichern oder Entpacken, die Dateidialoge und der Metadatenbaum. Es gibt nichts auszuwählen — Slipcase übernimmt die Sprache, die das System bereits eingestellt hat, und fällt für jede andere auf Englisch zurück. Das Urteil über einen Container bleibt englisch, denn dieser Satz stammt aus der Formatbibliothek selbst.
+
+Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
+
+Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Felder sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
+
+Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
+
 ### 0.1.6
 
 Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.

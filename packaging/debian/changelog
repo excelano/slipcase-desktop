@@ -1,3 +1,14 @@
+slipcase-desktop (0.1.7) unstable; urgency=medium
+
+  * German. The window comes up in German on a machine set to German: the
+    bar, the card, the messages after a save or an extraction, the file
+    dialogs and the metadata tree. A container's verdict stays in English,
+    because that sentence is slpc's own.
+  * A container named for its payload, report.pdf.slpc, is offered at the top
+    of Open With rather than under Other applications.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 09 Sep 2026 21:11:30 -0500
+
 slipcase-desktop (0.1.6) unstable; urgency=medium
 
   * New container...: make a container out of a file, then fill in its

@@ -17,24 +17,34 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
-## [Unreleased]
+## [0.1.7] - 2026-09-09
 
 ### Added
 
 **Slipcase speaks German.** On a machine set to German the window comes up in
 German — the bar, the card, the messages that follow a save or an extraction,
-and the file dialogs' titles. Nothing has to be chosen: the application reads
-the language the desktop already knows, and falls back to English for every
-other one.
+the file dialogs' titles, and the metadata tree along with them. Nothing has to
+be chosen: the application reads the language the desktop already knows, and
+falls back to English for every other one.
 
-Two things stay in English on purpose. A container's verdict is the sentence the
-`slpc` library writes, and the metadata tree comes from Tommy Flyleaf, which is
-a separate program sharing this one's editor; both follow in their own time.
+One thing stays in English on purpose. A container's verdict is the sentence the
+`slpc` library writes, and putting a German of Slipcase's own in front of it
+would be a table of that library's wording rather than a translation of it. It
+follows when the library does.
 
 A translation is never shown once the English it was made for has changed. It
 falls back to English instead, until somebody has read the new sentence and
 written the German for it, so a message is either current or plainly in
 English and never quietly wrong.
+
+### Fixed
+
+**On Linux, a container named for what is inside it is offered here first.**
+`slipcase-common` declares a type for each payload family — a container holding
+a PDF, a document, an image, audio, video — and Slipcase now lists all five
+beside the general one. Before, `report.pdf.slpc` opened here from a
+double-click but sat under *Other applications* in the Open With menu, because
+that list is matched on the exact type rather than on what it inherits from.
 
 ## [0.1.6] - 2026-09-08
 
