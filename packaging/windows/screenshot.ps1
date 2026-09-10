@@ -37,7 +37,11 @@ param(
     [int] $Height = 768,
     # Where to put the window. Anywhere it fits entirely on screen.
     [int] $X = 200,
-    [int] $Y = 100
+    [int] $Y = 100,
+    # The packaged application to open the container with, as
+    # `<PackageFamilyName>!<ApplicationId>`. Without it the shell's association
+    # decides, which is only right on a machine where nothing else claims .slpc.
+    [string] $Aumid
 )
 
 $ErrorActionPreference = 'Stop'
@@ -59,14 +63,38 @@ public struct RECT { public int Left, Top, Right, Bottom; }
 # installed - the build a person actually gets. Anything already running is
 # stopped first, so the window being photographed is the one holding this
 # container and not a previous one.
-Get-Process slipcase-desktop -ErrorAction SilentlyContinue | Stop-Process -Force
+# slipcase-open is stopped too: it also handles .slpc, and on this machine it
+# owns the association - so the association route opens the wrong application of
+# the two, and leaves its window on screen to be photographed by mistake.
+Get-Process slipcase-desktop, slipcase-open -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 1
-Start-Process $Container
-Start-Sleep -Seconds 6
+
+if ($Aumid) {
+    # **Named rather than associated, because a sibling product owns .slpc.**
+    # `Start-Process $Container` asks the shell what opens a container, and the
+    # answer here is Slipcase Open - which is a different product with a
+    # different window. Measured 2026-09-10: `assoc .slpc` reports
+    # slipcase-open, and the association route photographed nothing because this
+    # script waits for a `slipcase-desktop` process that never started.
+    #
+    # The package's AUMID names the application directly. The executable's own
+    # path cannot be used instead: it lives under `C:\Program Files\WindowsApps`,
+    # which refuses Start-Process with *Access is denied* even to its owner.
+    Start-Process "shell:appsFolder\$Aumid" -ArgumentList "`"$Container`""
+} else {
+    Start-Process $Container
+}
+Start-Sleep -Seconds 8
 
 $app = Get-Process slipcase-desktop -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $app -or $app.MainWindowHandle -eq [IntPtr]::Zero) {
-    Refuse "nothing opened $Container - is the association installed?"
+    Refuse @"
+nothing opened $Container.
+Without -Aumid this opens whatever the shell associates with .slpc, and on a
+machine carrying Slipcase Open that is the other product. Pass the packaged
+application's own identifier:
+  -Aumid (Get-AppxPackage Excelano.Slipcase).PackageFamilyName + '!Slipcase'
+"@
 }
 $handle = $app.MainWindowHandle
 
