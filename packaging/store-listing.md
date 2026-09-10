@@ -189,6 +189,39 @@ Slipcase makes containers now. *New container...* asks which file to put in and 
 The metadata editor is the general one shared with Tommy Flyleaf. Every value has a kind menu offering the conversions it allows, arrays are editable, comments can be edited, added and removed, and undo and redo run through all of it. A save still keeps the comments, key order, whitespace and quoting of everything you did not touch.
 
 The buttons and the file dialog say "Open a container", now that the format is spelled Slipcase.
+
+## URLs
+
+Both forms ask for the same three, and both lanes take them from here:
+
+| Field | URL |
+| --- | --- |
+| Privacy policy | https://excelano.com/legal/#slipcase |
+| Support | https://excelano.com/slipcase/#support |
+| Marketing / website | https://excelano.com/slipcase/ |
+
+The page at `excelano.com/slipcase/` is the support and marketing URL both. Its
+*Support* heading is the anchor, and the anchor was read back off the served
+page on 2026-09-09 rather than taken from this file — Duckling's support URL
+was a 404 on the day its form was filled, which is the failure this line
+exists to prevent. The legal page's Slipcase section is
+`packaging/privacy-entry.html` as pasted, and it is the answer to both stores'
+privacy question.
+
+## App Review notes
+
+Slipcase Desktop reads and writes Slipcase containers. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
+
+A container to open is at https://excelano.com/slipcase/quarterly-report.pdf.slpc — a one-page PDF inside a container with metadata rich enough to show every renderer the editor has. Download it and open it, or launch the application and use Open a container. The subject is invented: no real person, organisation, matter or date appears in it. It is built by `packaging/demo-container.sh` in the repository, which pins its archive timestamps so that any machine rebuilds the same bytes.
+
+To exercise the rest: the metadata pane on the right edits every value by its kind, and a save keeps the comments, key order, whitespace and quoting of everything you did not touch. New container... asks which file to put in and where the container should go, writes it, and opens it, so any file you have to hand is enough to make a second container from nothing.
+
+The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume and swapped in with one call, so it stays inside that grant. There is no network entitlement and the application makes no network request.
+
+The application declares the Slipcase container type and claims it at rank Owner. This is the format's own application and the declaration below it in the bundle is the exported one, so Owner is the true rank; an application that merely opened somebody else's format would rank Alternate.
+
+Slipcase implements no cryptography and makes no network request. It reads containers whose members may be encrypted and refuses those, which is a different claim from encrypting anything itself. The full privacy statement is at https://excelano.com/legal/#slipcase and the complete source is at https://github.com/excelano/slipcase-desktop.
+
 ## Keywords
 
 **Mac App Store** (100 characters, comma-separated, no spaces after commas):
