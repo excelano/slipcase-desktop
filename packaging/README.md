@@ -42,6 +42,16 @@ the icon has to be named as the generic icon as well as the icon. That finding
 was made here and is recorded in `slipcase-common`'s README, which measured it
 again from the other direction.
 
+**The desktop entry names six types, not one.** `slipcase-common` declares a
+payload family per icon — `application/x.slipcase-pdf+zip` against `*.pdf.slpc`,
+and four more — so that a container named for its payload can be drawn with a
+mark for it. Each is a `sub-class-of application/x.slipcase+zip`, and that
+inheritance carries the default application but not the *recommended* list,
+which is matched on the exact type. A family missing from `MimeType=` therefore
+still opens on a double-click and still drops out of the top of Open With. The
+list is the one part of the arrangement that could not stay in `slipcase-common`,
+and adding a family there means adding it here.
+
 `install.sh` now says so when the machine has no declaration of the type, asked
 of `share/mime/types` rather than of the filenames in `packages/`, since each
 product names its declaration differently.
