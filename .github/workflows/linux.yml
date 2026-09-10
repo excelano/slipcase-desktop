@@ -38,9 +38,37 @@ name: Linux
 on:
   push:
   pull_request:
+  # Fires when a person publishes the release, which on this loop is what
+  # happens: nothing else creates it. A release created by a workflow using the
+  # default GITHUB_TOKEN fires no event at all, and a release event resolves
+  # the workflow file at the tag rather than on the default branch — so this
+  # starts nothing for a tag cut before it existed, and the dispatch below is
+  # what covers that.
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build packages for (e.g. v0.1.7)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  # Keyed by the tag when this is releasing and by the ref when it is checking,
+  # so a push cannot cancel a run that is building a release's packages. They
+  # shared a group in the repositories cloned from this one, and a push did
+  # exactly that on 2026-09-09.
+  group: linux-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 jobs:
-  linux:
+  # The suite, the corpus and the rules, on one architecture. Nothing in them
+  # is platform-specific below the level Rust already covers, and running the
+  # conformance corpus twice would buy nothing.
+  suite:
     runs-on: ubuntu-latest
 
     steps:
@@ -112,16 +140,56 @@ jobs:
           objects=$(find "${target}" -path '*/build/*' \( -name '*.o' -o -name '*.a' \) -print)
           [ -z "$objects" ] || { echo "a build script produced object files:"; echo "$objects"; exit 1; }
 
+          # The loader is named for the architecture and lives in a different
+          # directory on each: /lib64/ld-linux-x86-64.so.2 on amd64,
+          # /lib/ld-linux-aarch64.so.1 on arm64. This allowlist had the amd64
+          # path alone and was copied into segler, duckling and flyleaf, where
+          # the first arm64 run reported the loader itself as an unexpected
+          # library on a binary that links nothing but libc, libgcc and libm.
           echo "linked at load time:"
           ldd "${target}/debug/slipcase-desktop" | sed 's/^/  /'
           strange=$(ldd "${target}/debug/slipcase-desktop" |
-              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib64/ld-linux)' || true)
+              awk '{print $1}' | grep -vE '^(linux-vdso|libgcc_s|libm|libc|/lib(64)?/ld-linux)' || true)
           [ -z "$strange" ] || { echo "unexpected shared libraries:"; echo "$strange"; exit 1; }
+
+  # Each architecture on a runner of that architecture rather than
+  # cross-compiled, which is what lets the checks below mean something about
+  # the package they actually produced. On a release this is also where the
+  # packages come from: they were built by hand on whichever machine cut the
+  # release, which is an amd64 one, so no arm64 package has ever existed.
+  package:
+    needs: suite
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
+
+      - name: What is installed
+        run: rustc -V && cargo -V && dpkg-deb --version | head -1
 
       - name: Build the package
         run: |
           cargo build --release
           ./packaging/debian/build-deb.sh
+
+      # Cheap, and the one thing that goes wrong silently once a package is
+      # built somewhere other than where it was compiled: a package labelled
+      # arm64 carrying an x86-64 executable installs perfectly and then does
+      # not run.
+      - name: The package is the architecture it claims
+        run: |
+          deb=$(ls dist/*.deb)
+          test "$(dpkg-deb -f "$deb" Architecture)" = "${{ matrix.arch }}"
 
       # `CHECKLIST.md` items 9 to 11, which need no eyes. Everything `root/root`
       # and nothing carrying a mode a package should not ship; `md5sums`
@@ -243,3 +311,69 @@ jobs:
           # stops being `application/zip` the format has grown a signature and
           # `SPEC.md` §4 has changed.
           echo "what magic alone says: $(file --mime-type -b "${RUNNER_TEMP}/sample.slpc")"
+
+      # Last, because it installs the package system-wide and the step above
+      # asks the platform which handler is registered — an installed copy in
+      # /usr/bin would change the question it is answering.
+      #
+      # This ships one executable and it is the application: it opens a window
+      # from `main`, so there is nothing here to run to completion. What can be
+      # asked without a display is whether the loader takes it on a machine of
+      # this architecture, and whether everything it links resolves once the
+      # package's dependencies are installed. Those are the two ways a
+      # cross-built or under-declared arm64 package fails, and they are told
+      # apart from a missing window by which words come back.
+      #
+      # It does not reach a window. `CHECKLIST.md` is what does that, and so is
+      # the library opened by name at run time that `ldd` cannot see and this
+      # cannot either.
+      - name: It installs, and the executable loads
+        run: |
+          set -eu
+          deb=$(ls dist/*.deb)
+          sudo apt-get install -y "./${deb#./}"
+
+          command -v slipcase-desktop
+          file -L "$(command -v slipcase-desktop)"
+
+          missing=$(ldd "$(command -v slipcase-desktop)" | grep 'not found' || true)
+          [ -z "$missing" ] || { echo "the package installed but does not resolve:"; echo "$missing"; exit 1; }
+
+          out=$(timeout 20 slipcase-desktop 2>&1 || true)
+          printf '%s\n' "$out" | sed 's/^/  /'
+          case "$out" in
+              *'error while loading shared libraries'*)
+                  echo "the loader refused the executable" >&2; exit 1 ;;
+              *'cannot execute binary file'*|*'Exec format error'*)
+                  echo "the executable is not this machine's architecture" >&2; exit 1 ;;
+          esac
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb-${{ matrix.arch }}
+          path: dist/*.deb
+
+  # Only on a release. A push builds the packages to check them and then throws
+  # them away, which is the point of building them on a push.
+  attach:
+    needs: package
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: packages
+          merge-multiple: true
+
+      - name: Attach the packages to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          ls -l packages
+          gh release upload \
+            "${{ github.event.release.tag_name || inputs.tag }}" \
+            packages/*.deb --clobber
