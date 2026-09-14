@@ -1,3 +1,14 @@
+slipcase-desktop (0.1.8) unstable; urgency=medium
+
+  * Both store packages say Slipcase is offered in German. The catalogue has
+    been complete since 0.1.7 and neither package said so, so the Windows
+    listing could not be filed under German and macOS offered nothing in its
+    per-app language picker. No change for a Debian user.
+  * The macOS property list parses. It carried a double hyphen inside an XML
+    comment, which XML forbids.
+
+ -- David M. Anderson <david.anderson@excelano.com>  Mon, 14 Sep 2026 18:16:22 -0500
+
 slipcase-desktop (0.1.7) unstable; urgency=medium
 
   * German. The window comes up in German on a machine set to German: the

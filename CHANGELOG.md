@@ -17,6 +17,27 @@ does for an existing container ships.
 `dpkg` will not read this one. `build-deb.sh` refuses to build a package whose
 version that file does not name, which is what keeps the two from parting.
 
+## [0.1.8] - 2026-09-14
+
+Packaging only. Nothing in the window has changed since 0.1.7.
+
+### Fixed
+
+**Both packages say Slipcase is offered in German.** The catalogue has been
+complete since 0.1.7 and both store packages went on describing the
+application as English, so the German a German machine already gets was
+advertised nowhere. On Windows the manifest is what the Store reads, and the
+listing can be filed under German only once `de-de` is declared there. On
+macOS `CFBundleLocalizations` is read twice: App Store Connect lists English
+alone without it, and macOS builds the per-app language picker in System
+Settings from it, so there was no way to set this application to German on an
+otherwise English machine.
+
+**The macOS property list parses.** It carried a double hyphen inside an XML
+comment, which XML forbids, so the file had not parsed since that comment was
+written. The appx manifest beside it had the same defect and was fixed in
+0.1.7; the plist was missed.
+
 ## [0.1.7] - 2026-09-09
 
 ### Added

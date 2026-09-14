@@ -83,7 +83,7 @@ Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothe
 0.1.2 aus, deshalb steht hier alles seither; 0.1.3 und 0.1.4 fehlen, weil das
 eine eine Mac-Einreichung und das andere Linux-Paketierung betraf.
 
-### 0.1.7
+### 0.1.8
 
 Slipcase spricht Deutsch. Auf einem deutsch eingestellten Rechner erscheint das Fenster auf Deutsch: die Leiste, die Karte, die Meldungen nach dem Speichern oder Entpacken, die Dateidialoge und der Metadatenbaum. Es gibt nichts auszuwählen — Slipcase übernimmt die Sprache, die das System bereits eingestellt hat, und fällt für jede andere auf Englisch zurück. Das Urteil über einen Container bleibt englisch, denn dieser Satz stammt aus der Formatbibliothek selbst.
 

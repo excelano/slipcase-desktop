@@ -182,7 +182,7 @@ customer upgrading from it meets is everything since, and 0.1.3 and 0.1.4 are
 not in it because one was a Mac submission fix and the other was Linux
 packaging - neither changed anything a person on this store can see.
 
-### 0.1.7
+### 0.1.8
 
 Slipcase speaks German. On a machine set to German the window comes up in German: the bar, the card, the messages after a save or an extraction, the file dialogs and the metadata tree. There is nothing to choose — it reads the language the desktop is already set to, and falls back to English for every other one. A container's verdict stays in English, because that sentence is the format library's own.
 
