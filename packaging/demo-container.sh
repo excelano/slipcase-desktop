@@ -18,8 +18,14 @@
 #
 #   & "$env:ProgramFiles\Git\bin\bash.exe" packaging/demo-container.sh
 #
-# It needs `zip`, which is on macOS and every Linux desktop and comes with Git
-# for Windows. Nothing here is generated randomly and the archive's timestamps
+# It needs Info-ZIP's `zip`, which is on macOS and every Linux desktop and is
+# *not* part of Git for Windows: that ships `unzip` and no `zip` at all, which
+# is how a hosted runner reached this script and stopped at `no zip on PATH`.
+# On Windows it comes from `choco install zip`. `7z` is on the runner and is not
+# a substitute - its archives differ from Info-ZIP's in the bytes, and the same
+# bytes everywhere is the property below.
+#
+# Nothing here is generated randomly and the archive's timestamps
 # are pinned, so two platforms building it get the same bytes — checked by
 # building under two timezones and comparing, not asserted. That matters now
 # that the file is downloadable from excelano.com and a store submission tells a

@@ -168,6 +168,14 @@ jobs:
       # timestamps are pinned so any machine rebuilds the same bytes - which is
       # what makes the pictures and the container a reviewer downloads the same
       # container. The runner has Git bash.
+      # Info-ZIP's zip, which Git for Windows does not ship. `7z` is on the
+      # runner and is not a substitute: its archives differ from Info-ZIP's in
+      # the bytes, and the same bytes on every machine is what makes the
+      # container in the pictures the container a reviewer downloads.
+      - name: Install zip
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        run: choco install zip --no-progress -y
+
       - name: Build the container the pictures are of
         if: inputs.screenshots && inputs.screenshots != 'no'
         shell: bash
