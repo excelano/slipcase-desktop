@@ -1,35 +1,9 @@
-# Run the suite and the corpus on Windows, because eight tests here run nowhere
-# else.
-#
-# `linux.yml` cross-checks the Windows target with `cargo check --all-targets`,
-# and compiling is not running. Behind `#[cfg(target_os = "windows")]` sit five
-# tests in `src/opens_with.rs` that ask the registry what would open a payload,
-# two in `src/lib.rs` that write a payload named for a device, and one in
-# `src/main.rs` that marks a container with a `Zone.Identifier` stream and reads
-# the card's provenance line back. Every one was run by hand on a Windows
-# machine on 2026-08-26 and nothing has re-run any of them since.
-#
-# That gap is not hypothetical, and this file was written on the day it bit.
-# `src/lib.rs`'s extraction path changed when `destination` became
-# `slpc::payload_path`, an edit made on Linux; it compiled for this target and
-# an assertion in `extraction_tests` was left comparing a canonicalised path
-# against a `tempfile` one. On a runner whose `TEMP` is `C:\Users\RUNNER~1\…`
-# those are two spellings of the same file. The identical mistake had been made
-# and caught in `excelano/slpc-rust` a few hours earlier, by the Windows job
-# added there for this same reason.
-#
-# What this reaches and what it does not, stated because a green tick invites
-# more faith than it has earned.
-#
-# The `opens_with` tests are a real platform call: they read `HKCR` through
-# `windows-registry` and get whatever this runner has associated, which is not
-# what a person's machine has. What they check is that the arm answers rather
-# than what it answers, and a runner with almost nothing installed is a fair
-# test of the silent case that `DESIGN.md` §3 requires.
-#
-# Nothing here reaches the window, the installer scripts, an MSIX package, a
-# file association, or the icon at any size. `CHECKLIST.md` holds those and a
-# green run here does not stand in for one.
+# The Windows checks a machine can run: that the tree builds and passes here,
+# that the shipped binary imports nothing Windows does not have, that the
+# install scripts go on and come off cleanly, that the committed icons still
+# match the drawings they were generated from, the conformance corpus, and, on
+# a release, the unsigned Store package. Out of reach: the window, the
+# certification kit, and the icon as a person sees it at any size.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

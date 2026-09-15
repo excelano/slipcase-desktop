@@ -160,7 +160,7 @@ unsigned one, and makes every sandbox measurement taken against it meaningless.
 **Signing is not optional here, and not only for distribution.** The App
 Sandbox is inert until the entitlement is inside a signature, so an unsigned
 bundle carrying that file is simply not sandboxed. Every sandbox measurement in
-`CHECKLIST.md` was made against a signed bundle for that reason.
+Every measurement here was made against a signed bundle for that reason.
 
 **Which certificate does what.** An **Apple Development** identity, which this
 machine already holds, signs a bundle that runs and sandboxes here — enough for everything measured so far, and it needs nothing from the

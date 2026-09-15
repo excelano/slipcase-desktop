@@ -52,7 +52,7 @@ platform as having arrived from elsewhere — `com.apple.quarantine`, a
 extracted from it and keeps it on the container when you edit and save. Without
 that, an application like this one is a tool for laundering the mark, which is
 the property that made container attachments a favoured delivery mechanism. Both
-halves were defects here once and both are recorded in `CHECKLIST.md` and in the
+halves were defects here once and both are recorded in the
 `git log`.
 
 ## What a conformance verdict does not mean

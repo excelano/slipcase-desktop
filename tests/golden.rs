@@ -4,7 +4,7 @@
 //! that makes is "slipcase-desktop behaves as before". Nothing in the suite
 //! could fail on that claim: the unit tests check behaviours one at a time, the
 //! corpus runner checks only whether a tree appears, and the rest is
-//! `CHECKLIST.md`, run by hand. These two tests turn the claim into a file
+//! run by hand at a keyboard. These two tests turn the claim into a file
 //! that diffs.
 //!
 //! Every fixture in `tests/golden/fixtures/` is rendered headlessly at four

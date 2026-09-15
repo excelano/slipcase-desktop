@@ -1,329 +1,53 @@
 # CLAUDE.md
 
-Guidance for Claude Code working in `slipcase-desktop`. Read it before touching
-anything; it is short because `DESIGN.md` is where the reasoning lives.
-
----
-
-## Three platforms, one repository
-
-Written and first built on Linux, then Windows on Windows and macOS on a Mac.
-All three ship, and no platform is waiting on another.
-
-**If you are here for a release, run `ship slipcase/slipcase-desktop`.** There
-is no release document: `ship` is the procedure, and it reports where the
-current release stands before it changes anything.
-
-**Stay inside your own platform's arm.** Its `#[cfg]` arm of
-`src/opens_with.rs`, its own directory under `packaging/`, and its own file
-under `.github/workflows/`. One workflow file per platform rather than a shared
-`ci.yml`, so that a session can change its own without touching anybody else's.
-What each platform decided is in its own directory:
-
-- **Linux** — `packaging/linux` and `packaging/debian`.
-- **Windows** — `packaging/windows/README.md`.
-- **macOS** — `packaging/macos/README.md`.
-
-**Reviewing another platform's arm is worth doing, and it is how the worst
-defects here were found.** Reading code you cannot run found the payload name
-rendered unescaped in the tree; going looking for the Windows dependency defect's
-counterpart found the Linux one. Neither was reachable by any test. What you
-cannot settle from here, raise with David rather than guessing — this repository
-kept three handover documents for that once, and the cure was noisier than the
-disease. `git log` is where their content went.
-
----
-
-## What this is
-
-A desktop application that opens a `.slpc` container, shows its metadata as an
-editable tree, hands the payload to whatever the operating system has
-registered for it, and makes a container out of a file a person chooses.
-Presented to a person as **Slipcase**; the crate and the binary are
-`slipcase-desktop`.
-
-**It parses no containers.** Every read, every write, and every verdict comes
-from `slpc`, the library in `excelano/slpc-rust`. Where it needs behaviour
-the library lacks, the behaviour goes into the library — twice so far, filed as
-issues and both fixed upstream rather than worked around here.
-
-**The metadata editor lives in `excelano/flyleaf`** (working copy
-`~/flyleaf`), so that Tommy Flyleaf and this application share one editor.
-The tree is `flyleaf::render`, called once from `src/main.rs` with
-`RequiredKeys`, this application's answer to which keys are protected; the
-edit operations come from `flyleaf-core`, re-exported from `src/lib.rs` under
-their old names. That repository's `DESIGN.md` is the authority on the widget,
-and `tests/golden/` here is what the extraction was measured against and what
-still holds it: what the tree draws and what an edit saves, byte for byte. Where the editor
-needs behaviour the widget lacks, the behaviour goes there, the same rule as
-for `slpc`.
-
-**Three documents, three authorities.** `SPEC.md` in `excelano/slipcase` is the
-authority on the format and this repository neither restates nor amends it.
-`DESIGN.md` here is the authority on this application. `git log` is the record
-of why everything is the way it is, and it is written to be read.
-
----
+A desktop application that opens a `.slpc` container, shows its metadata as an editable
+tree, hands the payload to whatever the operating system has registered for it, and makes
+a container out of a file a person chooses. Presented as **Slipcase**; the crate and the
+binary are `slipcase-desktop`. It parses no containers: every read, write and verdict comes
+from `slpc` in `excelano/slpc-rust`, and behaviour that library lacks goes into that
+library. The metadata tree is `flyleaf::render` from `excelano/flyleaf`, called once from
+`src/main.rs` with `RequiredKeys`; behaviour the widget lacks goes there. `SPEC.md` in
+`excelano/slipcase` is the authority on the format and this repository neither restates nor
+amends it. `DESIGN.md` here is the authority on the application.
 
 ## Commands
 
-    cargo build                   # debug
     cargo build --release
-    cargo test                    # the count differs per platform: each
-                                  # platform's arm carries its own tests
-    cargo clippy --all-targets    # must be silent
-    cargo check --target x86_64-pc-windows-msvc   # cross-check, from Linux or macOS
-
-    cargo run --example opens-with -- report.pdf notes.txt data.bin
-    ./packaging/linux/install.sh          # Linux desktop integration
-    ./packaging/debian/build-deb.sh       # the .deb, after a release build
-    ./packaging/macos/build-app.sh        # Slipcase.app, after a release build
-
-    powershell -ExecutionPolicy Bypass -File packaging\windows\install.ps1
-    powershell -ExecutionPolicy Bypass -File packaging\windows\uninstall.ps1
-    cd packaging/windows/make-ico && cargo run --release   # rebuild the .ico
-
-**The conformance corpus is a command and never a test.** It needs a checkout of
-`excelano/slipcase` with its cases generated, which `cargo test` does not imply,
-and a test that has to choose between skipping quietly and failing on a machine
-that was never going to have those things is worse than a command run on
-purpose. It is the harness that matters — every fixture across verdict, tree,
-card, extraction, rewrite, rename, replacement, packing, and pre-flight:
-
-    cargo run --example corpus -- /path/to/slipcase/conformance
-
-All of them must agree. Run it before and after any change to `src/lib.rs`.
-
-How many there are is `manifest.toml`'s to say and not this file's. It was 77, then 83, then 86,
-then 87 — all on 2026-08-27, and two of those went stale inside the same day in
-this paragraph, which is the argument making itself. The runner prints the count
-and fails on any disagreement, so ask it rather than this file.
-
-One thing that has caught people out: the target directory
-may not be `./target`: `[build] target-dir` in a Cargo configuration file moves
-it and no environment variable then says so, which is why the packaging scripts
-ask `cargo metadata` rather than guessing.
-
----
-
-## Rules with no exceptions
-
-**Unsafe code has exactly one home, and it is named.** A dependency containing
-unsafe on our behalf is fine and always was — `rfd`, `opener`, and the `objc2`
-crates all do. What this rule is about is unsafe in this crate's own source.
-
-`src/lib.rs`, where containers are read and written, is `#![forbid(unsafe_code)]`
-and that does not move. `src/main.rs` is `#![deny(unsafe_code)]`, and the
-difference between the two words is the whole exception: `forbid` cannot be
-lifted beneath it and `deny` can. Exactly one module lifts it,
-`src/opened_document.rs`, carrying `#[allow(unsafe_code)]` on its declaration.
-
-It exists because macOS is the only platform of the three that does not deliver
-a double-clicked container as `argv[1]`, and receiving one needs an Objective-C
-method. This was documented as impossible before it was done, and both the
-attempt and the correction are in `git log`. Adding a second such module is a
-decision to take with David, not one to take because there is precedent.
-
-The rest of this section still has no exceptions.
-
-**Nothing compiles C.** A crate that links a system library is fine; one that
-builds C is not. That is this repository's rule and the fleet's preference:
-since 2026-09-04 a project may take C when its product depends on it, and
-`~/notes/pure_rust_preference.md` holds that stance and its costs, so neither
-is restated here.
-
-**The check for it was wrong, and had been reporting a positive nobody read.**
-This said `cc`, `cmake`, `pkg-config` and `bindgen` stay out of the
-build-dependency tree, and named `cargo tree -i cc` as the way to know. Measured
-2026-08-27: that command has a non-empty answer and has had for as long as the
-window has existed — `cc` arrives under `wayland-backend`, `pkg-config` under
-`wayland-sys`, both through `eframe` and `rfd`, and both are compiled as
-ordinary Rust crates. A check whose red is the normal state announces nothing.
-
-The rule means the outcome, so check the outcome:
-
-    cargo build --release
-    target=$(cargo metadata --format-version 1 --no-deps |
-        sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')
-    ours=$(cargo tree --prefix none | awk '{print $1}' | sort -u)
-    find "${target}/release/build" \( -name '*.o' -o -name '*.a' \) |
-        while read -r artefact; do
-            package=$(basename "$(dirname "$(dirname "$artefact")")" |
-                sed 's/-[0-9a-f]\{16\}$//')
-            printf '%s\n' "$ours" | grep -qx "$package" && echo "$artefact"
-        done                                       # must print nothing
-    ldd "${target}/release/slipcase-desktop"       # libc, libgcc, libm
-
-**The replacement was wrong too, and for the reason the paragraph above it
-already names.** Measured 2026-09-09, while German was being built: the `find`
-as it stood printed `ring`'s `mem.o`, and `ring` is in no version of this
-project — `cargo tree -i ring` answers *did not match any packages*. The
-machine's `~/.cargo/config.toml` sets `[build] target-dir` to one directory the
-whole fleet shares, which is the configuration the note further down about
-`./target` warns of wearing its other face, so `release/build` holds every
-repository's build scripts and not this one's. The check was reading another
-project's artefacts and would have gone on saying *nothing compiled C* on the
-day something here did, because the answer it printed was never about here.
-
-So each artefact is now asked which package it belongs to, and only the ones
-this tree names are kept. Cargo's build directory is `<package>-<16 hex>`, and
-the count is anchored in the `sed` because a name stripped by a looser pattern
-is a package quietly excused from the rule.
-
-It was made to bite before it was written down, the way a test is: an empty
-`shim.o` planted under a `wayland-backend-<hash>/out` — that package and that
-feature being precisely what the margin above is about — and the check named it
-on the next run and went quiet when it was removed.
-
-`linux.yml` carries the same check and is left alone deliberately: a GitHub
-runner's target directory is its own, so nothing foreign can appear in it and
-the unscoped `find` is exact there. The two differ because the machines do.
-
-Nothing is compiled today and nothing beyond those three is linked, so what
-`DESIGN.md` §2 buys still holds. The margin is one feature: `wayland-backend`
-builds two C shims when its `log` feature is on, and `wayland-sys` probes
-pkg-config when `dlopen` is off. Cargo unifies features across the graph, so a
-new dependency can turn either on without an edit here — which is the day the
-check has to work.
-
-**That check was Linux's only, and Windows failed a store review in the gap.**
-`ldd` says nothing about the MSVC binary, which linked `VCRUNTIME140.dll` from
-the Visual C++ Redistributable — not part of Windows — so 0.1.1 installed on a
-certification tester's clean machine and would not start. Policy 10.2.4.1.
-Nothing here could see it: every machine this project builds on has Visual
-Studio, the GitHub runner included, and a dependency on the toolchain is
-invisible from inside the toolchain.
-
-`.cargo/config.toml` links the CRT in, on that target alone. The outcome check
-is the Windows half of the one above and it is a script, because it has to run
-where `dumpbin` is not:
-
-    cargo build --release
+    cargo test                        # each platform's arm carries its own tests
+    cargo clippy --all-targets        # must be silent
+    cargo check --target x86_64-pc-windows-msvc        # cross-check from Linux or macOS
+    cargo run --example corpus -- /path/to/slipcase/conformance   # a command, never a test
+    ./packaging/linux/check-libraries.sh               # needs a display
+    ./packaging/debian/build-deb.sh
+    ./packaging/macos/build-app.sh
     powershell -ExecutionPolicy Bypass -File packaging\windows\check-imports.ps1
+    powershell -ExecutionPolicy Bypass -File packaging\windows\check-install.ps1
+    ./po/update-po.sh                 # after changing any sentence a person reads
+    ./po/pseudo.sh                    # then a debug build with POTEXT_LANG=en-x-pseudo
 
-It walks the PE import table and refuses any DLL not known to ship with
-Windows. `build-msix.ps1` runs it and will not package a binary that fails, and
-`windows.yml` runs it on every push. If it names something new, that is a
-person's decision and not a line to add to the allowlist without one.
+The target directory may not be `./target`: `[build] target-dir` moves it and no
+environment variable says so, which is why the packaging scripts ask `cargo metadata`.
+Releases: run `ship slipcase/slipcase-desktop`. There is no release document.
 
-**And Linux had the same defect, found by going to look for it.** `ldd` covers
-what the executable links; it says nothing about what the running application
-*opens*, which here is the whole display stack. `libxkbcommon-x11` was opened on
-the X11 path, `Depends` did not reach it, and 0.1.0 and 0.1.1 installed on an
-X11 machine and panicked at startup. The check is a command, because it needs a
-display:
+## Rules
 
-    cargo build --release
-    ./packaging/linux/check-libraries.sh
-
-It runs the window under both backends — they load disjoint sets, and running
-one proves nothing about the other — reads `/proc/PID/maps`, and refuses any
-library whose package `Depends` does not transitively reach. Run it after
-touching a dependency, and read `packaging/debian/control.in` before adding a
-name to it: one exception is recorded there with the measurement that earns it.
-
-**And macOS had a third of the same shape, found by a store rather than by us.**
-A submission was refused under Guideline 2.5.1 for referencing
-`_CGSSetWindowBackgroundBlurRadius`, a private CoreGraphics symbol nothing here
-calls: `winit` declares it and calls it from `set_blur` unconditionally, and
-review reads the symbol table rather than the call graph. Every macOS binary
-this project has ever built carried it. The same sentence covers all three
-platforms — a dependency on what the toolchain hands you is invisible from
-inside the toolchain — and here it was invisible a second way, because the code
-is unreachable and the symbol is present anyway. Fat LTO with `-Wl,-dead_strip`
-was measured and does not remove it.
-
-`Cargo.toml`'s `[patch.crates-io]` is what removes it and says when to delete
-itself. The outcome check is in `build-app.sh`, which refuses to bundle an
-executable importing a symbol from a system framework that the framework's own
-public headers do not declare — a question rather than a list of names Apple has
-already caught somebody with, which would have found nothing here until after
-the rejection. `apple-silicon.yml` already calls `build-app.sh`, so it runs on
-every push.
-
-**A `cargo update` or an `eframe` bump off winit 0.30.13 makes that patch stop
-applying**, which is the moment to check whether the release it lands on carries
-the `private-apple-apis` feature gate.
-
-**No table mapping filenames to types.** What the card says about a payload's
-type is what the platform said. Where the platform will not answer, the card
-says nothing rather than guessing. `DESIGN.md` §3.
-
-**The library is not worked around.** If `slpc` cannot do something, file it
-against `excelano/slpc-rust` with a runnable reproduction and say so here.
-
----
-
-## How to work
-
-**Measure, do not assume.** This repository has a history of confident claims
-that failed under measurement — that `toml_edit` reproduces a document byte for
-byte, that a glyph would render, that a blocking dialog was fine, that the
-target directory is `./target`. Every one is recorded rather than quietly fixed.
-If you assert something, run the thing that proves it.
-
-**Check that a test bites.** A regression test that passes against the defect it
-was written for is worse than no test, and that has happened here. Break the fix
-deliberately, watch the test fail, put it back.
-
-**Comments say why.** A comment restating the line below it is noise. One
-recording what was measured, what was rejected, or what breaks without the line
-is why a file is readable a year later.
-
-**Every test's doc comment says what defect it would catch.**
-
-**Amend `DESIGN.md` when building contradicts it.** In place, marked
-**Amended**, stating what was measured. Do not smooth the amendment away: a
-design document that quietly rewrites itself to match the code is worth nothing
-as a record.
-
-**Commit messages carry the reasoning.** Imperative subject under about 60
-characters, prose body with the measurement and the alternatives rejected. Read
-`git log` before writing your first one.
-
-**The trailer block is one line.** A `Co-Authored-By` naming the model, and
-nothing under it. Some harnesses also append a `Claude-Session:` line carrying a
-URL, and a co-author naming a context window rather than a model. This
-repository is public, so a session URL in a commit message is a private
-identifier written into a permanent public record for no reader's benefit. Both
-have now been stripped from this history twice, the second time from commits
-that had already been pushed, which cost a rewrite and a force-push. Read what
-you are about to commit rather than trusting what the harness composed.
-
-**Some things only a hand can test.** `CHECKLIST.md` at the root is the record.
-On Linux it found eight defects the tests and the corpus could not reach, then
-three more when the association was walked; on Windows two, a console window
-behind the application and a window with no icon; on macOS the refusal a
-double-click produced. They are enumerated there rather than counted here,
-because the count in this paragraph was wrong for three days and nobody could
-tell, the list having never been written down. Add a section for anything you
-build that only a hand can check, run it, and write down what it found.
-
----
-
-## Layout
-
-    src/lib.rs          state, the save path, extraction, packing a new
-                        container, and RequiredKeys, which is what the tree is
-                        told about this format
-    src/main.rs         the window: panels, dialogs, threading, the card;
-                        the tree itself is flyleaf::render
-    src/opens_with.rs   what the platform says would open a payload
-    src/staging.rs      where a rewrite waits, and how it lands on the original
-    src/system_theme.rs which way the desktop's light and dark setting points
-    po/                 the catalogues and the two commands that keep them
-                        current — update-po.sh after changing any sentence, and
-                        pseudo.sh for the run that finds the ones that got away.
-                        The reader is the `potext` crate, written here and moved
-                        out on 2026-09-09; `i18n` in src/lib.rs is where this
-                        application's catalogue lives. DESIGN.md §10
-    src/opened_document.rs
-                        the document macOS delivers by Apple Event rather than
-                        argv — the crate's only unsafe, and the rule above says
-                        what adding a second such module would mean
-    examples/           the conformance runner (a command, not a test) and
-                        the type query without a window
-    packaging/          per platform, plus debian
-    tests/golden.rs     what the tree draws and what an edit saves, held
-                        against tests/golden/ while the editor is extracted
-                        into excelano/flyleaf; regenerate only by decision
+Stay inside your own platform's arm: its `#[cfg]` arm of `src/opens_with.rs`, its directory
+under `packaging/`, its file under `.github/workflows/`. Reviewing another platform's arm
+is worth doing and is how the worst defects here were found; what you cannot settle from
+here goes to David rather than into a guess. `src/lib.rs` is `forbid(unsafe_code)` and does
+not move; `src/main.rs` is `deny`, lifted for `src/opened_document.rs` alone, where macOS
+delivers a double-clicked container as an Apple Event. A second such module is David's
+decision. Nothing in this crate compiles C, and the check is always the artefact rather
+than the manifest — `cargo tree -i cc` is non-empty and always will be
+(`~/notes/pure_rust_preference.md`). Each platform has its own artefact check because each
+had the same defect: `check-imports.ps1` walks the PE import table, `check-libraries.sh`
+reads `/proc/PID/maps` under both display backends, and `build-app.sh` refuses a symbol no
+public framework header declares. A `cargo update` or an `eframe` bump off winit 0.30.13
+stops `[patch.crates-io]` applying, which is the moment to check whether the release it
+lands on carries the `private-apple-apis` gate. No table maps filenames to types: what the
+card says about a payload is what the platform said, and where it will not answer the card
+says nothing (`DESIGN.md` §3). This tree is not rustfmt-clean and has no fmt check: never run `cargo fmt` here, or a
+six-file change arrives swamped by eight hundred lines nobody asked for. Every test's doc
+comment says what defect it would catch,
+and a new test is broken deliberately once to watch it fail. The commit trailer is one
+line, a `Co-Authored-By` naming the model: this repository is public, so no session URL.

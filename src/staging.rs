@@ -335,7 +335,7 @@ mod tests {
     /// person gives through the open panel covers the file they chose and not
     /// the directory holding it, so creating a randomly-named sibling stops
     /// with *Operation not permitted*, measured 2026-08-25 and recorded in
-    /// `CHECKLIST.md`. A test cannot enter a sandbox, so it asserts the
+    /// a signed bundle. A test cannot enter a sandbox, so it asserts the
     /// property that made the sandbox refuse: after reserving a rewrite, the
     /// container's own directory holds nothing but the container. Reverting
     /// this arm to `Destination::in_place` puts a second entry there and fails

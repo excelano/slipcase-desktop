@@ -30,9 +30,8 @@ already differs, and a listing maintained in two shapes drifts in one of them.
 
 **This is generated from the release notes, not written beside it.** Every claim
 below appears there first, checked against the built application rather than
-against memory. If the two ever disagree, the changelog is right and this is
-stale — that drift is the failure the release record's readiness review names as the
-one this project has caught most often.
+against memory. Where this file and the store disagree, this file is what the
+next submission writes and the store is what is stale.
 
 Limits, so a later edit does not overrun them:
 
@@ -328,7 +327,7 @@ desktop's theme.
 
 **These cannot be of the artefact that gets uploaded, and no macOS screenshot
 ever will be.** A Mac App Store package cannot be launched anywhere but the Store
-or TestFlight — `CHECKLIST.md`'s *What a Store-signed build did when it was
+or TestFlight — *what a Store-signed build did when it was
 launched* has the kernel refusing it — so the closest available is a bundle
 signed with a different certificate and built from the same commit. Windows can
 photograph its packaged application and this platform cannot, and a reader

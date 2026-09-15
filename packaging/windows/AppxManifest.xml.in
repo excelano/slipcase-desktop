@@ -11,8 +11,7 @@
   rejected at upload rather than at review, so there is no way to find out you
   guessed wrong except by trying. @PUBLISHER@ in particular is a full X.500
   string — `CN=...` with a GUID — and not the display name. Reserving the name
-  is cheap and unblocks this file, which is why the release record puts it first in
-  the Windows section.
+  is cheap and unblocks this file, so it is the first thing to do here.
 
   @VERSION_APPX@ is what `packaging/version.sh` prints when asked for the appx
   spelling: four parts with the fourth always 0, which the Store requires. It is a different shape from the crate

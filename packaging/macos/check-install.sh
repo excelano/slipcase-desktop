@@ -10,7 +10,7 @@
 # machine and the mechanical half of it should not be typed out from a list.
 # Everything below is a fact a command can settle. What a command cannot settle
 # — whether the window is laid out correctly, whether the icon is right, what
-# Gatekeeper shows a *person* — is in `CHECKLIST.md` and needs eyes.
+# Gatekeeper shows a *person* — needs eyes.
 #
 #     ./check-install.sh                    # /Applications/Slipcase.app
 #     ./check-install.sh /path/to/App       # somewhere else
@@ -247,7 +247,6 @@ if [ "$findings" -eq 0 ]; then
     echo "Nothing mechanical is wrong with this install."
 else
     echo "${findings} thing(s) to write down — in the commit, and in"
-    echo "CHECKLIST.md only if the next person would run the list differently."
 fi
 echo "The rest needs eyes: the layout at 2x, the icon, the frame, and what"
 echo "Gatekeeper shows a person rather than what spctl reports."

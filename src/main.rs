@@ -1994,7 +1994,7 @@ mod tests {
     /// measured, and a galley for any string comes back zero wide — so what
     /// this compares is the padding and the spacing on both sides while both
     /// labels measure nothing. The half about text was checked by looking at
-    /// the window, which is the only place it can be, and `CHECKLIST.md` is
+    /// the window, which is the only place it can be, and a person at a keyboard is
     /// where that run is recorded.
     #[test]
     fn the_row_of_ways_in_measures_what_the_buttons_measure() {

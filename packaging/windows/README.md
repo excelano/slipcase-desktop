@@ -19,7 +19,7 @@ if the files are deleted by hand instead: a `UserChoice` left pointing at a
 found*, the package ignored, and no picker offering a way out. `uninstall.ps1`
 removes that key, which is the whole reason it is the thing to run.
 
-Both states are measured and are in `CHECKLIST.md`. Neither is repairable from
+Both states are measured. Neither is repairable from
 inside a package: an MSIX runs no code at install time, and one running later
 cannot write the key back, because a package's registry writes are virtualised —
 which was built, measured and reverted rather than assumed.
@@ -72,7 +72,7 @@ Three things have to be measured before any of it is built, and none of them is
 paperwork. macOS is the reason to say that plainly: the App Sandbox was assumed
 to be a formality there, and it turned out to need a new module, a rewritten
 save path, and a reopened section of `DESIGN.md`. MSIX is a container too. The
-questions are in `CHECKLIST.md` under Windows; the short version is that this
+questions were these; the short version is that this
 application reads the registry to answer what would open a payload, hands files
 to the shell, and registers a file type — and MSIX has its own opinion about
 all three.
@@ -80,7 +80,7 @@ all three.
 **Measured: MSIX changes none of the three, and the package still has to clean
 up after these scripts.** The paragraph above is left standing because it was
 right to ask. Run 2026-08-26 against a signed package built from the release
-binary and installed; `CHECKLIST.md` holds the run and the numbers.
+binary and installed.
 
 `opens_with` gets the same answers inside the container as outside — twenty
 payload types, no row different — because MSIX virtualises what a package
@@ -115,13 +115,8 @@ needed for the first, and this machine's one is spent.
 
 **The middle row is a trap and the first is worse**, and neither is something an
 MSIX can clear: a package runs no code at install time, so it cannot remove a
-`UserChoice`. That leaves a decision, and it is recorded in the release record rather
-than settled here.
-
-Worth noticing how this was found: `CHECKLIST.md` was written and this file and
-The release record both went on saying the question was open. The record was right and
-the summaries of it were wrong, which is the argument for reading the record
-rather than the summary — and, in the end, for keeping fewer summaries.
+`UserChoice`. That leaves a decision, and it is David's rather than this
+file's.
 
 One thing to carry into any check of a packaged install: `AssocQueryString`
 answers `ERROR_NO_APPLICATION_ASSOCIATED` for the executable and the command
@@ -264,8 +259,7 @@ of those is an integer downsample rather than a resample of a resample.
 125% asks for 20 and 40 and 150% for 24 and 48, and 64 divides none of them, so
 those are resampled. Looked at on 2026-08-26 at 125% and 200%: both read
 cleanly, so the cost is nothing a person notices and 64 stays the choice,
-because it is the largest entry no scaling has to enlarge. `CHECKLIST.md` holds
-the run.
+because it is the largest entry no scaling has to enlarge.
 
 This is why `slipcase.ico` is a committed artifact in a repository that
 otherwise holds only sources: the executable references it at compile time, and
@@ -273,8 +267,8 @@ Windows has no step that would rasterize the SVG for either purpose.
 
 ## What a Store build is
 
-It exists and it ships. `build-msix.ps1` produces it and the release record has the
-process; what belongs here is why it is shaped that way.
+It exists and it ships. `build-msix.ps1` produces it and `ship` submits it;
+what belongs here is why it is shaped that way.
 
 **MSIX rather than an installer**, for the reason the channel was chosen at all:
 Windows offers to search the Store by file type when somebody double-clicks

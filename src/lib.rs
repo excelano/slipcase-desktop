@@ -239,13 +239,13 @@ fn copy_out(
     // on a mark the container carried, so an error here is exactly the
     // laundering case, and a payload that would open without the warning its
     // origin earned must not be left under the name it is about to be handed
-    // to the system under. DESIGN.md §5.
+    // to the system under. DESIGN.md §7.
     //
     // **This is the one path that does not leave the destination as it found
     // it**, and the comment above claimed otherwise until it was read back.
     // The commit has already replaced whatever was at `out`, so removing takes
     // the replacement away and leaves nothing where a file used to be. That is
-    // §5's decision rather than an oversight — an ungated payload under a name
+    // §7's decision rather than an oversight — an ungated payload under a name
     // somebody is about to open is the worse thing to leave — but it is a real
     // cost and it belongs written down beside the code that pays it. Not
     // reachable on Linux, where `carry`'s arm cannot fail.
@@ -500,7 +500,7 @@ pub struct Payload {
     pub opens_with: Option<String>,
     /// Whether the container records the payload as an executable file.
     ///
-    /// DESIGN.md §5: the card says so, and says that the extracted copy will
+    /// DESIGN.md §7: the card says so, and says that the extracted copy will
     /// not be. False where the container records no mode at all, which is every
     /// container a non-Unix writer produced, so the card is silent rather than
     /// confident about a question nothing answered — `slpc::Container::payload_mode`
@@ -1082,7 +1082,7 @@ mod payload_tests {
 
     /// A payload stored executable is reported as one, on Unix.
     ///
-    /// DESIGN.md §5: the card says the extracted copy will not be executable,
+    /// DESIGN.md §7: the card says the extracted copy will not be executable,
     /// and it has to know. Catches the field being wired to nothing, which is
     /// what it was until `slpc` 0.3.6 gave it something to read.
     #[test]

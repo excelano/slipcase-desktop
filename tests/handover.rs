@@ -14,7 +14,7 @@
 // on this platform — can the handler read the file — is asked below by reading
 // it from another process, which is the handler's position exactly: a separate
 // process running as the same user. On macOS under the App Sandbox it is not,
-// and `CHECKLIST.md` item 6 is where that one lives.
+// and the walkthrough at a keyboard is where that one lives.
 //
 // Author: David M. Anderson
 // Built with AI assistance (Claude, Anthropic)
@@ -230,7 +230,7 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 /// Editing a container that arrived from elsewhere keeps where it came from.
 ///
 /// **The defect this catches was found by reading a security document and
-/// checking its claims.** Every provenance rule in `DESIGN.md` §5 is about
+/// checking its claims.** Every provenance rule in `DESIGN.md` §7 is about
 /// extraction — a payload leaving a container. Saving is the same question from
 /// the other side and nobody had asked it: `Destination::in_place` replaces a
 /// file by renaming a fresh one over it, and a fresh file carries no mark, so

@@ -28,8 +28,7 @@
   WHAT IS DELIBERATELY ABSENT
 
   No `assemblyIdentity`. It would carry a fourth version number in a project
-  whose the release record opens by keeping one number in three spellings, and nothing
-  here reads it.
+  that already keeps one number in three spellings, and nothing here reads it.
 
   No `<compatibility>` or `supportedOS` block. Those change what Windows reports
   to the process about itself, which is a behaviour change wearing the clothes

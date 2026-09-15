@@ -57,8 +57,8 @@ $ErrorActionPreference = 'Stop'
 #
 # **This is a record of what is known, not a claim that it is acceptable.**
 # Whether to submit with `Blocked executables` failing is a decision, it is
-# David's, and the release record carries it. Recording a finding here does not take
-# it. It was taken on 2026-08-28: submit with it failing.
+# David's. Recording a finding here does not take it. It is taken: submit with
+# it failing.
 #
 # Traced rather than tolerated; `git log` has the working for both.
 #
@@ -471,7 +471,7 @@ if ($SelfSign) {
     # Deployment reads LocalMachine\TrustedPeople and not the per-user store:
     # importing into CurrentUser\TrustedPeople leaves Add-AppxPackage failing
     # 0x800B0109 just the same. Measured on 2026-08-26 and recorded in
-    # CHECKLIST.md. That import is the one administrator action in this whole
+    # by hand. That import is the one administrator action in this whole
     # path, so it is printed rather than attempted.
     $trusted = Get-ChildItem Cert:\LocalMachine\TrustedPeople -ErrorAction SilentlyContinue |
         Where-Object { $_.Thumbprint -eq $cert.Thumbprint }

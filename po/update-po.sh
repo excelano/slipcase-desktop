@@ -30,7 +30,7 @@
 # to `t`, `tc` or `tn` in `src/` was compared against the msgids this produced,
 # and the two sets matched exactly, 45 for 45. The warnings cost nothing, but
 # they are also where a genuine miss would hide, so the way a dropped string is
-# found is not by reading them — it is the pseudolocale in `CHECKLIST.md`,
+# found is not by reading them — it is `pseudo.sh` beside this,
 # where anything still in English stands out on sight.
 set -eu
 

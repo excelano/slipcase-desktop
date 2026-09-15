@@ -1,35 +1,12 @@
-# Run the suite on Apple silicon, because nothing else here can.
-#
-# Every machine this application has been built and walked through on is
-# x86_64, and a Store build has to be universal. `cargo build --target
-# aarch64-apple-darwin` cross-compiles on an Intel Mac but cannot run what it
-# produces, so the arm64 half of a released bundle was, until this file, code
-# nobody had ever executed.
-#
-# What this reaches is worth being precise about. The tests are not a token
-# check: `opens_with` asks Launch Services, `provenance` reads and writes
-# `com.apple.quarantine`, and `staging` calls `-[NSFileManager
-# replaceItemAtURL:]`. All three are real platform calls, and the corpus drives
-# the save path 111 times through them.
-#
-# It reaches the window now, which this file used to say it could not.
-# `src/opened_document.rs` receives a double-clicked document through an Apple
-# Event, and `open` on a container goes through Launch Services and produces the
-# same event Finder does — so the last step below opens one and asks the window
-# server whether a window appeared. That is the one piece of the arm64
-# walkthrough no test could reach, and the module it exercises is the only
-# `unsafe` in this crate.
-#
-# **It asks the window server rather than looking at a screenshot, and the
-# difference is the whole point.** `CHECKLIST.md` records `screencapture`
-# returning the desktop with every window omitted while reporting no error, so a
-# job asserting on pixels would go green against a build that drew nothing. A
-# screenshot is still uploaded, as something for a person to look at rather than
-# something this job claims anything about.
-#
-# What it still does not reach is a sandbox, which needs a signing identity no
-# runner has; a high-density display; and the Finder icon. `CHECKLIST.md` holds
-# those and a green run here does not stand in for them.
+# Run the suite, clippy's macOS arms, the corpus and the window on Apple
+# silicon, because nothing else here can: the Mac this is built on is x86_64
+# and a Store build has to be universal. The last step opens a document through
+# Launch Services, which delivers the Apple Event Finder does, so
+# `src/opened_document.rs` runs on arm64. It asks the window server whether a
+# window appeared rather than asserting on pixels, because `screencapture` can
+# return the desktop with every window omitted and report no error. A
+# screenshot is uploaded for a person to look at. Out of reach here: a sandbox,
+# which needs a signing identity; a high-density display; the Finder icon.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

@@ -8,8 +8,8 @@
 # in the message when the copy is missing, so a fresh checkout finds out what it
 # needs rather than failing at `makeappx`.
 #
-# The release record asked for these to go into "whatever the build script substitutes
-# from, so that they live in one place" rather than straight into
+# These live in one place that the build script substitutes from, rather than
+# straight into
 # `AppxManifest.xml.in`, and this is that place. The manifest keeps its
 # placeholders and `build-msix.ps1` reads the copy of this file.
 #

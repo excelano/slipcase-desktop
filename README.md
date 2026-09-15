@@ -54,33 +54,14 @@ ships. `packaging/README.md` has the detail.
 
 ## Status
 
-All four stages of `DESIGN.md` §7 ship: opening a container and rendering every
-state the design names, editing the metadata and writing it back, extracting and
-replacing the payload, and file association. A fifth was added on 2026-09-08 and
-ships on Linux: making a container out of a file. It goes through the same
-library call the command-line `pack` verb does, and `CHECKLIST.md` says what the
-other two platforms owe it before the next store submission.
+Opening a container, editing its metadata, extracting and replacing the payload
+and file association all ship on Linux, macOS and Windows. Making a container
+out of a file ships on Linux.
 
-The window draws in German where the desktop asks for German, added 2026-09-09,
-with the English falling back to wherever a sentence has none. `DESIGN.md` §10
-is the mechanism and the two places English still shows; `po/` holds the
-catalogues and the two commands that keep them current.
-
-Association ships on all three platforms, each built and walked through by hand
-on the platform itself. `packaging/` holds what each decided and `CHECKLIST.md`
-records what only a hand could test, along with the defects the tests and the
-conformance corpus passed over — that list is the authority on how many, and
-this sentence deliberately does not say.
-
-Both macOS items this paragraph used to carry as unresolved are closed.
-Spotlight and Launch Services agreed once the bundle was signed, measured
-2026-08-25 and recorded in `packaging/macos/README.md`; the Gatekeeper line
-described what an *unsigned* bundle does, which is expected rather than a
-defect, and no released build is unsigned.
-
-`DESIGN.md` is what this is and the order it is being built in. It is amended in
-place where building it proved it wrong, and every amendment says what was
-measured.
+The window draws in German where the desktop asks for German, with English
+falling back wherever a sentence has none. `DESIGN.md` §10 is the mechanism and
+the two places English still shows; `po/` holds the catalogues and the two
+commands that keep them current.
 
 ## Testing
 
