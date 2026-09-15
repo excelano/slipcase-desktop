@@ -62,10 +62,36 @@ function Remove-Subkey {
     }
 }
 
+# A value, or the key's default when $Name is empty, removed only if it holds
+# what install.ps1 wrote, so that another application's registration on the same
+# extension is not touched.
+function Remove-OurValue {
+    param([string] $Path, [string] $Name, [string] $Ours)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $true)
+    if (-not $key) { return }
+    try {
+        $held = $key.GetValue($Name, $null)
+        if ($null -ne $held -and ($Ours -eq '' -or $held -eq $Ours)) {
+            $key.DeleteValue($Name, $false)
+        }
+    } finally {
+        $key.Close()
+    }
+}
+
 $classes = 'Software\Classes'
 
 Remove-Key "$classes\$progId"
-Remove-Key "$classes\$extension"
+# The extension's own values rather than the whole key. `OpenWithProgids`
+# belongs to the extension and to every application that has ever offered to
+# open one, so removing the tree takes somebody else's offer with it — which is
+# true even of a format that is this product's own, because nothing stops an
+# archive tool offering to open a .slpc. This file removed the tree until the
+# shared install check planted a neighbour and watched it go; segler was made
+# surgical the same day and this is the same rule.
+Remove-OurValue "$classes\$extension\OpenWithProgids" $progId ''
+Remove-OurValue "$classes\$extension" '' $progId
+Remove-OurValue "$classes\$extension" 'Content Type' $contentType
 Remove-Key "$classes\MIME\Database\Content Type\$contentType"
 Remove-Key "$classes\Applications\$exeName"
 Remove-Key 'Software\Microsoft\Windows\CurrentVersion\Uninstall\Slipcase'
