@@ -22,15 +22,43 @@ $contentType = 'application/x.slipcase+zip'
 $progId = 'Excelano.Slipcase'
 $exeName = 'slipcase-desktop.exe'
 
+function Test-OurKey {
+    param([string] $Path)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
+    if (-not $key) { return $false }
+    $key.Close()
+    return $true
+}
+
 # The .NET API for the same reason install.ps1 uses it: PowerShell's registry
 # provider reads the forward slash in the media type as a path separator, so it
 # would look for the wrong key here and leave the right one behind.
+#
+# A key that is not there is nothing to do; a key that is there and will not go
+# is a failure, and catching every exception cannot tell the two apart. Both
+# are read back, so the only thing passed over is the absence.
 function Remove-Key {
     param([string] $Path)
-    try {
-        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
-    } catch {
-        Write-Verbose "nothing at $Path"
+    if (-not (Test-OurKey $Path)) { return }
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
+    if (Test-OurKey $Path) { throw "uninstall.ps1: HKCU\$Path is still there after being deleted" }
+}
+
+# The same, for a key that cannot be opened for writing. `DeleteSubKeyTree` and
+# `reg delete` both open the key itself with write access before deleting it,
+# and Explorer writes a *Deny SetValue* rule on UserChoice so that no
+# application can quietly take an extension over. That deny makes the write
+# open fail, and then `reg delete` says *Access is denied* while
+# `DeleteSubKeyTree` reads the failure as the key being missing and returns
+# quietly. Deleting the name from the parent needs DELETE on the child and
+# nothing else, which the rule beside the deny allows, unelevated.
+function Remove-Subkey {
+    param([string] $Parent, [string] $Name)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Parent, $true)
+    if (-not $key) { return }
+    try { $key.DeleteSubKey($Name, $false) } finally { $key.Close() }
+    if (Test-OurKey "$Parent\$Name") {
+        throw "uninstall.ps1: HKCU\$Parent\$Name is still there after being deleted"
     }
 }
 
@@ -43,12 +71,24 @@ Remove-Key "$classes\Applications\$exeName"
 Remove-Key 'Software\Microsoft\Windows\CurrentVersion\Uninstall\Slipcase'
 
 # The one that is easy to miss. Choosing "always open with" writes a UserChoice
-# here, and a UserChoice outranks everything removed above: leaving it behind
-# leaves the extension pointing at a ProgID that no longer exists, which is the
-# dead association this script exists to prevent. Windows treats such a choice
-# as no association at all rather than falling back to the machine-wide one —
-# measured, and the reason `src/opens_with.rs` does not fall back either.
-Remove-Key "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$extension"
+# here, and so does opening a file through the association; a UserChoice
+# outranks everything removed above, so leaving it behind leaves the extension
+# pointing at a ProgID that no longer exists, which is the dead association
+# this script exists to prevent. Windows treats such a choice as no association
+# at all rather than falling back to the machine-wide one, which is also why
+# `src/opens_with.rs` does not fall back.
+#
+# The UserChoice key by name through `Remove-Subkey`, and not the
+# `FileExts\.slpc` tree above it: that tree holds other applications' entries
+# for the extension, and the deny rule on UserChoice defeats a tree delete
+# silently. Removed only when it names this application.
+$exts = "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\$extension"
+$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey("$exts\UserChoice", $false)
+if ($key) {
+    $chosen = $key.GetValue('ProgId', $null)
+    $key.Close()
+    if ($chosen -eq $progId) { Remove-Subkey $exts 'UserChoice' }
+}
 
 $shortcut = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\Slipcase.lnk'
 if (Test-Path -LiteralPath $shortcut) { Remove-Item -LiteralPath $shortcut -Force -Confirm:$false }

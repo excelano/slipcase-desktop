@@ -101,6 +101,15 @@ jobs:
           cargo build --release
           powershell -ExecutionPolicy Bypass -File packaging/windows/check-imports.ps1
 
+      # The other half. check-imports reads the artefact the Store distributes;
+      # this runs the install scripts themselves, plants a UserChoice the way
+      # Explorer writes one, deny rule and all, and reads back that the
+      # uninstall took ours away and left somebody else's alone. Nothing else
+      # reaches those scripts, which is how an uninstall that reported success
+      # and killed the association went unnoticed.
+      - name: The integration goes on and comes off cleanly
+        run: powershell -ExecutionPolicy Bypass -File packaging/windows/check-install.ps1
+
       # The run that found the device-name defect in the first place, and the
       # only platform where `accept/payload-name-windows-reserved` is anything
       # but an ordinary filename. It hung here for ten minutes twice before the
