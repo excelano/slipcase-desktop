@@ -1304,9 +1304,9 @@ fn card(
                 );
             }
 
-            // Said rather than acted on. DESIGN.md §5's amendment: the payload
-            // leaves carrying whatever the container carried, and what the
-            // platform then does about it is the platform's business. In the
+            // Said rather than acted on. DESIGN.md §7: the payload leaves
+            // carrying whatever the container carried, and what the platform
+            // then does about it is the platform's business. In the
             // warning colour rather than the error one, because a container
             // arriving from elsewhere is a thing to know and not a thing that
             // went wrong — and not in weak grey, which the walkthrough already

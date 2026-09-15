@@ -49,17 +49,15 @@ shell scripts for the same reason, and these two are its counterpart, argument
 for argument.
 
 An MSI becomes worth building when there is a channel to ship it through, the
-way `packaging/debian` exists because the Excelano apt repository does. There
-is no such channel for Windows yet, and building a package with nowhere to send
-it would be guessing at what that channel will want.
+way `packaging/debian` exists because the Excelano apt repository does. That
+reasoning is what chose the two scripts, and it held while there was no channel
+for Windows.
 
-**Amended: there is a channel now, and it is the Microsoft Store.** The
-paragraph above is left standing because its reasoning was right and it is what
-chose the two scripts; what changed is the premise. The Store was taken for the
-reason macOS took the Mac App Store: a person who has been sent a container
-double-clicks it, Windows offers to search the Store by file type, and outside
-the Store that search returns nothing. `packaging/macos/README.md` has the same
-argument written out at length.
+**The channel is the Microsoft Store**, taken for the reason macOS took the Mac
+App Store: a person who has been sent a container double-clicks it, Windows
+offers to search the Store by file type, and outside the Store that search
+returns nothing. `packaging/macos/README.md` has the same argument written out
+at length.
 
 That decides the format against MSI rather than for it. The Store takes MSIX,
 WiX builds MSI, and the two are not steps on one path — so WiX stays rejected,
@@ -98,10 +96,8 @@ actually chose then outranks the manifest is the one part still unmeasured, and
 it stays unmeasured on purpose: that key is hash-validated and write-denied, so
 it cannot be forged and a person has to make the choice.
 
-**Amended: it was measured later the same day, and this paragraph was stale for
-two days without anybody noticing.** David made the choice by hand on
-2026-08-26 and `git log` holds the result, in three rows. The short version is that the answer depends on what the
-stale key points at, which is not a distinction anyone had anticipated:
+**What a stale `UserChoice` does depends on what it points at**, measured by
+hand with the choice made through Explorer:
 
 | `UserChoice` names | What a double-click does |
 | --- | --- |
@@ -255,10 +251,9 @@ the window at startup: 64 is a whole multiple of the sizes a display at 100% or
 200% asks for — 16 and 32 in the title bar, 32 and 64 in the task bar — so each
 of those is an integer downsample rather than a resample of a resample.
 
-**Amended: not of every size, and this was written before anybody had looked.**
-125% asks for 20 and 40 and 150% for 24 and 48, and 64 divides none of them, so
-those are resampled. Looked at on 2026-08-26 at 125% and 200%: both read
-cleanly, so the cost is nothing a person notices and 64 stays the choice,
+**Not of every size.** 125% asks for 20 and 40 and 150% for 24 and 48, and 64
+divides none of them, so those are resampled. Looked at at 125% and 200%, both
+read cleanly, so the cost is nothing a person notices and 64 stays the choice,
 because it is the largest entry no scaling has to enlarge.
 
 This is why `slipcase.ico` is a committed artifact in a repository that
