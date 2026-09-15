@@ -569,7 +569,7 @@ application uses a Developer ID build; anything needing the real article goes
 through TestFlight.
 
 **Installing the Windows package here needs two administrator actions**, and
-`RELEASE.md` has them: the certificate import the shell will not deploy without,
+The release record has them: the certificate import the shell will not deploy without,
 and the elevated prompt the certification kit wants.
 
 **A dependency on the toolchain is invisible from inside the toolchain**, and a

@@ -10,9 +10,9 @@ anything; it is short because `DESIGN.md` is where the reasoning lives.
 Written and first built on Linux, then Windows on Windows and macOS on a Mac.
 All three ship, and no platform is waiting on another.
 
-**If you are here for a release, read `RELEASE.md`.** It is the live document
-and it holds the process, not the history: what every patch costs, in the order
-it is done.
+**If you are here for a release, run `ship slipcase/slipcase-desktop`.** There
+is no release document: `ship` is the procedure, and it reports where the
+current release stands before it changes anything.
 
 **Stay inside your own platform's arm.** Its `#[cfg]` arm of
 `src/opens_with.rs`, its own directory under `packaging/`, and its own file

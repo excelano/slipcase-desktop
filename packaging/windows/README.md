@@ -115,11 +115,11 @@ needed for the first, and this machine's one is spent.
 
 **The middle row is a trap and the first is worse**, and neither is something an
 MSIX can clear: a package runs no code at install time, so it cannot remove a
-`UserChoice`. That leaves a decision, and it is recorded in `RELEASE.md` rather
+`UserChoice`. That leaves a decision, and it is recorded in the release record rather
 than settled here.
 
 Worth noticing how this was found: `CHECKLIST.md` was written and this file and
-`RELEASE.md` both went on saying the question was open. The record was right and
+The release record both went on saying the question was open. The record was right and
 the summaries of it were wrong, which is the argument for reading the record
 rather than the summary — and, in the end, for keeping fewer summaries.
 
@@ -273,7 +273,7 @@ Windows has no step that would rasterize the SVG for either purpose.
 
 ## What a Store build is
 
-It exists and it ships. `build-msix.ps1` produces it and `RELEASE.md` has the
+It exists and it ships. `build-msix.ps1` produces it and the release record has the
 process; what belongs here is why it is shaped that way.
 
 **MSIX rather than an installer**, for the reason the channel was chosen at all:

@@ -183,7 +183,7 @@ Anyway the only way past.
 ## What a Store build is
 
 It exists and it ships. `build-app.sh --store PROFILE` produces it and
-`RELEASE.md` has the process; what belongs here is why it is shaped that way.
+`ship` has the process; what belongs here is why it is shaped that way.
 
 **The sandbox is the gate**, and it is not a formality. Every Store binary is
 sandboxed, and the sandbox is inert until the entitlement is inside a signature

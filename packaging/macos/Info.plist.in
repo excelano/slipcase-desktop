@@ -100,7 +100,7 @@
 
 	  Without it App Store Connect marks each build "Missing Compliance" and
 	  holds it out of TestFlight until somebody clicks through a dialog —
-	  a manual step on every patch, which is exactly what RELEASE.md exists
+	  a manual step on every patch, which is exactly what the release record exists
 	  to keep out of the every-time path. Build 165 was uploaded before this
 	  landed and had to be answered by hand; nothing after it does.
 

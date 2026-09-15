@@ -31,7 +31,7 @@ already differs, and a listing maintained in two shapes drifts in one of them.
 **This is generated from `CHANGELOG.md`, not written beside it.** Every claim
 below appears there first, checked against the built application rather than
 against memory. If the two ever disagree, the changelog is right and this is
-stale — that drift is the failure `RELEASE.md`'s readiness review names as the
+stale — that drift is the failure the release record's readiness review names as the
 one this project has caught most often.
 
 Limits, so a later edit does not overrun them:
