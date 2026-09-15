@@ -3,8 +3,7 @@
 .\" It exists because the binary takes an argument and has no --help to
 .\" describe it: src/main.rs reads args_os().nth(1) and nothing else, so this
 .\" is the only place that argument is written down. lintian tagged its
-.\" absence and CHECKLIST.md carries the decision to write it rather than
-.\" override the tag.
+.\" absence, and the page was written rather than the tag overridden.
 .\"
 .\" @VERSION@ is substituted by packaging/debian/build-deb.sh, the same way
 .\" control.in is, so the version in the header cannot drift from the package.
