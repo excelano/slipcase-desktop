@@ -28,7 +28,7 @@ stores, rather than *the same warning*, which is true of one. **Resisting the
 second per-store variant was the point**: the executable-payload sentence below
 already differs, and a listing maintained in two shapes drifts in one of them.
 
-**This is generated from `CHANGELOG.md`, not written beside it.** Every claim
+**This is generated from the release notes, not written beside it.** Every claim
 below appears there first, checked against the built application rather than
 against memory. If the two ever disagree, the changelog is right and this is
 stale — that drift is the failure the release record's readiness review names as the
@@ -176,7 +176,7 @@ Slipcase is open source, and so is the format it reads and the library that read
 ## Release notes
 
 *What's new in this version* on the Microsoft Store and *What's New* on the Mac
-App Store, one version's text each, written from `CHANGELOG.md` and kept latest
+App Store, one version's text each, written from the release notes and kept latest
 first. Read it for the person it reaches: **the Store serves 0.1.2**, so what a
 customer upgrading from it meets is everything since, and 0.1.3 and 0.1.4 are
 not in it because one was a Mac submission fix and the other was Linux

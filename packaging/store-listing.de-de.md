@@ -79,7 +79,7 @@ Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothe
 
 ## Release notes
 
-*Neu in dieser Version*, aus `CHANGELOG.md`, neueste zuerst. Der Store liefert
+*Neu in dieser Version*, aus den Release Notes, neueste zuerst. Der Store liefert
 0.1.2 aus, deshalb steht hier alles seither; 0.1.3 und 0.1.4 fehlen, weil das
 eine eine Mac-Einreichung und das andere Linux-Paketierung betraf.
 

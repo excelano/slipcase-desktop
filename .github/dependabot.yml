@@ -8,7 +8,7 @@
 # the bound on what identifying one costs, the refusal of an archive that names
 # its members twice, the escaping of a name before it is shown, the mark carried
 # onto an extracted payload. A version of it is a change to what this window
-# says about somebody's file, and `CHANGELOG.md` there is written to be read.
+# says about somebody's file, and its release notes there are written to be read.
 #
 # **An `eframe` bump is the other one.** It carries `egui`, which draws the card
 # and lays out every name on it — including, one day, in an order this
