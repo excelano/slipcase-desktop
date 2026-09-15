@@ -38,6 +38,13 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
+      # The packaging scripts are the only code here that nothing else compiles
+      # or runs, and there is no PowerShell on the Linux lane. The step is
+      # excelano/.github's because it is the same one in every repository that
+      # has them.
+      - name: The packaging scripts parse
+        uses: excelano/.github/.github/actions/powershell-parses@main
+
       - name: What is installed
         run: |
           rustc -V
