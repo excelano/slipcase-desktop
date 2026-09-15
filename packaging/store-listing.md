@@ -247,10 +247,10 @@ Slipcase implements no cryptography and makes no network request. It reads conta
 is deliberately not exceeded: the application's window at that size looks like a
 window, and at 1920 x 1080 it looks like a window with a great deal of nothing
 beside it. The display these were taken on is 2560 x 1302, so a larger size is
-available if a listing ever wants one — `screenshot.ps1` takes `-Width` and
-`-Height`.
+available if a listing ever wants one — the size is a constant at the top of
+`packaging/windows/shots.ps1`.
 
-Taken by `packaging/windows/screenshot.ps1`, against the **packaged**
+Taken by `packaging/windows/shots.ps1`, against the **packaged**
 application. ~~2026-08-28.~~ **Retaken 2026-08-29 against 0.1.1 and against the
 container `demo-container.sh` builds**, which is what makes the paragraph below
 true: the first four were of a container that existed only on one machine, and
@@ -259,10 +259,17 @@ package and the pictures are of the same build now. The four are:
 
 | Order | File | What it shows |
 | --- | --- | --- |
-| 1 | `03-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
-| 2 | `04-light-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
-| 3 | `01-window.png` | The first again, in dark mode |
-| 4 | `02-arrived-from-elsewhere.png` | The second again, in dark mode |
+| 1 | `01-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
+| 2 | `02-light-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| 3 | `03-dark.png` | The first again, in dark mode |
+| 4 | `04-dark-arrived-from-elsewhere.png` | The second again, in dark mode |
+
+`shots.ps1` names the frames in listing order and takes all four in one run. It
+sets the desktop's theme before each launch and reads it back, because the theme
+is the desktop's and no click reaches it, and a shot taken after a theme that
+did not take is a duplicate of its pair. It marks the second container as
+downloaded itself, on a copy, so a rerun does not find the first shot's
+container already carrying the stream the second shot is about.
 
 **Light leads, and that is a decision rather than a preference.** The application
 follows the system theme, and a fresh Windows 10 or 11 installation runs apps
