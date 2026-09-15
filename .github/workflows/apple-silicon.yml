@@ -37,6 +37,8 @@
 name: Apple silicon
 
 on:
+  schedule:
+    - cron: '0 6 * * 1'
   push:
   pull_request:
 
@@ -91,6 +93,7 @@ jobs:
       #
       # SPEC-PIN: 996dcca3f65ed36728b11ee1741812b50def67b4
       - name: The conformance corpus, every case
+        if: github.event_name != 'push' && github.event_name != 'pull_request'
         run: |
           git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${RUNNER_TEMP}/slipcase"
           git -C "${RUNNER_TEMP}/slipcase" checkout --detach 996dcca3f65ed36728b11ee1741812b50def67b4
