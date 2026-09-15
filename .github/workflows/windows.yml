@@ -21,10 +21,22 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      # Optional, because a screenshots run has no tag to give. With one the
+      # package is attached to that release; without one it is built and kept
+      # as an artefact.
       tag:
         description: 'Tag to package for (e.g. v0.1.9)'
-        required: true
+        required: false
         type: string
+      # A choice rather than a boolean, because there is a third thing to ask
+      # for: `reference` takes the one plain frame a coordinate gets measured
+      # off, and `full` takes the set.
+      screenshots:
+        description: 'Store screenshots'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'reference', 'full']
 
 permissions:
   contents: write
@@ -146,3 +158,30 @@ jobs:
           publisher: ${{ secrets.STORE_PUBLISHER }}
           tag: ${{ github.event.release.tag_name || inputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Off unless asked for. A bug fix should not pay for a set of Store
+      # screenshots, and a set nobody asked for is a set nobody looks at.
+      # `shots.ps1` carries the recipes and is the same command that retakes
+      # them by hand on the Windows machine.
+      #
+      # The container is built rather than committed, and its archive
+      # timestamps are pinned so any machine rebuilds the same bytes - which is
+      # what makes the pictures and the container a reviewer downloads the same
+      # container. The runner has Git bash.
+      - name: Build the container the pictures are of
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        shell: bash
+        run: ./packaging/demo-container.sh
+
+      # The container is opened through the shell, so the association has to
+      # exist. The install check above takes its own registration away again.
+      - name: Install the association
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        run: powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
+
+      - name: The Store screenshots
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        uses: excelano/.github/.github/actions/store-screenshots@main
+        with:
+          mode: ${{ inputs.screenshots }}
+          out: dist/store
