@@ -1,3 +1,44 @@
+slipcase-desktop (0.1.9) unstable; urgency=medium
+
+  * The promotional text says the application makes containers
+  * The dark frame was a duplicate of its light pair
+  * The four frames, measured off the reference
+  * What 0.1.9 tells the stores
+  * Take both language sets of Store screenshots, on both lanes
+  * Take the generated screenshot files ship rewrote
+  * The Mac App Store screenshots, and a German container to photograph
+  * The listing copy is a file both lanes push
+  * Take the macOS screenshot driver from ship
+  * Take the binary the runner built, and count certificates not lines
+  * What a release tells the stores, in both languages
+  * The reference frame is taken in the state the set is measured in
+  * An executable that starts and stops says its exit code and what it printed
+  * Git for Windows ships no zip, whatever this script said
+  * ship sync: a missing window says which of three things happened
+  * The runner takes the store screenshots, and the step is the org's
+  * The packaging scripts parse, and the step is the org's
+  * ship sync: the zoom pair, by name
+  * The screenshot driver is ship's, and the four frames are recipes
+  * Remove this application's values, not the extension's key
+  * The install check is excelano/.github's
+  * The release binary is built here and signed on the Mac
+  * The Store packaging comes from excelano/.github
+  * The publisher is a secret, so the log does not carry it
+  * The identity splits on what is actually an account's
+  * The packaging README stops amending itself, and one citation follows §7
+  * Clone the cases before the step that opens one of them
+  * Two more pointers at the deleted checklist
+  * Prose to present tense; the checklist goes
+  * The uninstall reads back what it deleted, and CI runs it
+  * The profile is targets and names
+  * Dependabot: monthly, grouped, merged when every run on the commit is green
+  * Run the corpus per push on Linux alone; weekly and on release elsewhere
+  * Assemble the Store package on the runner, and attach it on the release
+  * Delete the changelog and the preflight script: ship does both
+  * Delete the release document: ship is the procedure
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 16 Sep 2026 22:50:13 -0500
+
 slipcase-desktop (0.1.8) unstable; urgency=medium
 
   * Both store packages say Slipcase is offered in German. The catalogue has
