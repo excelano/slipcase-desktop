@@ -81,7 +81,7 @@ Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothe
 [locales."de-de".apple]
 name = "Slipcase Desktop"
 subtitle = "Metadaten, die mitreisen"
-promotional-text = "Container öffnen, die mitgereisten Metadaten lesen, sie an Ort und Stelle bearbeiten und die Datei dem Programm übergeben, das sie öffnet."
+promotional-text = "Einen Container aus einer Datei erstellen oder einen öffnen, die mitgereisten Metadaten bearbeiten und die Nutzlast dem Programm übergeben, das sie öffnet."
 keywords = "Metadaten,Container,slpc,Archiv,TOML,Datei,Dokument,Verschlagwortung,zip"
 
 [locales."de-de".microsoft]
@@ -201,7 +201,7 @@ Slipcase is open source, and so is the format it reads and the library that read
 [locales."en-us".apple]
 name = "Slipcase Desktop"
 subtitle = "Metadata that travels along"
-promotional-text = "Open a container, read the metadata travelling with the file inside it, edit that metadata in place, and hand the file to whatever opens it."
+promotional-text = "Make a container out of a file, or open one and read the metadata that travelled with it. Edit that metadata in place, and hand the payload to whatever opens it."
 keywords = "metadata,container,slpc,archive,toml,file,document,tagging,zip,viewer"
 
 [locales."en-us".microsoft]
