@@ -76,22 +76,40 @@ german_container="${root}/dist/quartalsbericht.pdf.slpc"
 
 # --- the appearance, and the container that arrived from elsewhere -----------
 
+# Asked of System Events rather than written with `defaults`.
+#
+# **`defaults write -g AppleInterfaceStyle Dark` is not enough, and it reads
+# back as though it were.** It writes the value and `defaults read` returns it,
+# because both go through the same preferences cache; the window server is
+# never told, and an application launched afterwards still draws light.
+# Measured 2026-09-17: the dark frame came back a pixel-for-pixel duplicate of
+# its light pair, which is the failure the read-back was there to prevent.
+#
+# System Events sets it the way the Settings pane does. It is already trusted
+# for Accessibility on a runner, which is what the driver needs anyway.
 appearance() {
     case "$1" in
-        light) defaults delete -g AppleInterfaceStyle 2>/dev/null || true ;;
-        dark) defaults write -g AppleInterfaceStyle -string Dark ;;
+        light) want=false ;;
+        dark) want=true ;;
+        *) echo "shots.sh: appearance is light or dark, not $1" >&2; exit 2 ;;
     esac
-    got=$(defaults read -g AppleInterfaceStyle 2>/dev/null || echo light)
-    case "$1:$got" in
-        light:light|dark:Dark) echo "shots.sh: desktop set to $1" ;;
-        *) echo "shots.sh: asked for $1 and the desktop reads ${got}" >&2; exit 1 ;;
-    esac
+    osascript -e "tell application \"System Events\" to tell appearance preferences to set dark mode to ${want}" >/dev/null
+    sleep 1
+    got=$(osascript -e 'tell application "System Events" to tell appearance preferences to get dark mode')
+    [ "$got" = "$want" ] || {
+        echo "shots.sh: asked for $1 and the desktop reads dark mode ${got}" >&2
+        exit 1
+    }
+    echo "shots.sh: desktop set to $1"
 }
 
-# A copy under a second name, marked the way a download is, so that a rerun
-# does not find the first frame's container already carrying the attribute the
-# second frame is about.
+# A copy in the Downloads folder, marked the way a download is. The path is in
+# the frame, above the card, so the picture says where the container came from
+# before the card's provenance line does - and a copy rather than a mark on the
+# original, so a rerun does not find the first frame's container already
+# carrying the attribute the second frame is about.
 arrived() {
+    mkdir -p "$(dirname -- "$2")"
     cp "$1" "$2"
     xattr -w com.apple.quarantine '0083;68ae0000;Safari;' "$2"
     xattr -p com.apple.quarantine "$2" >/dev/null ||
@@ -120,7 +138,7 @@ for_language() {
     mkdir -p "$staged"
     plain="${staged}/$(basename "$built")"
     cp "$built" "$plain"
-    marked="${plain%.slpc}-arrived.slpc"
+    marked="${HOME}/Downloads/$(basename "$built")"
     arrived "$plain" "$marked"
     document=$plain
 }
