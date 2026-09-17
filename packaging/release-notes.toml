@@ -10,7 +10,7 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.1.7"
+version = "0.1.9"
 
 [locales."de-de"]
 whats-new = """
@@ -21,6 +21,8 @@ Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hin
 Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Listen sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
 
 Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
+
+Auf dem Mac gibt die Anwendung an, dass sie auf Deutsch angeboten wird, sodass die Sprachauswahl für einzelne Programme sie anbietet.
 """
 
 [locales."en-us"]
@@ -32,5 +34,7 @@ Slipcase makes containers now. *New container...* asks which file to put in and 
 The metadata editor is the general one shared with Tommy Flyleaf. Every value has a kind menu offering the conversions it allows, arrays are editable, comments can be edited, added and removed, and undo and redo run through all of it. A save still keeps the comments, key order, whitespace and quoting of everything you did not touch.
 
 The buttons and the file dialog say "Open a container", now that the format is spelled Slipcase.
+
+On a Mac the application declares that it is offered in German, so the per-app language picker offers it.
 """
 
