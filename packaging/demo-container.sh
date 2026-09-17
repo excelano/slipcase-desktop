@@ -42,13 +42,39 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 root=$(CDPATH= cd -- "${here}/.." && pwd)
 outdir="${root}/dist"
 
+lang=en
+
 while [ $# -gt 0 ]; do
     case "$1" in
         --out) outdir="${2:?--out needs a directory}"; shift 2 ;;
+        --lang) lang="${2:?--lang needs a language tag}"; shift 2 ;;
         -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "demo-container.sh: unknown argument $1" >&2; exit 2 ;;
     esac
 done
+
+# The German container is the same container in German, and is for the German
+# screenshots: a German listing showing an English document is mostly English
+# pixels, and the tree is most of what these frames show.
+#
+# **The two metadata documents have the same keys in the same order.** The tree
+# draws one row per key, so a German document with a key the English one does
+# not have moves every row under it, and a recipe's coordinates are a row
+# number in disguise. Tommy Flyleaf learned that the expensive way, on a German
+# comment that wrapped one line further than its English counterpart. Only the
+# values differ here, and the two keys the format owns - `slipcase_version` and
+# `payload.file` - are not translated at all.
+case "$lang" in
+    en|en-US|en-us)
+        payload=quarterly-report.pdf
+        pdf_title='Quarterly Report'
+        pdf_sub='Sample document' ;;
+    de|de-DE|de-de)
+        payload=quartalsbericht.pdf
+        pdf_title='Quartalsbericht'
+        pdf_sub='Beispieldokument' ;;
+    *) echo "demo-container.sh: no container is written for ${lang}" >&2; exit 2 ;;
+esac
 
 command -v zip >/dev/null || {
     echo "demo-container.sh: no zip on PATH" >&2
@@ -72,10 +98,14 @@ trap 'rm -rf "$stage"' EXIT INT TERM
 # refusing. A payload that only opens in viewers that repair is not what belongs
 # in two store listings, so this computes both instead of asserting them.
 stream="${stage}/content"
-printf '%s\n' 'BT /F1 18 Tf 72 760 Td (Quarterly Report) Tj 0 -28 Td /F1 11 Tf (Sample document) Tj ET' > "$stream"
+# No character above ASCII in either title: a PDF literal string in the
+# Helvetica base font is WinAnsi, and an umlaut there is a second question this
+# demonstration has no reason to ask.
+printf 'BT /F1 18 Tf 72 760 Td (%s) Tj 0 -28 Td /F1 11 Tf (%s) Tj ET\n' \
+    "$pdf_title" "$pdf_sub" > "$stream"
 length=$(wc -c < "$stream" | tr -d ' ')
 
-pdf="${stage}/quarterly-report.pdf"
+pdf="${stage}/${payload}"
 {
     printf '%%PDF-1.4\n'
     printf '1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n'
@@ -106,6 +136,7 @@ xref_at=$(wc -c < "$pdf" | tr -d ' ')
 # Every renderer `src/tree.rs` carries appears here at least once — string,
 # integer, float, boolean, array, array of tables, nested table, and the two
 # datetime shapes that render differently.
+if [ "$lang" = en ] || [ "${lang#en}" != "$lang" ]; then
 cat > "${stage}/slipcase.metadata.toml" <<'TOML'
 slipcase_version = "1.0"
 
@@ -152,8 +183,56 @@ version = 3
 date = 2026-04-30
 note = "Issued."
 TOML
+else
+cat > "${stage}/slipcase.metadata.toml" <<'TOML'
+slipcase_version = "1.0"
 
-out="${outdir}/quarterly-report.pdf.slpc"
+# Eine Beschreibung, die gelesen werden soll, denn der Baum ist das, was ein
+# Mensch auf einem Bildschirmfoto ansieht.
+title = "Quartalsbericht — Abteilung Nordwind"
+summary = "Konsolidierte Zahlen und Kommentar zum Quartal."
+reference = "NW-2026-Q2-014"
+final = true
+pages = 12
+confidence = 0.94
+
+keywords = ["Quartal", "konsolidiert", "Nordwind", "intern"]
+
+[payload]
+file = "quartalsbericht.pdf"
+
+[dates]
+prepared = 2026-04-18
+issued = 2026-04-30T09:15:00Z
+review_due = 2026-07-31
+
+[origin]
+system = "Nordwind Berichtswesen"
+version = "3.2.1"
+department = "Finanzen"
+
+[origin.contact]
+name = "Berichtsstelle"
+mailbox = "berichte@example.invalid"
+
+[[revisions]]
+version = 1
+date = 2026-04-18
+note = "Erster Entwurf zur Stellungnahme verteilt."
+
+[[revisions]]
+version = 2
+date = 2026-04-26
+note = "Zahlen nach dem Abteilungsabschluss neu ausgewiesen."
+
+[[revisions]]
+version = 3
+date = 2026-04-30
+note = "Herausgegeben."
+TOML
+fi
+
+out="${outdir}/${payload}.slpc"
 rm -f "$out"
 
 # **The archive's two timestamps are pinned, so this is the same file
@@ -173,15 +252,15 @@ rm -f "$out"
 # one the metadata already gives as `dates.issued`, so the archive agrees with
 # the document it carries rather than naming some arbitrary epoch.
 touch -d '2026-04-30T09:15:00Z' \
-    "${stage}/slipcase.metadata.toml" "${stage}/quarterly-report.pdf"
+    "${stage}/slipcase.metadata.toml" "${stage}/${payload}"
 
 # The metadata first, which is the order every other container this project
 # builds uses, and `zip -X` so no extra fields carry this machine's identity
 # into a file that goes in two store listings.
-( cd "$stage" && TZ=UTC zip -q -X "$out" slipcase.metadata.toml quarterly-report.pdf )
+( cd "$stage" && TZ=UTC zip -q -X "$out" slipcase.metadata.toml "$payload" )
 
 echo "built $out"
-echo "  payload   quarterly-report.pdf ($(wc -c < "${stage}/quarterly-report.pdf") bytes)"
+echo "  payload   ${payload} ($(wc -c < "${stage}/${payload}") bytes)"
 echo "  metadata  $(grep -c . < "${stage}/slipcase.metadata.toml") non-empty lines"
 echo
 echo "for the 'arrived from elsewhere' screenshot, mark a copy the way a download would:"

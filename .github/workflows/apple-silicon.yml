@@ -24,10 +24,22 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      # Optional, because a screenshots run has no tag to give. With one the
+      # binary the Mac signs is built and attached to that release; without one
+      # this is the suite, the window and whatever screenshots were asked for.
       tag:
         description: 'Tag to build the release binary for'
-        required: true
+        required: false
         type: string
+      # A choice rather than a boolean, because there is a third thing to ask
+      # for: `reference` takes the one plain frame a coordinate gets measured
+      # off, and `full` takes the set.
+      screenshots:
+        description: 'Store screenshots'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'reference', 'full']
 
 permissions:
   contents: write
@@ -203,9 +215,32 @@ jobs:
       # cycle happen before anybody is waiting. The steps are excelano/.github's,
       # because every repository with this target needs the same ones.
       - name: The binary the Store package is built from
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
         uses: excelano/.github/.github/actions/mac-release-binary@main
         with:
           binary: slipcase-desktop
           tag: ${{ github.event.release.tag_name || inputs.tag }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Off unless asked for. A bug fix should not pay for a set of Store
+      # screenshots, and a set nobody asked for is a set nobody looks at.
+      # `shots.sh` carries the recipes and is the same command that retakes
+      # them by hand on a Mac; everything around it is the org's.
+      #
+      # One container per language, because the tree is most of what these
+      # frames show and a German listing showing an English document is mostly
+      # English pixels. macOS ships Info-ZIP's `zip`, so unlike the Windows
+      # lane there is nothing to install first.
+      - name: Build the containers the pictures are of
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        run: |
+          ./packaging/demo-container.sh
+          ./packaging/demo-container.sh --lang de
+
+      - name: The Store screenshots
+        if: inputs.screenshots && inputs.screenshots != 'no'
+        uses: excelano/.github/.github/actions/mac-store-screenshots@main
+        with:
+          app: dist/Slipcase.app
+          mode: ${{ inputs.screenshots }}
+          languages: en de
