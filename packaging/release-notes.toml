@@ -22,7 +22,7 @@ Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf tei
 
 Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
 
-Auf dem Mac gibt die Anwendung an, dass sie auf Deutsch angeboten wird, sodass die Sprachauswahl für einzelne Programme sie anbietet.
+Auf dem Mac gibt die Anwendung Deutsch als angebotene Sprache an.
 """
 
 [locales."en-us"]
@@ -35,6 +35,6 @@ The metadata editor is the general one shared with Tommy Flyleaf. Every value ha
 
 The buttons and the file dialog say "Open a container", now that the format is spelled Slipcase.
 
-On a Mac the application declares that it is offered in German, so the per-app language picker offers it.
+On a Mac the application declares German as a language it offers.
 """
 
