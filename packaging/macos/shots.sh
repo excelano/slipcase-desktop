@@ -14,15 +14,34 @@
 #
 # WHAT THE SET SHOWS, AND WHY
 #
-# The same two containers as the Microsoft set, in the same two appearances.
-# The second container is the first one carrying a quarantine attribute, so the
-# card's provenance line reads *This container arrived from elsewhere, and the
-# payload will carry that* — which is the one thing in this application worth a
-# slot that a still frame can show without an edit.
+# An edit is under way in three of the four. Apple rejected Segler's first set
+# under guideline 2.3.3 - *the screenshots do not show the actual app in use* -
+# for four frames of a window at rest, and the Microsoft set here is exactly
+# that shape: two containers photographed twice with nothing happening. It
+# passes there and would not pass here.
 #
-# Light leads, and that is a decision rather than a preference. The application
-# follows the system appearance, a fresh macOS installation is light, and the
-# product page shows the first picture largest.
+# The fourth is the one thing a still frame can show without an edit: the same
+# container carrying a quarantine attribute, so the card's provenance line
+# reads that it arrived from elsewhere and the payload will carry that.
+#
+# THE ACTIONS STAY INSIDE THE DOCUMENT
+#
+# Coordinates are read off a frame at the size declared here, and the tree is
+# the only part of the window that holds still between languages, because it is
+# laid out by the document and the document is the same shape in both. The
+# toolbar is not: `Speichern` sits 33 pixels right of `Save`, and the card's
+# `Entpacken ...` 21 right of `Extract...`, so a recipe that pressed a toolbar
+# button would photograph one thing in English and another in German.
+#
+# Nothing typed here is outside ASCII. Whether the driver's `--type` carries a
+# German umlaut through CGEventPost has not been measured, and a screenshot is
+# not where to find out.
+#
+# LIGHT LEADS, AND THREE OF FOUR ARE LIGHT
+#
+# The application follows the system appearance, a fresh macOS installation is
+# light, and the product page shows the first picture largest. Dark is worth a
+# slot because following the appearance is worth showing, and worth only one.
 #
 # THE APPEARANCE IS THE DESKTOP'S
 #
@@ -108,20 +127,52 @@ for_language() {
 
 # --- the shots --------------------------------------------------------------
 
+# Where the tree's controls are at 1440x900. Read off `00-reference.png`, which
+# `--reference` takes; change WIDTH or HEIGHT and both move.
+#
+# The title's value field, which is the first editable row under the two
+# comment lines.
+TITLE_VALUE=366,306
+# The kind beside `pages`, which offers the conversions an integer allows.
+PAGES_KIND=270,394
+
+# What gets typed into the title. Different from what is in the document, so
+# the edit is visible, and short enough to read at a glance in a listing.
+english_typed="Quarterly Report - Northwind, revision 2"
+german_typed="Quartalsbericht - Nordwind, Fassung 2"
+
 shots() {
+    case "$lang" in
+        de|de-DE|de-de) typed=$german_typed ;;
+        *) typed=$english_typed ;;
+    esac
+
+    # The title being rewritten: the field focused and holding new text, and
+    # Save, Undo and Redo coming on in the toolbar. This is the frame the
+    # Microsoft set most lacks - the application in use.
     appearance light
     document=$plain
-    shot 01-light
+    shot 01-light-editing-a-value \
+        --click "$TITLE_VALUE" --key cmd+a --type "$typed"
 
+    # The container that arrived from elsewhere. The card's provenance line is
+    # the one thing here worth a slot that a still frame can show, and the
+    # payload the reader extracts carries the marking onward.
     document=$marked
     shot 02-light-arrived-from-elsewhere
 
-    appearance dark
+    # The kind menu open on an integer, which is what "every value has a kind
+    # menu offering the conversions it allows" looks like.
     document=$plain
-    shot 03-dark
+    shot 03-light-the-kind-menu \
+        --click "$PAGES_KIND"
 
-    document=$marked
-    shot 04-dark-arrived-from-elsewhere
+    # The same edit in the dark appearance. The only difference from 01 is the
+    # desktop's, so a reader comparing them sees the application rather than two
+    # different demonstrations.
+    appearance dark
+    shot 04-dark-editing-a-value \
+        --click "$TITLE_VALUE" --key cmd+a --type "$typed"
 }
 
 . "${here}/take-shots.sh"
