@@ -2,7 +2,7 @@
 # Build the container the screenshots are taken of, the same way on every
 # platform.
 #
-# `store-listing.md` described this container in prose — a real one-page PDF, a
+# `submission-notes.md` described this container in prose — a real one-page PDF, a
 # metadata document rich enough to exercise every renderer — and said rebuilding
 # it was a few lines. It was not in the repository, so the four Windows
 # screenshots could not be reproduced anywhere, macOS was about to invent a

@@ -24,7 +24,7 @@
 # follows the system theme, and a fresh Windows 10 or 11 installation runs apps
 # light, so most people reading this listing are reading it on a light desktop.
 # The dark pair is kept because following the theme is worth showing and costs
-# two slots out of ten. `packaging/store-listing.md` carries the same reasoning
+# two slots out of ten. `packaging/submission-notes.md` carries the same reasoning
 # for the reader who never opens this file.
 #
 # The theme is the desktop's and no click reaches it, so it is set before each

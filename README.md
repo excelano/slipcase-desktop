@@ -27,7 +27,7 @@ follows is the from-source route, which is what this repository is for.
 
 Two things about that link. It lists as **Slipcase Desktop** rather than
 *Slipcase*, because the name was taken on that store alone —
-`packaging/store-listing.md` carries both names and the reasoning. And the
+`packaging/store-listing.toml` carries both names and `packaging/submission-notes.md` the reasoning. And the
 `?mt=12` is the Mac-software media type rather than decoration: without it the
 link can route a visitor to the iOS store.
 

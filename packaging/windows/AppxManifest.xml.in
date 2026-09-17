@@ -73,7 +73,7 @@
          under. `en-gb` is how the first submission came to be filed as English
          (United Kingdom), which is narrower than the listing is — there is one
          English listing and it is meant for every English-speaking market. The
-         copy in `packaging/store-listing.md` goes on spelling *recognise* and
+         copy in `packaging/store-listing.toml` goes on spelling *recognise* and
          *organisation*, which is a house style rather than a locale.
 
          `en-us` rather than the neutral `en` is a fleet decision taken
