@@ -176,10 +176,15 @@ jobs:
         if: inputs.screenshots && inputs.screenshots != 'no'
         run: choco install zip --no-progress -y
 
-      - name: Build the container the pictures are of
+      # One per language: the metadata tree is most of what these frames show,
+      # so a German listing opening an English document would be mostly English
+      # pixels whatever language the window is in.
+      - name: Build the containers the pictures are of
         if: inputs.screenshots && inputs.screenshots != 'no'
         shell: bash
-        run: ./packaging/demo-container.sh
+        run: |
+          ./packaging/demo-container.sh
+          ./packaging/demo-container.sh --lang de
 
       # The container is opened through the shell, so the association has to
       # exist. The install check above takes its own registration away again.
@@ -192,4 +197,5 @@ jobs:
         uses: excelano/.github/.github/actions/store-screenshots@main
         with:
           mode: ${{ inputs.screenshots }}
+          languages: en de
           out: dist/store

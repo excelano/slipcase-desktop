@@ -43,7 +43,12 @@ param(
     # The packaged application, as `<PackageFamilyName>!<ApplicationId>`. With
     # it the frames are of the package a person installs; without it the shell
     # decides, which is right only where nothing else claims `.slpc`.
-    [string] $Aumid
+    [string] $Aumid,
+    # Which language's set to take. The listing is in two, and a German listing
+    # showing an English window is a German listing of somebody else's
+    # application.
+    [ValidateSet('en', 'de')]
+    [string] $Lang = 'en'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,15 +65,24 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $WIDTH = 1366
 $HEIGHT = 768
 
-# What `packaging/demo-container.sh` builds. Its archive timestamps are pinned,
-# so any machine rebuilds the same bytes and the pictures match the container
-# the review notes send a tester to.
-$CONTAINER = Join-Path $root 'dist\quarterly-report.pdf.slpc'
+# What `packaging/demo-container.sh` builds, per language. Its archive
+# timestamps are pinned, so any machine rebuilds the same bytes and the pictures
+# match the container the review notes send a tester to.
+#
+# One container per language, because the metadata tree is most of what these
+# frames show: a German listing opening an English document would be mostly
+# English pixels whatever language the window is in. The two documents have the
+# same keys in the same order, which `demo-container.sh` says why.
+$CONTAINER = if ($Lang -eq 'de') {
+    Join-Path $root 'dist\quartalsbericht.pdf.slpc'
+} else {
+    Join-Path $root 'dist\quarterly-report.pdf.slpc'
+}
 
 # The same container under a second name, marked as downloaded. A copy rather
 # than a mark on the original, so a rerun does not find the first shot's
 # container already carrying the stream the second shot is about.
-$ARRIVED = Join-Path $root 'dist\arrived-quarterly-report.pdf.slpc'
+$ARRIVED = Join-Path (Split-Path $CONTAINER) ('arrived-' + (Split-Path $CONTAINER -Leaf))
 
 # The window's process, and the sibling that would hold the container open.
 $PROCESS = @('slipcase-desktop', 'slipcase-open')
@@ -137,4 +151,4 @@ if (-not (Test-Path -LiteralPath $CONTAINER)) {
 }
 
 Take-Shots -Launch (Opens $CONTAINER) -Process $PROCESS `
-    -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Reference:$Reference
+    -Width $WIDTH -Height $HEIGHT -OutDir $OutDir -Lang $Lang -Reference:$Reference
