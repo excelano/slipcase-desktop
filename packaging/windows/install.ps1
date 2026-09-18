@@ -32,9 +32,8 @@ $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $extension = '.slpc'
 $contentType = 'application/vnd.excelano.slipcase+zip'
 
-# The name the type carried before IANA registered the one above on 2026-09-16,
-# which SPEC 4 records as superseded. Windows has no alias mechanism, so this is
-# not a second name the application answers to: it is a key an upgrade would
+# The name SPEC 4 records as superseded. Not a second name this application
+# answers to — Windows has no alias mechanism — but a key an upgrade would
 # otherwise leave behind, removed below.
 $supersededContentType = 'application/x.slipcase+zip'
 
@@ -66,18 +65,14 @@ function Set-RegistryValue {
     }
 }
 
-# For a key this script used to write and no longer does. The .NET API for the
-# same reason `Set-RegistryValue` uses it: the provider would read the forward
-# slash as a path separator, look for the wrong key, and leave the right one
-# behind. A key that is not there is nothing to do; a key that is there and will
-# not go is a failure, and catching every exception cannot tell the two apart,
-# so the result is read back and only the absence is passed over. `uninstall.ps1`
-# carries the same pair for the same reason.
-function Remove-RegistryKey {
+# For a key this script used to write and no longer does. Deliberately the same
+# name and the same body as `uninstall.ps1`'s, so that a change to what deleting
+# a key means here is one thing to find rather than two. The `$false` is
+# `throwOnMissingSubKey`, which makes an absent key a no-op, so nothing has to
+# test for one first; what is not free is the read-back, because a delete that
+# failed and a key that was never there must not look alike.
+function Remove-Key {
     param([string] $Path)
-    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
-    if (-not $key) { return }
-    $key.Close()
     [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
     $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
     if ($key) {
@@ -196,13 +191,11 @@ Set-RegistryValue "$classes\$extension" 'Content Type' $contentType
 Set-RegistryValue "$classes\$extension\OpenWithProgids" $progId ''
 Set-RegistryValue "$classes\MIME\Database\Content Type\$contentType" 'Extension' $extension
 
-# The superseded name, off an installation that predates the registration.
-# `Content Type` above is a single value and the write has already replaced it;
-# this half is a key of its own and outlives the upgrade unless it is removed,
-# and what it leaves behind maps `.slpc` to a type this application no longer
-# claims. Unconditional rather than guarded on a version: the key is either
-# there or it is not, and this says which it should be.
-Remove-RegistryKey "$classes\MIME\Database\Content Type\$supersededContentType"
+# `Content Type` above is a single value and the write has already replaced it.
+# This half is a key of its own, outlives the upgrade unless something removes
+# it, and what it leaves maps `.slpc` to a type this application no longer
+# claims.
+Remove-Key "$classes\MIME\Database\Content Type\$supersededContentType"
 
 # The Open With list, so a person can reach this application from a file it was
 # not registered for, and so the shell has a name for the executable itself.

@@ -157,16 +157,12 @@ which is the authority. SPEC §4 reserves no magic bytes, so the extension is
 the only identification Windows has: there is no content type to sniff and no
 `sub-class-of` to fall back on the way shared-mime-info has one.
 
-**The superseded name is removed rather than kept.** IANA registered the type
-on 2026-09-16 and recorded `application/x.slipcase+zip` as a deprecated alias.
-Windows has nothing that expresses an alias: the `Content Type` value holds one
-string, and a second `MIME\Database` key is a second claim on the extension
-rather than a pointer to the first. `install.ps1` therefore writes the
-registered name and deletes the old key, which an upgrade would otherwise leave
-behind mapping `.slpc` to a type this application no longer claims.
-`uninstall.ps1` clears both, because it has to answer for what any version of
-`install.ps1` wrote. `DESIGN.md` §8 holds the decision, which is the same one
-macOS takes.
+**The superseded name is removed rather than kept.** `install.ps1` writes the
+registered name and deletes the old `MIME\Database` key, which an upgrade would
+otherwise leave behind mapping `.slpc` to a type this application no longer
+claims. `uninstall.ps1` clears both names, because it has to answer for what any
+version of `install.ps1` wrote. `DESIGN.md` §8 holds the decision and the
+argument behind it.
 
 `FriendlyTypeName` is written as a plain string. The usual form is a reference
 into a binary's resource table — `@C:\path\thing.dll,-123` — which needs

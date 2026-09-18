@@ -41,15 +41,11 @@ which IANA registered on 2026-09-16, are both taken from there and neither is
 invented here. There is no magic-bytes tag, for the same reason the Linux media
 type carries no `<magic>`: SPEC §4 reserves none.
 
-**The superseded name is not tagged here.** SPEC §4 records
-`application/x.slipcase+zip` as a deprecated alias, and shared-mime-info has an
-`<alias>` element that resolves one name to another. A `public.mime-type` array
-has nothing of the kind: a second string in it is a second tag on equal footing,
-which makes the reverse lookup — the type Launch Services reports for
-`com.excelano.slipcase` — a matter of which entry comes first. A file is typed
-by its extension in almost every path a person takes, so the tag that would earn
-its second string is a download carrying the old type and no filename.
-`DESIGN.md` §8 holds the decision, which is the same one Windows takes.
+**The superseded name is not tagged here.** The array holds the registered name
+alone. A second string in it would be a second tag on equal footing rather than
+an alias, which would make the reverse lookup — the type Launch Services reports
+for `com.excelano.slipcase` — a matter of which entry comes first. `DESIGN.md`
+§8 holds the decision and the argument behind it.
 
 Conformance is to `public.zip-archive` and `public.data`. The first is the macOS
 half of what `sub-class-of application/zip` does on Linux and is true for the
