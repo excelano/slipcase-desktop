@@ -142,8 +142,8 @@ Everything under `HKEY_CURRENT_USER`.
 | Key | Value | Why |
 | --- | --- | --- |
 | `Software\Classes\.slpc` | `Excelano.Slipcase` | The extension names the type |
-| `Software\Classes\.slpc` → `Content Type` | `application/x.slipcase+zip` | SPEC §4's media type, name to type |
-| `Software\Classes\MIME\Database\Content Type\application/x.slipcase+zip` → `Extension` | `.slpc` | The same statement, type to name |
+| `Software\Classes\.slpc` → `Content Type` | `application/vnd.excelano.slipcase+zip` | SPEC §4's media type, name to type |
+| `Software\Classes\MIME\Database\Content Type\application/vnd.excelano.slipcase+zip` → `Extension` | `.slpc` | The same statement, type to name |
 | `Software\Classes\Excelano.Slipcase` | `Slipcase Container` | What Explorer's Type column shows |
 | `…\DefaultIcon` | `slipcase.ico,0` | What Explorer draws |
 | `…\shell\open\command` | `"…\slipcase-desktop.exe" "%1"` | What a double-click runs |
@@ -151,11 +151,22 @@ Everything under `HKEY_CURRENT_USER`.
 | `Software\Classes\Applications\slipcase-desktop.exe` | `FriendlyAppName` | The Open With list |
 | `Software\Microsoft\Windows\CurrentVersion\Uninstall\Slipcase` | — | Add/Remove Programs |
 
-`Excelano.Slipcase` is chosen here; `.slpc` and `application/x.slipcase+zip`
-are not, and come from `SPEC.md` §4, which is the authority. SPEC §4 reserves
-no magic bytes, so the extension is the only identification Windows has: there
-is no content type to sniff and no `sub-class-of` to fall back on the way
-shared-mime-info has one.
+`Excelano.Slipcase` is chosen here; `.slpc` and
+`application/vnd.excelano.slipcase+zip` are not, and come from `SPEC.md` §4,
+which is the authority. SPEC §4 reserves no magic bytes, so the extension is
+the only identification Windows has: there is no content type to sniff and no
+`sub-class-of` to fall back on the way shared-mime-info has one.
+
+**The superseded name is removed rather than kept.** IANA registered the type
+on 2026-09-16 and recorded `application/x.slipcase+zip` as a deprecated alias.
+Windows has nothing that expresses an alias: the `Content Type` value holds one
+string, and a second `MIME\Database` key is a second claim on the extension
+rather than a pointer to the first. `install.ps1` therefore writes the
+registered name and deletes the old key, which an upgrade would otherwise leave
+behind mapping `.slpc` to a type this application no longer claims.
+`uninstall.ps1` clears both, because it has to answer for what any version of
+`install.ps1` wrote. `DESIGN.md` §8 holds the decision, which is the same one
+macOS takes.
 
 `FriendlyTypeName` is written as a plain string. The usual form is a reference
 into a binary's resource table — `@C:\path\thing.dll,-123` — which needs
@@ -195,10 +206,12 @@ and `cargo run --example opens-with -- some.slpc` is the better one: it answers
 this directory just made.
 
 **PowerShell's registry provider cannot write the media type key.** The name is
-`application/x.slipcase+zip`, and the provider reads the forward slash as a
-path separator: it creates `application` with a child `x.slipcase+zip` and
-reports success. Both scripts use `[Microsoft.Win32.Registry]` instead, which
-takes the whole string as one name.
+`application/vnd.excelano.slipcase+zip`, and the provider reads the forward
+slash as a path separator: it creates `application` with a child
+`vnd.excelano.slipcase+zip` and reports success. Both scripts use
+`[Microsoft.Win32.Registry]` instead, which takes the whole string as one name.
+The registered name changed nothing about this: it is the slash that does it,
+and the slash is in both.
 
 **A stale `UserChoice` is the dead association to worry about.** Choosing
 "always open with" writes `Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.slpc\UserChoice`,

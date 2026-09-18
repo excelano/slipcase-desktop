@@ -36,9 +36,20 @@ defines a type nothing opens.
 
 The declaration is **exported** rather than imported because this application
 defines the type: `SPEC.md` §4 in `excelano/slipcase` is the authority. The
-extension `slpc` and the media type `application/x.slipcase+zip` are both taken
-from there and neither is invented here. There is no magic-bytes tag, for the
-same reason the Linux media type carries no `<magic>`: SPEC §4 reserves none.
+extension `slpc` and the media type `application/vnd.excelano.slipcase+zip`,
+which IANA registered on 2026-09-16, are both taken from there and neither is
+invented here. There is no magic-bytes tag, for the same reason the Linux media
+type carries no `<magic>`: SPEC §4 reserves none.
+
+**The superseded name is not tagged here.** SPEC §4 records
+`application/x.slipcase+zip` as a deprecated alias, and shared-mime-info has an
+`<alias>` element that resolves one name to another. A `public.mime-type` array
+has nothing of the kind: a second string in it is a second tag on equal footing,
+which makes the reverse lookup — the type Launch Services reports for
+`com.excelano.slipcase` — a matter of which entry comes first. A file is typed
+by its extension in almost every path a person takes, so the tag that would earn
+its second string is a download carrying the old type and no filename.
+`DESIGN.md` §8 holds the decision, which is the same one Windows takes.
 
 Conformance is to `public.zip-archive` and `public.data`. The first is the macOS
 half of what `sub-class-of application/zip` does on Linux and is true for the
@@ -74,7 +85,8 @@ is affected.
     lsregister -dump | grep -A6 'com.excelano.slipcase'
 
 which should report the type as `exported`, conforming to `public.zip-archive`
-and `public.data`, tagged `.slpc` and `application/x.slipcase+zip`.
+and `public.data`, tagged `.slpc` and
+`application/vnd.excelano.slipcase+zip`.
 
 Asking through the application's own code is the better check, because it is the
 path a person actually sees:

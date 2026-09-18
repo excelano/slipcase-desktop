@@ -18,7 +18,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $extension = '.slpc'
-$contentType = 'application/x.slipcase+zip'
+$contentType = 'application/vnd.excelano.slipcase+zip'
+
+# What install.ps1 wrote before IANA registered the one above on 2026-09-16.
+# Named here as well as there because an uninstall can meet either: an upgrade
+# removes this key, and a machine that never upgraded still holds it.
+$supersededContentType = 'application/x.slipcase+zip'
 $progId = 'Excelano.Slipcase'
 $exeName = 'slipcase-desktop.exe'
 
@@ -93,6 +98,13 @@ Remove-OurValue "$classes\$extension\OpenWithProgids" $progId ''
 Remove-OurValue "$classes\$extension" '' $progId
 Remove-OurValue "$classes\$extension" 'Content Type' $contentType
 Remove-Key "$classes\MIME\Database\Content Type\$contentType"
+# Both names, because this script has to clear what any version of install.ps1
+# wrote and not only the current one. `Remove-OurValue` compares before it
+# deletes, so the extension's `Content Type` is touched only if it still holds
+# the superseded string — on an upgraded machine it holds the registered one and
+# the line above has already taken it.
+Remove-OurValue "$classes\$extension" 'Content Type' $supersededContentType
+Remove-Key "$classes\MIME\Database\Content Type\$supersededContentType"
 Remove-Key "$classes\Applications\$exeName"
 Remove-Key 'Software\Microsoft\Windows\CurrentVersion\Uninstall\Slipcase'
 
