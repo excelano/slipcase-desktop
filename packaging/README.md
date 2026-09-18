@@ -23,9 +23,10 @@ no environment variable then says so.
 
 Check that it took:
 
-    type=application/vnd.excelano.slipcase+zip
-    xdg-mime query filetype some.slpc   # $type
-    xdg-mime query default "$type"      # slipcase-desktop.desktop
+    xdg-mime query filetype some.slpc
+    # application/vnd.excelano.slipcase+zip
+    xdg-mime query default application/vnd.excelano.slipcase+zip
+    # slipcase-desktop.desktop
 
 Before the media type is installed a `.slpc` reports as `application/zip`, which
 is true and useless: it is what every Slipcase is underneath.
