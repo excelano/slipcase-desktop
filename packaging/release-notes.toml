@@ -5,36 +5,17 @@
 # The version is checked against the release being cut: notes left from last
 # time stop the release rather than reaching a listing. A language the listing
 # has and this file does not is also a refusal - a German listing saying
-# something nobody wrote is worse than a release that stops.
+# something nobody wrote is worse than a release that stops. So is a language
+# written longer than the store takes, which a store answers by refusing the
+# whole submission without saying which field was wrong.
 #
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.1.9"
+version = "0.1.10"
 
-[locales."de-de"]
-whats-new = """
-Slipcase spricht Deutsch. Auf einem deutsch eingestellten Rechner erscheint das Fenster auf Deutsch: die Leiste, die Karte, die Meldungen nach dem Speichern oder Entpacken, die Dateidialoge und der Metadatenbaum. Es gibt nichts auszuwählen — Slipcase übernimmt die Sprache, die das System bereits eingestellt hat, und fällt für jede andere auf Englisch zurück. Das Urteil über einen Container bleibt englisch, denn dieser Satz stammt aus der Formatbibliothek selbst.
-
-Slipcase erstellt jetzt Container. *Neuer Container …* fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
-
-Der Metadaten-Editor ist der allgemeine, den sich Slipcase mit Tommy Flyleaf teilt. Jeder Wert hat ein Menü der Umwandlungen, die er zulässt, Listen sind bearbeitbar, Kommentare lassen sich ändern, hinzufügen und entfernen, und Rückgängig und Wiederholen reichen durch alles hindurch. Ein Speichern behält weiterhin Kommentare, Schlüsselreihenfolge, Leerraum und Anführungszeichen von allem, was Sie nicht angefasst haben.
-
-Die Schaltflächen und der Dateidialog sagen "Container öffnen", nun da das Format Slipcase geschrieben wird.
-
-Auf dem Mac gibt die Anwendung Deutsch als angebotene Sprache an.
-"""
-
-[locales."en-us"]
-whats-new = """
-Slipcase speaks German. On a machine set to German the window comes up in German: the bar, the card, the messages after a save or an extraction, the file dialogs and the metadata tree. There is nothing to choose — it reads the language the desktop is already set to, and falls back to English for every other one. A container's verdict stays in English, because that sentence is the format library's own.
-
-Slipcase makes containers now. *New container...* asks which file to put in and where the container should go, writes it, and opens it, so the metadata editor is where you fill it in. A large payload packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not allow as a payload is refused when you choose it, not after you have said where the container goes.
-
-The metadata editor is the general one shared with Tommy Flyleaf. Every value has a kind menu offering the conversions it allows, arrays are editable, comments can be edited, added and removed, and undo and redo run through all of it. A save still keeps the comments, key order, whitespace and quoting of everything you did not touch.
-
-The buttons and the file dialog say "Open a container", now that the format is spelled Slipcase.
-
-On a Mac the application declares German as a language it offers.
-"""
-
+[locales]
+[locales.de-de]
+whats-new = "Der Slipcase-Containertyp ist jetzt registriert. Die IANA hat am 16. September 2026 application/vnd.excelano.slipcase+zip vergeben, und Slipcase meldet Container unter diesem Namen an — unter Windows, macOS und Linux. Der vorläufige Name davor gehörte in einen Bereich für geschlossene Umgebungen, und dort gehört ein Format nicht hin, das in App-Stores erscheint.\n\nAn den Containern ändert sich nichts. Der Typ stand noch nie in einem Container, deshalb bleiben Dateien aus früheren Versionen dieselben Dateien: Sie öffnen sich wie bisher und behalten ihr Symbol. Unter Linux löst der alte Name weiterhin auf, denn die Datenbank der Medientypen führt ihn als Alias des registrierten. Unter Windows und macOS gibt es das nicht, dort ersetzt die Installation die alte Anmeldung, statt sie neben der neuen stehen zu lassen.\n\nEs gibt nichts auszuwählen und nichts umzustellen."
+[locales.en-us]
+whats-new = "The Slipcase container type is now registered. IANA assigned application/vnd.excelano.slipcase+zip on 16 September 2026, and Slipcase registers containers under that name on Windows, macOS and Linux. The provisional name it replaces belonged to a tree meant for closed settings, which is not where a format that ships in application stores belongs.\n\nNo container changes. The type has never been written inside one, so files made by earlier versions are the same files: they open the same way and keep the same icon. On Linux the old name still resolves, because the media type database records it as an alias of the registered one. On Windows and macOS, which have no such mechanism, installing this version replaces the old registration rather than leaving it beside the new one.\n\nThere is nothing to choose and nothing to migrate."

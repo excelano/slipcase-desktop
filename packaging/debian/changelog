@@ -1,3 +1,17 @@
+slipcase-desktop (0.1.10) unstable; urgency=medium
+
+  * Say the media type once per script, and ask rather than name a version
+  * Name the version of slipcase-common that carries the type
+  * Bumps meant to be read go in their own group
+  * Name the registered media type in packaging, CI, and docs
+  * deps: bump the cargo group across 1 directory with 2 updates (#8)
+  * Dependabot merges move to the organisation's sweep
+  * Take the generated screenshot files ship rewrote
+  * The driver sizes the window it photographs, and knows Cmd-Shift-G
+  * The German notes fit the Store's limit
+
+ -- David M. Anderson <david.anderson@excelano.com>  Fri, 18 Sep 2026 08:56:02 -0500
+
 slipcase-desktop (0.1.9) unstable; urgency=medium
 
   * The promotional text says the application makes containers
