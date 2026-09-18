@@ -27,10 +27,16 @@ param(
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# SPEC 4 names both of these and this repository neither restates nor amends
-# it. They are the only two identifiers here that were not chosen.
+# SPEC 4 names all three of these and this repository neither restates nor
+# amends it. They are the only identifiers here that were not chosen.
 $extension = '.slpc'
-$contentType = 'application/x.slipcase+zip'
+$contentType = 'application/vnd.excelano.slipcase+zip'
+
+# The name the type carried before IANA registered the one above on 2026-09-16,
+# which SPEC 4 records as superseded. Windows has no alias mechanism, so this is
+# not a second name the application answers to: it is a key an upgrade would
+# otherwise leave behind, removed below.
+$supersededContentType = 'application/x.slipcase+zip'
 
 # Chosen here. `Vendor.Component` is the shape Windows documents for a ProgID;
 # no version suffix, because a `CurVer` indirection buys nothing until there is
@@ -44,11 +50,12 @@ $iconName = 'slipcase.ico'
 # --- writing to the registry ------------------------------------------------
 
 # The .NET API rather than PowerShell's registry provider, because of one key
-# here: the media type is `application/x.slipcase+zip`, and the provider reads
-# the forward slash as a path separator and silently creates `application` with
-# a child `x.slipcase+zip` instead of the single key that was asked for.
-# Measured, not guessed. The .NET API takes the whole string as one name, which
-# is what the MIME database wants. An empty $Name is the key's default value.
+# here: the media type is `application/vnd.excelano.slipcase+zip`, and the
+# provider reads the forward slash as a path separator and silently creates
+# `application` with a child `vnd.excelano.slipcase+zip` instead of the single
+# key that was asked for. Measured, not guessed. The .NET API takes the whole
+# string as one name, which is what the MIME database wants. An empty $Name is
+# the key's default value.
 function Set-RegistryValue {
     param([string] $Path, [string] $Name, $Value, [string] $Kind = 'String')
     $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($Path)
@@ -56,6 +63,26 @@ function Set-RegistryValue {
         $key.SetValue($Name, $Value, [Microsoft.Win32.RegistryValueKind] $Kind)
     } finally {
         $key.Close()
+    }
+}
+
+# For a key this script used to write and no longer does. The .NET API for the
+# same reason `Set-RegistryValue` uses it: the provider would read the forward
+# slash as a path separator, look for the wrong key, and leave the right one
+# behind. A key that is not there is nothing to do; a key that is there and will
+# not go is a failure, and catching every exception cannot tell the two apart,
+# so the result is read back and only the absence is passed over. `uninstall.ps1`
+# carries the same pair for the same reason.
+function Remove-RegistryKey {
+    param([string] $Path)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
+    if (-not $key) { return }
+    $key.Close()
+    [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKeyTree($Path, $false)
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($Path, $false)
+    if ($key) {
+        $key.Close()
+        throw "install.ps1: HKCU\$Path is still there after being deleted"
     }
 }
 
@@ -168,6 +195,14 @@ Set-RegistryValue "$classes\$extension" '' $progId
 Set-RegistryValue "$classes\$extension" 'Content Type' $contentType
 Set-RegistryValue "$classes\$extension\OpenWithProgids" $progId ''
 Set-RegistryValue "$classes\MIME\Database\Content Type\$contentType" 'Extension' $extension
+
+# The superseded name, off an installation that predates the registration.
+# `Content Type` above is a single value and the write has already replaced it;
+# this half is a key of its own and outlives the upgrade unless it is removed,
+# and what it leaves behind maps `.slpc` to a type this application no longer
+# claims. Unconditional rather than guarded on a version: the key is either
+# there or it is not, and this says which it should be.
+Remove-RegistryKey "$classes\MIME\Database\Content Type\$supersededContentType"
 
 # The Open With list, so a person can reach this application from a file it was
 # not registered for, and so the shell has a name for the executable itself.

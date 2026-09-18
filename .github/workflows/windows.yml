@@ -101,7 +101,7 @@ jobs:
       - name: The integration goes on and comes off cleanly
         uses: excelano/.github/.github/actions/windows-install-check@main
         with:
-          associations: '[{"extension": ".slpc", "progId": "Excelano.Slipcase", "contentType": "application/x.slipcase+zip"}]'
+          associations: '[{"extension": ".slpc", "progId": "Excelano.Slipcase", "contentType": "application/vnd.excelano.slipcase+zip"}]'
           owns-extension: 'true'
           install-args: '-NoBinary'
 

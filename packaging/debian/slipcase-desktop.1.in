@@ -51,10 +51,12 @@ window could not be created at all \(em no display, or no usable graphics
 driver \(em rather than anything about a container.
 .SH FILES
 .TP
-.I /usr/share/mime/packages/application\-x.slipcase+zip.xml
+.I /usr/share/mime/packages/slipcase.xml
 The media type, which is what makes a file manager offer this application for
-a container. Matched by filename: the format reserves no magic bytes, so a
-container is identified by its name.
+a container. Shipped by
+.BR slipcase\-common ,
+not by this package. Matched by filename: the format reserves no magic bytes,
+so a container is identified by its name.
 .TP
 .I /usr/share/applications/slipcase\-desktop.desktop
 The desktop entry.

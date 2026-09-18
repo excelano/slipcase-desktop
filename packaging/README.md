@@ -23,8 +23,9 @@ no environment variable then says so.
 
 Check that it took:
 
-    xdg-mime query filetype some.slpc              # application/x.slipcase+zip
-    xdg-mime query default application/x.slipcase+zip   # slipcase-desktop.desktop
+    type=application/vnd.excelano.slipcase+zip
+    xdg-mime query filetype some.slpc   # $type
+    xdg-mime query default "$type"      # slipcase-desktop.desktop
 
 Before the media type is installed a `.slpc` reports as `application/zip`, which
 is true and useless: it is what every Slipcase is underneath.
@@ -45,8 +46,8 @@ again from the other direction.
 **The desktop entry names six types, not one.** `slipcase-common` declares a
 payload family per icon — `application/x.slipcase-pdf+zip` against `*.pdf.slpc`,
 and four more — so that a container named for its payload can be drawn with a
-mark for it. Each is a `sub-class-of application/x.slipcase+zip`, and that
-inheritance carries the default application but not the *recommended* list,
+mark for it. Each is a `sub-class-of application/vnd.excelano.slipcase+zip`, and
+that inheritance carries the default application but not the *recommended* list,
 which is matched on the exact type. A family missing from `MimeType=` therefore
 still opens on a double-click and still drops out of the top of Open With. The
 list is the one part of the arrangement that could not stay in `slipcase-common`,

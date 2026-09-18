@@ -44,9 +44,9 @@ On Linux, the media type and then the desktop integration:
 ./packaging/linux/install.sh
 ```
 
-`slipcase-common` registers `application/x.slipcase+zip` against `*.slpc` and
-ships the icon a container is drawn with, so a file manager knows what a
-container is; this application's own entry says what opens one. The type is a
+`slipcase-common` registers `application/vnd.excelano.slipcase+zip` against
+`*.slpc` and ships the icon a container is drawn with, so a file manager knows
+what a container is; this application's own entry says what opens one. The type is a
 separate package because every Slipcase product needs it and only one of them
 can ship it — two packages cannot install the same path.
 `packaging/debian/build-deb.sh` builds the package the Excelano apt repository
