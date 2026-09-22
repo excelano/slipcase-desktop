@@ -2,9 +2,9 @@
 
 A desktop application for [Slipcase](https://slipcaseformat.org) containers.
 
-A `.slpc` file is a ZIP archive holding a payload file of any type together with a TOML metadata document describing it. The two become one file, so copying, moving, or sending the payload carries its metadata along.
+A `.slpc` file is a ZIP archive holding a content file of any type together with a TOML flyleaf document describing it. The two become one file, so copying, moving, or sending the content file carries its flyleaf along.
 
-Slipcase opens a container, shows what is in it, and hands the payload to whatever application the operating system has registered for it. It makes one too: *New container…* asks for a file and writes a container around it, which the metadata editor then fills in. It parses no containers itself: every read, every write, and every verdict comes from [`slpc`](https://github.com/excelano/slpc-rust).
+Slipcase opens a container, shows what is in it, and hands the content file to whatever application the operating system has registered for it. It makes one too: *New container…* asks for a file and writes a container around it, which the flyleaf editor then fills in. It parses no containers itself: every read, every write, and every verdict comes from [`slpc`](https://github.com/excelano/slpc-rust).
 
 The specification lives in [`excelano/slipcase`](https://github.com/excelano/slipcase) and is the authority on the format. <https://slipcaseformat.org> publishes it as pages.
 
@@ -54,9 +54,9 @@ ships. `packaging/README.md` has the detail.
 
 ## Status
 
-Opening a container, editing its metadata, extracting and replacing the payload
-and file association all ship on Linux, macOS and Windows. Making a container
-out of a file ships on Linux.
+Opening a container, editing its flyleaf, extracting and replacing the content
+file and file association all ship on Linux, macOS and Windows. Making a
+container out of a file ships on Linux.
 
 The window draws in German where the desktop asks for German, with English
 falling back wherever a sentence has none. `DESIGN.md` §10 is the mechanism and
@@ -78,10 +78,10 @@ cargo run --example corpus -- /path/to/slipcase/conformance
 ```
 
 It puts every fixture through this application's own reading of them: the
-verdict, whether a metadata tree and a payload card are shown, extraction at the
+verdict, whether a flyleaf tree and a content card are shown, extraction at the
 declared length, the pre-flight answer against what extraction then does, a full
-rewrite round trip with key order preserved, a rename, a payload replacement
-under two names, and every payload packed into a container of its own and read
+rewrite round trip with key order preserved, a rename, a content file replacement
+under two names, and every content file packed into a container of its own and read
 back.
 
 ## License

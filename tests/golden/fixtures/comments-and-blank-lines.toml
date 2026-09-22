@@ -1,8 +1,8 @@
-# slipcase metadata
+# slipcase flyleaf
 
-  slipcase_version = "1.0"   # the specification version
+  slipcase_version = "1.1"   # the specification version
 
 
-[payload]
+[content]
   # the member this describes
   file = "report.pdf"

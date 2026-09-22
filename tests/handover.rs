@@ -1,4 +1,4 @@
-// The path a payload takes on its way to the operating system.
+// The path a content file takes on its way to the operating system.
 //
 // Nothing covered this until 2026-08-27, which was found by asking what tests
 // the handover and getting no answer. `src/lib.rs`'s tests extract into a
@@ -21,13 +21,13 @@
 
 use std::path::Path;
 
-/// A container holding `payload`, written to `dir`.
-fn container(dir: &Path, payload: &[u8]) -> std::path::PathBuf {
+/// A container holding `content`, written to `dir`.
+fn container(dir: &Path, content: &[u8]) -> std::path::PathBuf {
     let path = dir.join("report.pdf.slpc");
     let mut bytes = Vec::new();
     slpc::pack_reader(
         "report.pdf",
-        payload,
+        content,
         slpc::toml_edit::DocumentMut::new(),
         &mut bytes,
     )
@@ -96,19 +96,19 @@ fn scratch() -> tempfile::TempDir {
     builder.tempdir().expect("a scratch directory")
 }
 
-/// A payload handed over is where it should be, intact, and readable by the
-/// process that will open it.
+/// A content file handed over is where it should be, intact, and readable by
+/// the process that will open it.
 ///
 /// **The defect this catches is a handover nobody can complete.** The scratch
-/// directory became 0700 on 2026-08-27, to stop every payload somebody pressed
-/// Open on being readable by every account on the machine. A directory mode is
-/// exactly the kind of change that fixes one thing and breaks the thing it was
-/// protecting, and on this platform the process that opens the payload is a
-/// separate one — so it is asked from a separate one.
+/// directory became 0700 on 2026-08-27, to stop every content file somebody
+/// pressed Open on being readable by every account on the machine. A directory
+/// mode is exactly the kind of change that fixes one thing and breaks the
+/// thing it was protecting, and on this platform the process that opens the
+/// content file is a separate one — so it is asked from a separate one.
 #[test]
-fn a_payload_handed_over_is_readable_by_another_process() {
+fn a_content_file_handed_over_is_readable_by_another_process() {
     let dir = tempfile::tempdir().expect("a temporary directory");
-    let source = container(dir.path(), b"%PDF-1.7 the payload\n");
+    let source = container(dir.path(), b"%PDF-1.7 the content file\n");
     let scratch = scratch();
 
     let landed = match slipcase_desktop::extract(source.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
@@ -119,7 +119,7 @@ fn a_payload_handed_over_is_readable_by_another_process() {
     };
 
     // Compared as resolved paths rather than as strings. On Windows
-    // `slpc::payload_path` canonicalises the destination, so what comes back
+    // `slpc::content_path` canonicalises the destination, so what comes back
     // carries the `\\?\` verbatim prefix and `starts_with` on the un-prefixed
     // scratch path is false. `src/lib.rs`'s extraction test learned this on
     // 2026-08-27 and this file learned it again the same day, which is what
@@ -127,13 +127,13 @@ fn a_payload_handed_over_is_readable_by_another_process() {
     assert_eq!(
         std::fs::canonicalize(landed.parent().expect("a parent")).expect("resolves"),
         std::fs::canonicalize(scratch.path()).expect("resolves"),
-        "the payload landed outside the scratch directory: {}",
+        "the content file landed outside the scratch directory: {}",
         landed.display()
     );
     assert_eq!(landed.file_name().expect("a name"), "report.pdf");
     assert_eq!(
         std::fs::read(&landed).expect("this process can read it"),
-        b"%PDF-1.7 the payload\n"
+        b"%PDF-1.7 the content file\n"
     );
 
     // The handler's position: another process, same user. `cat` rather than a
@@ -151,14 +151,14 @@ fn a_payload_handed_over_is_readable_by_another_process() {
             .expect("runs cat");
         assert!(
             out.status.success(),
-            "another process could not read the payload: {}",
+            "another process could not read the content file: {}",
             String::from_utf8_lossy(&out.stderr)
         );
-        assert_eq!(out.stdout, b"%PDF-1.7 the payload\n");
+        assert_eq!(out.stdout, b"%PDF-1.7 the content file\n");
     }
 }
 
-/// A payload extracted into a private directory stays inside it.
+/// A content file extracted into a private directory stays inside it.
 ///
 /// **This does not test `App::scratch_dir`'s mode**, and its first draft said
 /// it did. `scratch()` above is this file's own copy of that builder, because
@@ -167,10 +167,11 @@ fn a_payload_handed_over_is_readable_by_another_process() {
 /// is what holds the mode, and it bites.
 ///
 /// What this holds is the half that copy cannot fake: that extraction puts the
-/// payload inside the directory it was given, whatever that directory's mode.
+/// content file inside the directory it was given, whatever that directory's
+/// mode.
 #[test]
 #[cfg(unix)]
-fn the_payload_waits_somewhere_private() {
+fn the_content_file_waits_somewhere_private() {
     use std::os::unix::fs::PermissionsExt as _;
 
     let dir = tempfile::tempdir().expect("a temporary directory");
@@ -186,7 +187,7 @@ fn the_payload_waits_somewhere_private() {
     assert_eq!(mode & 0o777, 0o700, "this file's own builder: {:o}", mode & 0o777);
 
     let landed = scratch.path().join("report.pdf");
-    assert!(landed.is_file(), "the payload is not in the directory it was given");
+    assert!(landed.is_file(), "the content file is not in the directory it was given");
     assert_eq!(std::fs::read(&landed).expect("reads"), b"private\n");
 }
 
@@ -195,9 +196,10 @@ fn the_payload_waits_somewhere_private() {
 /// **The defect this catches was live for about an hour today.** Routing
 /// extraction through `slpc::Destination` with `force` false made the handover
 /// refuse to replace, and the scratch directory is one directory for a whole
-/// session — so opening two containers whose payloads share a name failed on
-/// the second. The conformance corpus caught it, twenty-five cases into a run;
-/// nothing in `cargo test` did, because every test made its own directory.
+/// session — so opening two containers whose content files share a name failed
+/// on the second. The conformance corpus caught it, twenty-five cases into a
+/// run; nothing in `cargo test` did, because every test made its own
+/// directory.
 #[test]
 fn a_second_container_can_be_handed_over_into_the_same_directory() {
     let dir = tempfile::tempdir().expect("a temporary directory");
@@ -205,11 +207,11 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 
     let first = dir.path().join("first");
     std::fs::create_dir(&first).expect("makes it");
-    let a = container(&first, b"the first payload\n");
+    let a = container(&first, b"the first content file\n");
 
     let second = dir.path().join("second");
     std::fs::create_dir(&second).expect("makes it");
-    let b = container(&second, b"the second payload\n");
+    let b = container(&second, b"the second content file\n");
 
     slipcase_desktop::extract(a.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
         .expect("the first extracts");
@@ -222,8 +224,8 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 
     assert_eq!(
         std::fs::read(&landed).expect("reads"),
-        b"the second payload\n",
-        "the second container's payload is what is handed over"
+        b"the second content file\n",
+        "the second container's content file is what is handed over"
     );
 }
 
@@ -231,12 +233,12 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 ///
 /// **The defect this catches was found by reading a security document and
 /// checking its claims.** Every provenance rule in `DESIGN.md` §7 is about
-/// extraction — a payload leaving a container. Saving is the same question from
-/// the other side and nobody had asked it: `Destination::in_place` replaces a
-/// file by renaming a fresh one over it, and a fresh file carries no mark, so
-/// changing one key and pressing Save stripped whatever the platform had
-/// recorded. Every payload extracted afterwards was unmarked too, because
-/// carrying copies from the container.
+/// extraction — a content file leaving a container. Saving is the same
+/// question from the other side and nobody had asked it: `Destination::in_place`
+/// replaces a file by renaming a fresh one over it, and a fresh file carries no
+/// mark, so changing one key and pressing Save stripped whatever the platform
+/// had recorded. Every content file extracted afterwards was unmarked too,
+/// because carrying copies from the container.
 ///
 /// Fixed in `slpc` 0.3.7 and held there by a test of its own. This is the same
 /// property asked of the application, through the save path the window uses,
@@ -245,7 +247,7 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 #[test]
 fn saving_an_edit_keeps_where_the_container_came_from() {
     let dir = tempfile::tempdir().expect("a temporary directory");
-    let path = container(dir.path(), b"the payload\n");
+    let path = container(dir.path(), b"the content file\n");
 
     if !mark_as_downloaded(&path) {
         eprintln!("skipped: this filesystem will not hold a mark");
@@ -255,7 +257,7 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
 
     let mut opened = slipcase_desktop::Opened::open(&path);
     opened
-        .metadata
+        .flyleaf
         .as_mut()
         .expect("a document")
         .tree_mut()
@@ -275,7 +277,7 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
     let after = slipcase_desktop::Opened::open(&path);
     assert!(
         after
-            .metadata
+            .flyleaf
             .expect("a document")
             .tree()
             .get("title")
@@ -284,21 +286,23 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
     );
 }
 
-/// A payload that arrived from elsewhere still says so after a trip through a
-/// container this application made.
+/// A content file that arrived from elsewhere still says so after a trip
+/// through a container this application made.
 ///
 /// **The defect this catches is packing as a way to launder a download.** A
 /// container this process writes carries no mark of its own, so without
-/// `create` carrying the payload's onto it the round trip is complete: pack a
-/// downloaded file, open the container — which the card then calls local —
-/// press Open, and `copy_out` asks `provenance::carry` about a container that
-/// records nothing and hands the platform an unmarked copy of a file it had
-/// gated. Every step of that is somebody's ordinary use of the window.
+/// `create` carrying the content file's onto it the round trip is complete:
+/// pack a downloaded file, open the container — which the card then calls
+/// local — press Open, and `copy_out` asks `provenance::carry` about a
+/// container that records nothing and hands the platform an unmarked copy of a
+/// file it had gated. Every step of that is somebody's ordinary use of the
+/// window.
 ///
 /// The whole trip rather than the container alone, because the container's own
 /// mark is not what matters to anybody: what matters is the file the operating
 /// system is handed at the end of it. Break it by taking the `carry` out of
-/// `create` and this fails on the extracted payload as well as on the card.
+/// `create` and this fails on the extracted content file as well as on the
+/// card.
 ///
 /// Skipped where the filesystem will not hold a mark, announced rather than
 /// passed quietly, which is what `saving_an_edit_keeps_where_the_container_came_from`
@@ -306,16 +310,16 @@ fn saving_an_edit_keeps_where_the_container_came_from() {
 #[test]
 fn packing_a_download_does_not_launder_it() {
     let dir = tempfile::tempdir().expect("a temporary directory");
-    let payload = dir.path().join("report.pdf");
-    std::fs::write(&payload, b"the payload").expect("writes the payload");
+    let content = dir.path().join("report.pdf");
+    std::fs::write(&content, b"the content file").expect("writes the content file");
 
-    if !mark_as_downloaded(&payload) {
+    if !mark_as_downloaded(&content) {
         eprintln!("skipped: this filesystem will not hold a mark");
         return;
     }
 
     let into = dir.path().join("report.pdf.slpc");
-    let made = slipcase_desktop::create(&payload, &into, &slipcase_desktop::Watch::new())
+    let made = slipcase_desktop::create(&content, &into, &slipcase_desktop::Watch::new())
         .expect("makes a container");
     let slipcase_desktop::Created::Written { provenance, .. } = made else {
         panic!("a container was not made");
@@ -325,7 +329,7 @@ fn packing_a_download_does_not_launder_it() {
     // What the card reads.
     assert!(
         slipcase_desktop::Opened::open(&into).from_elsewhere,
-        "the container does not say where its payload came from"
+        "the container does not say where its content file came from"
     );
 
     // And what the operating system would be handed.
@@ -338,6 +342,6 @@ fn packing_a_download_does_not_launder_it() {
     };
     assert!(
         slpc::provenance::arrived_from_elsewhere(&extracted),
-        "the payload came back out of the container unmarked"
+        "the content file came back out of the container unmarked"
     );
 }

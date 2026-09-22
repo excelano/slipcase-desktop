@@ -39,7 +39,7 @@ use eframe::egui;
 
 use slipcase_desktop::i18n::{self, fill, t};
 use slipcase_desktop::{
-    create, extract, extract_at, why_not_a_payload, Created, Extracted, Opened, Payload,
+    create, extract, extract_at, why_not_a_content_file, Content, Created, Extracted, Opened,
     RequiredKeys, Saved, Watch,
 };
 
@@ -241,7 +241,7 @@ fn main() -> eframe::Result {
     // nothing hands back the English it was given. The `potext` crate says why
     // the test suite is deliberately outside this.
     // One reading of the platform, handed to this application and to the widget
-    // that draws the metadata tree inside its window. `flyleaf` carries its own
+    // that draws the flyleaf tree inside its window. `flyleaf` carries its own
     // catalogue — a published crate has to — and takes a tag rather than a
     // catalogue, so a version skew between the two costs nothing. Asked once
     // and passed on rather than asked twice, because a tree in a different
@@ -367,13 +367,13 @@ struct App {
     scratch: Option<tempfile::TempDir>,
     /// What the last extraction did.
     extraction: Extraction,
-    /// A file chosen to become the payload, waiting for a Save.
+    /// A file chosen to become the content file, waiting for a Save.
     ///
-    /// DESIGN.md §5 makes replacing the payload an explicit action, and this is
-    /// where explicit stops: choosing the file is not writing it. It waits here
-    /// with the metadata edits so that one press of Save writes one container,
-    /// rather than two writes with a window between them where a failure leaves
-    /// half of what was asked for.
+    /// DESIGN.md §5 makes replacing the content file an explicit action, and
+    /// this is where explicit stops: choosing the file is not writing it. It
+    /// waits here with the flyleaf edits so that one press of Save writes one
+    /// container, rather than two writes with a window between them where a
+    /// failure leaves half of what was asked for.
     replacing: Option<PathBuf>,
     /// A container being made out of a file somebody chose.
     creating: Creating,
@@ -384,7 +384,7 @@ struct App {
     /// Whether the Open button still has to be given keyboard focus.
     ///
     /// Set when a container is shown and cleared the moment the focus is
-    /// asked for, so that pressing Enter opens the payload and pressing Tab
+    /// asked for, so that pressing Enter opens the content file and pressing Tab
     /// afterwards still moves away. Requesting it every frame would pin focus
     /// to the button and make the rest of the window unreachable from the
     /// keyboard, which is worse than the extra press this saves.
@@ -407,19 +407,19 @@ struct Picking {
 enum For {
     /// A container to open.
     Container,
-    /// Where to put the payload.
+    /// Where to put the content file.
     ExtractTo,
-    /// A file to become the payload.
+    /// A file to become the content file.
     Replacement,
     /// A file to make a container out of.
-    NewPayload,
+    NewContentFile,
     /// Where that container goes.
     NewContainer,
 }
 
 /// Where an extraction is going.
 enum Target {
-    /// The scratch directory, under the payload's own name. The platform is
+    /// The scratch directory, under the content file's own name. The platform is
     /// handed the file when it lands, which is what the Open button is.
     Handover(PathBuf),
     /// A path somebody named. Nothing is launched: they said where to put it,
@@ -433,7 +433,7 @@ enum Extraction {
     Idle,
     /// A copy is under way on another thread.
     Running(Job<Extraction>),
-    /// The payload is on disk, here.
+    /// The content file is on disk, here.
     Done(PathBuf),
     /// The copy was stopped, and nothing of it was left behind.
     Cancelled,
@@ -447,7 +447,7 @@ enum Extraction {
 /// file goes in is the whole of what the person is asking for, and where the
 /// container lands is a location — DESIGN.md §5 has this application choosing
 /// one only when nobody asked it to, and `slipcase pack`'s default of writing
-/// beside the payload is a convention a command line can afford and a window
+/// beside the content file is a convention a command line can afford and a window
 /// pressing a button cannot.
 enum Creating {
     /// Nothing has been asked for.
@@ -486,11 +486,11 @@ enum Ask {
 }
 
 impl Ask {
-    /// Whether doing this has to decode the payload.
+    /// Whether doing this has to decode the content file.
     ///
     /// Replacing does not. Nothing reads a member to write over it, so the one
     /// container the corpus holds that cannot be opened is still one whose
-    /// payload can be swapped out. DESIGN.md §6.
+    /// content file can be swapped out. DESIGN.md §6.
     fn decodes(self) -> bool {
         matches!(self, Self::Open | Self::Extract)
     }
@@ -501,8 +501,8 @@ impl Ask {
     /// offered says more than one that is offered and then fails: the refusal
     /// is a fact about this build, known before anything is pressed, and
     /// finding it out by pressing costs a dialog and a wait first.
-    fn offered(self, payload: &Payload, busy: bool) -> bool {
-        !busy && (!self.decodes() || payload.can_be_decoded())
+    fn offered(self, content: &Content, busy: bool) -> bool {
+        !busy && (!self.decodes() || content.can_be_decoded())
     }
 }
 
@@ -522,8 +522,8 @@ struct Said {
 struct Job<T> {
     /// Shared with the thread doing the copying.
     watch: Watch,
-    /// How much there is to copy: what the central directory said the payload
-    /// measures, or what the file being packed measures on disk.
+    /// How much there is to copy: what the central directory said the content
+    /// file measures, or what the file being packed measures on disk.
     total: u64,
     /// The one message the thread sends when it is done.
     outcome: mpsc::Receiver<T>,
@@ -538,9 +538,9 @@ struct Job<T> {
 /// person nothing about what to do next — and this is a sentence the
 /// application wrote rather than one the platform handed over, so it is this
 /// application's to get right. Found by pressing Open during the window
-/// walkthrough on 2026-08-26, against a payload the shell will not open and a
-/// security warning somebody cancelled; below the window both had said exactly
-/// what was wrong.
+/// walkthrough on 2026-08-26, against a content file the shell will not open
+/// and a security warning somebody cancelled; below the window both had said
+/// exactly what was wrong.
 ///
 /// The source is preferred over the error's own wording wherever there is one,
 /// because that is where every variant this can produce keeps the platform's
@@ -603,8 +603,8 @@ impl App {
     /// would sit under the card of the one just opened.
     fn show(&mut self, opened: Opened) {
         // A copy still running belongs to the container being closed. Left
-        // alone it would finish and hand that payload to the platform, minutes
-        // after the person moved on to another container.
+        // alone it would finish and hand that content file to the platform,
+        // minutes after the person moved on to another container.
         if let Extraction::Running(job) = &self.extraction {
             job.watch.cancel();
         }
@@ -615,8 +615,8 @@ impl App {
         // asked for here: a container already on screen has had its chance and
         // the focus is now wherever the person put it.
         self.focus_open = true;
-        // A file chosen to replace the payload of the container being closed
-        // is not a file to replace the payload of the next one.
+        // A file chosen to replace the content file of the container being
+        // closed is not a file to replace the content file of the next one.
         self.replacing = None;
         self.said = None;
     }
@@ -624,14 +624,14 @@ impl App {
     /// What the bar has to say about the container.
     ///
     /// The first is whether there is anything to write, which is what turns
-    /// Save on: an edited document, a payload waiting to replace the one in
-    /// there, or both.
+    /// Save on: an edited document, a content file waiting to replace the one
+    /// in there, or both.
     ///
     /// Both halves, and not one or the other. A save that failed changed
     /// nothing, so there is still something to write, and showing only the
     /// edited mark hides the reason behind the very state the failure caused.
     fn notes(&self) -> (bool, Option<&Said>) {
-        let edited = self.opened.as_ref().is_some_and(Opened::metadata_edited)
+        let edited = self.opened.as_ref().is_some_and(Opened::flyleaf_edited)
             || self.replacing.is_some();
         (edited, self.said.as_ref())
     }
@@ -651,7 +651,7 @@ impl App {
     /// write said. Returns the button pressed, if one was.
     fn bar(&self, ui: &mut egui::Ui) -> Option<Pressed> {
         let (edited, said) = self.notes();
-        let history = self.opened.as_ref().and_then(|o| o.metadata.as_ref());
+        let history = self.opened.as_ref().and_then(|o| o.flyleaf.as_ref());
         let (can_undo, can_redo) =
             history.map_or((false, false), |d| (d.can_undo(), d.can_redo()));
         let busy = self.busy();
@@ -733,14 +733,15 @@ impl App {
         self.said = Some(said);
     }
 
-    /// Take a file chosen to become the payload, or say why it cannot be one.
+    /// Take a file chosen to become the content file, or say why it cannot be
+    /// one.
     ///
     /// Refused here rather than at Save where it can be, so a name SPEC §2.3
     /// forbids is reported while the person still has the dialog in mind. The
     /// refusals this cannot see are the ones needing the container's member
     /// list, and those stay for Save to report.
     fn take_replacement(&mut self, file: PathBuf) {
-        if let Some(why) = why_not_a_payload(&file) {
+        if let Some(why) = why_not_a_content_file(&file) {
             self.replacing = None;
             self.said = Some(Said { text: why, wrong: true });
             return;
@@ -786,7 +787,7 @@ impl App {
                 // the window the way one opened through the dialog does. That
                 // is also what puts the tree in front of somebody who has just
                 // made a container carrying nothing but the two keys the
-                // library wrote: the metadata is added here, in the editor
+                // library wrote: the flyleaf is added here, in the editor
                 // that already exists, rather than in a form this application
                 // has no vocabulary to draw.
                 last_folder::write(&path);
@@ -797,14 +798,14 @@ impl App {
                         text: t("Made.").to_owned(),
                         wrong: false,
                     },
-                    // A container that does not record where its payload came
-                    // from is one the card will call local, and one whose
-                    // payload leaves ungated when it is extracted. Said rather
-                    // than logged: the person is holding the container it is
-                    // true of.
+                    // A container that does not record where its content file
+                    // came from is one the card will call local, and one whose
+                    // content file leaves ungated when it is extracted. Said
+                    // rather than logged: the person is holding the container
+                    // it is true of.
                     Some(why) => Said {
                         text: fill(
-                            t("Made. Where the payload came from could not be carried onto it: {reason}"),
+                            t("Made. Where the content file came from could not be carried onto it: {reason}"),
                             &[("reason", &why)],
                         ),
                         wrong: true,
@@ -823,22 +824,22 @@ impl App {
 
     /// Start packing a container, on a thread of its own.
     ///
-    /// On a thread for the reason extraction is: a payload is a file of
+    /// On a thread for the reason extraction is: a content file is a file of
     /// arbitrary size and the window has to keep drawing while it is read, so
     /// that it can say how far along it is and offer to stop.
-    fn start_creating(&mut self, payload: PathBuf, into: PathBuf, ctx: &egui::Context) {
-        // What the payload measures on disk, which is what the count in
+    fn start_creating(&mut self, content: PathBuf, into: PathBuf, ctx: &egui::Context) {
+        // What the content file measures on disk, which is what the count in
         // `create` advances against. Zero where it cannot be asked, which the
         // progress bar reads as done rather than as an error — the copy itself
         // is what will report a file it cannot read.
-        let total = std::fs::metadata(&payload).map_or(0, |m| m.len());
+        let total = std::fs::metadata(&content).map_or(0, |m| m.len());
         let watch = Watch::new();
         let (sender, outcome) = mpsc::channel();
 
         let theirs = watch.clone();
         let ctx = ctx.clone();
         std::thread::spawn(move || {
-            let made = match create(&payload, &into, &theirs) {
+            let made = match create(&content, &into, &theirs) {
                 Ok(Created::Written { path, provenance }) => Made::Done(path, provenance),
                 Ok(Created::Cancelled) => Made::Stopped,
                 // The two halves of a container that is not there: one was
@@ -867,21 +868,21 @@ impl App {
         });
     }
 
-    /// Start extracting the payload, on a thread of its own.
+    /// Start extracting the content file, on a thread of its own.
     ///
     /// The window keeps drawing while it copies, which is what lets it show how
     /// far along it is and offer to stop. One thread serves both of DESIGN.md
-    /// §5's destinations, because a payload of two gigabytes is a payload of two
-    /// gigabytes whether it is going to a scratch directory or to a folder
-    /// somebody chose. The handover happens over there too: `opener` starts a
-    /// process, and starting it is not instant either.
+    /// §5's destinations, because a content file of two gigabytes is a content
+    /// file of two gigabytes whether it is going to a scratch directory or to a
+    /// folder somebody chose. The handover happens over there too: `opener`
+    /// starts a process, and starting it is not instant either.
     fn start_extraction(&mut self, target: Target) {
         let Some(opened) = &self.opened else {
             return;
         };
 
         let container = opened.path.clone();
-        let total = opened.payload.as_ref().map_or(0, |p| p.size);
+        let total = opened.content.as_ref().map_or(0, |p| p.size);
         let watch = Watch::new();
         let (sender, outcome) = mpsc::channel();
 
@@ -894,12 +895,12 @@ impl App {
             let finished = match copied {
                 Ok(Extracted::Done(path)) => match target {
                     // Only the Open button launches anything. A person who said
-                    // where to put the payload said where to put it.
+                    // where to put the content file said where to put it.
                     Target::Chosen(_) => Extraction::Done(path),
                     Target::Handover(_) => match opener::open(&path) {
                         Ok(()) => Extraction::Done(path),
                         // Extraction worked and the handover did not, which is a
-                        // different sentence: the payload is on disk either way.
+                        // different sentence: the content file is on disk either way.
                         Err(e) => Extraction::Failed(fill(
                             t("{file} was extracted, and the system would not open it: {reason}"),
                             &[("file", &slpc::display_path(&path)), ("reason", &why(&e))],
@@ -907,7 +908,7 @@ impl App {
                     },
                 },
                 Ok(Extracted::Cancelled) => Extraction::Cancelled,
-                // The library's own wording. An encrypted payload and one
+                // The library's own wording. An encrypted content file and one
                 // compressed by a method this build lacks both arrive here, and
                 // both sit in a container that is conformant.
                 Err(e) => Extraction::Failed(e.to_string()),
@@ -949,7 +950,7 @@ impl App {
         // The file about to be packed, where there is one. Both of the two
         // questions a new container asks are about it.
         let packing = match &self.creating {
-            Creating::Naming(payload) => Some(payload.clone()),
+            Creating::Naming(content) => Some(content.clone()),
             Creating::Idle | Creating::Running(_) => None,
         };
         // Where the last container came from, so everything is found beside it
@@ -965,24 +966,24 @@ impl App {
                 .or_else(last_folder::read),
             _ => last_folder::read(),
         };
-        // The payload's own name, offered where the question is what to call
-        // the file coming out. Somebody renaming it is choosing to.
+        // The content file's own name, offered where the question is what to
+        // call the file coming out. Somebody renaming it is choosing to.
         let suggested = match what {
             For::ExtractTo => self
                 .opened
                 .as_ref()
-                .and_then(|o| o.payload.as_ref())
+                .and_then(|o| o.content.as_ref())
                 .map(|p| p.name.clone()),
-            // The naming convention SPEC §4 leaves as one: the payload's name
-            // with `.slpc` after it. Offered rather than imposed — nothing
-            // reads a container's name to find out what is inside it, so a
-            // person who types something else has typed the name of their
-            // container.
+            // The naming convention SPEC §4 leaves as one: the content file's
+            // name with `.slpc` after it. Offered rather than imposed —
+            // nothing reads a container's name to find out what is inside it,
+            // so a person who types something else has typed the name of
+            // their container.
             For::NewContainer => packing
                 .as_deref()
                 .and_then(Path::file_name)
                 .map(|name| format!("{}.slpc", name.to_string_lossy())),
-            For::Container | For::Replacement | For::NewPayload => None,
+            For::Container | For::Replacement | For::NewContentFile => None,
         };
 
         std::thread::spawn(move || {
@@ -992,11 +993,11 @@ impl App {
                     .set_title(t("Open a container"))
                     .add_filter(t("slipcases"), &["slpc"])
                     .add_filter(t("All files"), &["*"]),
-                // No filter on either of these: a payload is any file at all,
-                // which is what SPEC §2.3 leaves open.
-                For::ExtractTo => dialog.set_title(t("Extract the payload to")),
-                For::Replacement => dialog.set_title(t("Replace the payload with")),
-                For::NewPayload => dialog.set_title(t("Make a container out of")),
+                // No filter on either of these: a content file is any file at
+                // all, which is what SPEC §2.3 leaves open.
+                For::ExtractTo => dialog.set_title(t("Extract the content file to")),
+                For::Replacement => dialog.set_title(t("Replace the content file with")),
+                For::NewContentFile => dialog.set_title(t("Make a container out of")),
                 For::NewContainer => dialog
                     .set_title(t("Write the container to"))
                     .add_filter(t("slipcases"), &["slpc"])
@@ -1008,8 +1009,8 @@ impl App {
             if let Some(name) = suggested {
                 // **Not escaped**, and it was for a few hours on 2026-08-27,
                 // which was wrong. This field's value becomes the name of a
-                // file on disk: the comment above says the payload's own name
-                // is offered and that renaming it is the person's choice, so
+                // file on disk: the comment above says the content file's own
+                // name is offered and that renaming it is the person's choice, so
                 // what goes in has to be a name. `display_name` renders a name
                 // for reading — it turns U+202E into the eight characters
                 // `\u{202E}` — and prefilling that meant Extract-to defaulted
@@ -1026,7 +1027,7 @@ impl App {
             // not exist yet, so the platform asks before overwriting.
             let chosen = match what {
                 For::ExtractTo | For::NewContainer => dialog.save_file(),
-                For::Container | For::Replacement | For::NewPayload => dialog.pick_file(),
+                For::Container | For::Replacement | For::NewContentFile => dialog.pick_file(),
             };
             let _ = sender.send(chosen);
             // Nothing has been touching the window while the dialog was up, so
@@ -1068,13 +1069,13 @@ impl App {
             }
             For::ExtractTo => self.start_extraction(Target::Chosen(path)),
             For::Replacement => self.take_replacement(path),
-            For::NewPayload => self.take_new_payload(path, ctx),
+            For::NewContentFile => self.take_new_content_file(path, ctx),
             For::NewContainer => {
-                let Creating::Naming(payload) = std::mem::replace(&mut self.creating, Creating::Idle)
+                let Creating::Naming(content) = std::mem::replace(&mut self.creating, Creating::Idle)
                 else {
                     return;
                 };
-                self.start_creating(payload, path, ctx);
+                self.start_creating(content, path, ctx);
             }
         }
     }
@@ -1086,14 +1087,14 @@ impl App {
     /// forbids is a fact about the choice, and hearing it before the second
     /// dialog costs nobody a second question about a container that was never
     /// going to be written.
-    fn take_new_payload(&mut self, payload: PathBuf, ctx: &egui::Context) {
-        if let Some(why) = why_not_a_payload(&payload) {
+    fn take_new_content_file(&mut self, content: PathBuf, ctx: &egui::Context) {
+        if let Some(why) = why_not_a_content_file(&content) {
             self.creating = Creating::Idle;
             self.said = Some(Said { text: why, wrong: true });
             return;
         }
         self.said = None;
-        self.creating = Creating::Naming(payload);
+        self.creating = Creating::Naming(content);
         self.start_picking(ctx, For::NewContainer);
     }
 }
@@ -1238,7 +1239,7 @@ fn making(ui: &mut egui::Ui, creating: &Creating) -> bool {
     ui.button(t("Stop")).clicked()
 }
 
-/// The payload card: what it is, and what can be done with it.
+/// The content card: what it is, and what can be done with it.
 ///
 /// DESIGN.md §3, and the two explicit actions §5 names. Not a method, because
 /// the panel drawing it holds the document mutably for the tree and a `&self`
@@ -1246,7 +1247,7 @@ fn making(ui: &mut egui::Ui, creating: &Creating) -> bool {
 /// pressed, for the same reason.
 fn card(
     ui: &mut egui::Ui,
-    payload: &Payload,
+    content: &Content,
     from_elsewhere: bool,
     extraction: &Extraction,
     replacing: Option<&std::path::Path>,
@@ -1257,7 +1258,7 @@ fn card(
 
     egui::Frame::group(ui.style()).show(ui, |ui| {
             // Through `slpc::display_name`, which SPEC §3 requires of anything
-            // showing a member name. A payload called `report<U+202E>fdp.exe`
+            // showing a member name. A content file called `report<U+202E>fdp.exe`
             // reads as `report.pdf` wherever the override is applied, and this
             // label sits beside a button that hands the file to whatever the
             // system registered for `.exe`.
@@ -1270,17 +1271,17 @@ fn card(
             // to-do to heed them, so the immunity is somebody else's omission
             // and is scheduled to end; and a name that renders a character short
             // is already a name this card is not telling the truth about.
-            ui.label(egui::RichText::new(slpc::display_name(&payload.name).into_owned()).strong());
-            ui.label(payload.size_line());
+            ui.label(egui::RichText::new(slpc::display_name(&content.name).into_owned()).strong());
+            ui.label(content.size_line());
             // Silent where the platform would not answer, rather than saying it
             // does not know.
-            if let Some(application) = &payload.opens_with {
+            if let Some(application) = &content.opens_with {
                 ui.label(fill(t("Opens with {application}"), &[("application", application)]));
             }
-            // After what the payload is, because both are true at once: the
-            // platform would open a file of that name, and this build cannot
-            // get the bytes out to give it one.
-            if let Some(why) = &payload.unreadable {
+            // After what the content file is, because both are true at once:
+            // the platform would open a file of that name, and this build
+            // cannot get the bytes out to give it one.
+            if let Some(why) = &content.unreadable {
                 ui.label(
                     egui::RichText::new(fill(t("Cannot be opened here: {reason}"), &[("reason", why)]))
                         .color(error_colour(ui.visuals())),
@@ -1295,16 +1296,16 @@ fn card(
             // it explains a refusal a person is about to meet — the platform
             // will decline to run the extracted copy — and weak grey is what the
             // walkthrough found nobody reads.
-            if payload.executable {
+            if content.executable {
                 ui.label(
                     egui::RichText::new(t(
-                        "The payload is an executable file; the extracted copy will not be executable.",
+                        "The content file is an executable file; the extracted copy will not be executable.",
                     ))
                     .color(warn_colour(ui.visuals())),
                 );
             }
 
-            // Said rather than acted on. DESIGN.md §7: the payload leaves
+            // Said rather than acted on. DESIGN.md §7: the content file leaves
             // carrying whatever the container carried, and what the platform
             // then does about it is the platform's business. In the
             // warning colour rather than the error one, because a container
@@ -1314,15 +1315,15 @@ fn card(
             if from_elsewhere {
                 ui.label(
                     egui::RichText::new(t(
-                        "This container arrived from elsewhere, and the payload will carry that.",
+                        "This container arrived from elsewhere, and the content file will carry that.",
                     ))
                     .color(warn_colour(ui.visuals())),
                 );
             }
 
             match extraction {
-                // A copy under way takes the row: there is one payload and one
-                // thread, so nothing else on this card can be asked for yet.
+                // A copy under way takes the row: there is one content file and
+                // one thread, so nothing else on this card can be asked for yet.
                 Extraction::Running(job) => {
                     let done = job.watch.done();
                     #[allow(clippy::cast_precision_loss)]
@@ -1348,18 +1349,18 @@ fn card(
                             // silently dropped, and off where this build
                             // cannot decode what the button would decode.
                             let button =
-                                ui.add_enabled(ask.offered(payload, busy), egui::Button::new(label));
+                                ui.add_enabled(ask.offered(content, busy), egui::Button::new(label));
                             // The line above says why, and a button explaining
                             // itself where the pointer already is saves
                             // looking for it.
-                            let button = match &payload.unreadable {
+                            let button = match &content.unreadable {
                                 Some(why) if ask.decodes() => button.on_disabled_hover_text(why),
                                 _ => button,
                             };
                             // Once, and only where it would do something: a
                             // focus ring on a disabled button says press me
                             // about a button that cannot be pressed, and a
-                            // payload this build cannot decode leaves Open
+                            // content file this build cannot decode leaves Open
                             // disabled.
                             if *focus_open && ask == Ask::Open && button.enabled() {
                                 button.request_focus();
@@ -1394,9 +1395,9 @@ fn card(
                 Extraction::Idle | Extraction::Running(_) => {}
                 Extraction::Done(path) => {
                     // `display_path` strips the `\\?\` prefix and does nothing
-                    // about the name inside the path, which is the payload's
-                    // and is attacker-controlled. Both, so the line says where
-                    // the file is and what it is called.
+                    // about the name inside the path, which is the content
+                    // file's and is attacker-controlled. Both, so the line says
+                    // where the file is and what it is called.
                     ui.label(fill(
                         t("Extracted to {file}"),
                         &[("file", &slpc::display_name(&slpc::display_path(path)))],
@@ -1407,7 +1408,7 @@ fn card(
                     // used to truncate the destination before reading a byte,
                     // so stopping destroyed a file somebody had chosen to
                     // replace and then deleted it. Nothing is opened at the
-                    // destination until the payload is whole.
+                    // destination until the content file is whole.
                     ui.label(t("Stopped. Nothing was left behind."));
                 }
                 Extraction::Failed(why) => {
@@ -1431,7 +1432,7 @@ impl App {
             builder.prefix("slipcase-");
             // 0700 asked for rather than assumed. `tempfile`'s directories go
             // through the umask — 0755 under the common one, 0775 under
-            // Debian's — so every payload somebody pressed Open on sat in a
+            // Debian's — so every content file somebody pressed Open on sat in a
             // world-listable directory readable by any account on the machine,
             // for the life of the process. Measured 2026-08-27. `Cargo.toml`
             // said this crate was chosen *because* `TempDir` is 0700; it is
@@ -1565,11 +1566,11 @@ impl App {
                 ui.separator();
                 ui.label(opened.verdict_line());
 
-                if let Some(payload) = &opened.payload {
+                if let Some(content) = &opened.content {
                     ui.add_space(8.0);
                     asked = card(
                         ui,
-                        payload,
+                        content,
                         opened.from_elsewhere,
                         &self.extraction,
                         self.replacing.as_deref(),
@@ -1578,9 +1579,9 @@ impl App {
                     );
                 }
 
-                // The metadata is the window: it gets the space rather than a
+                // The flyleaf is the window: it gets the space rather than a
                 // panel down one side. DESIGN.md §3.
-                if let Some(doc) = &mut opened.metadata {
+                if let Some(doc) = &mut opened.flyleaf {
                     // Before the tree draws, and after the widget has been
                     // told to forget what is half typed: a key field commits
                     // its buffer when it loses focus, and would otherwise
@@ -1612,7 +1613,7 @@ impl App {
             // The first of the two questions. `poll_picking` asks the second
             // once this one is answered, so that the pair stays one dialog at
             // a time like every other.
-            self.start_picking(ui.ctx(), For::NewPayload);
+            self.start_picking(ui.ctx(), For::NewContentFile);
         }
 
         if stop_making {
@@ -1641,11 +1642,11 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::{why, App, Ask, Creating, Extraction};
-    use slipcase_desktop::{Opened, Payload};
+    use slipcase_desktop::{Content, Opened};
     use slpc::toml_edit::DocumentMut;
 
-    fn payload(unreadable: Option<&str>) -> Payload {
-        Payload {
+    fn content(unreadable: Option<&str>) -> Content {
+        Content {
             name: "report.pdf".to_owned(),
             size: 7,
             opens_with: None,
@@ -1654,28 +1655,28 @@ mod tests {
         }
     }
 
-    /// A payload this build can decode offers all three actions.
+    /// A content file this build can decode offers all three actions.
     #[test]
-    fn everything_is_offered_for_a_payload_that_can_be_read() {
-        let payload = payload(None);
+    fn everything_is_offered_for_a_content_file_that_can_be_read() {
+        let content = content(None);
         for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
-            assert!(ask.offered(&payload, false));
+            assert!(ask.offered(&content, false));
         }
     }
 
     /// One it cannot offers only the action that does not need a decoder.
     ///
-    /// DESIGN.md §6: a conformant container whose payload is out of reach is
-    /// still one whose payload can be replaced, because nothing has to read a
-    /// member to write over it.
+    /// DESIGN.md §6: a conformant container whose content file is out of reach
+    /// is still one whose content file can be replaced, because nothing has to
+    /// read a member to write over it.
     #[test]
-    fn only_replacing_is_offered_for_a_payload_that_cannot_be_read() {
-        let payload = payload(Some("the member is encrypted (SPEC 2.5)"));
+    fn only_replacing_is_offered_for_a_content_file_that_cannot_be_read() {
+        let content = content(Some("the member is encrypted (SPEC 2.5)"));
 
-        assert!(!Ask::Open.offered(&payload, false), "nothing to hand over");
-        assert!(!Ask::Extract.offered(&payload, false), "nothing to write out");
+        assert!(!Ask::Open.offered(&content, false), "nothing to hand over");
+        assert!(!Ask::Extract.offered(&content, false), "nothing to write out");
         assert!(
-            Ask::Replace.offered(&payload, false),
+            Ask::Replace.offered(&content, false),
             "writing over a member does not read it"
         );
     }
@@ -1684,9 +1685,9 @@ mod tests {
     #[test]
     fn nothing_is_offered_while_a_dialog_is_up() {
         for unreadable in [None, Some("the member is encrypted (SPEC 2.5)")] {
-            let payload = payload(unreadable);
+            let content = content(unreadable);
             for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
-                assert!(!ask.offered(&payload, true));
+                assert!(!ask.offered(&content, true));
             }
         }
     }
@@ -1695,8 +1696,8 @@ mod tests {
     /// Open saying *IO error* and nothing else. `opener::OpenError` keeps its
     /// `Display` to a category and puts the platform's own words in `source()`,
     /// so formatting the error threw away the only part worth reading. Found
-    /// in the window on 2026-08-26, where a payload the shell will not open
-    /// and a cancelled security warning produced the same empty sentence.
+    /// in the window on 2026-08-26, where a content file the shell will not
+    /// open and a cancelled security warning produced the same empty sentence.
     #[test]
     fn a_refused_handover_repeats_what_the_platform_said() {
         let platform = std::io::Error::other("the specified device name is invalid");
@@ -1781,15 +1782,16 @@ mod tests {
         }
     }
 
-    /// The directory a payload waits in is private, whatever the umask says.
+    /// The directory a content file waits in is private, whatever the umask
+    /// says.
     ///
-    /// **The defect this catches published every payload somebody pressed Open
-    /// on.** `tempfile` puts its directories through the umask — 0755 under the
-    /// common one and 0775 under Debian's — so the handover directory, and the
-    /// payload inside it, were readable by every account on the machine for the
-    /// life of the process. `Cargo.toml` named this crate's 0700 as the reason
-    /// for choosing it; `NamedTempFile` is 0600 and `TempDir` is not, and only
-    /// the first had ever been measured.
+    /// **The defect this catches published every content file somebody pressed
+    /// Open on.** `tempfile` puts its directories through the umask — 0755
+    /// under the common one and 0775 under Debian's — so the handover
+    /// directory, and the content file inside it, were readable by every
+    /// account on the machine for the life of the process. `Cargo.toml` named
+    /// this crate's 0700 as the reason for choosing it; `NamedTempFile` is
+    /// 0600 and `TempDir` is not, and only the first had ever been measured.
     ///
     /// Drop the `permissions` call and this fails under any umask but 0077.
     #[test]
@@ -1823,13 +1825,13 @@ mod tests {
     /// be taken back, and Ctrl+Z reached only egui's undo of a focused
     /// field's text.
     #[test]
-    fn the_undo_and_redo_chords_reach_the_metadata() {
+    fn the_undo_and_redo_chords_reach_the_flyleaf() {
         let dir = tempfile::tempdir().expect("a scratch directory");
         let mut app = app(Some(Opened::open(a_container(dir.path()))));
         let title = |app: &App| {
             app.opened
                 .as_ref()
-                .and_then(|o| o.metadata.as_ref())
+                .and_then(|o| o.flyleaf.as_ref())
                 .and_then(|d| d.tree()["title"].as_str().map(str::to_owned))
         };
         let before = title(&app).expect("the container has a title");
@@ -1837,7 +1839,7 @@ mod tests {
             let doc = app
                 .opened
                 .as_mut()
-                .and_then(|o| o.metadata.as_mut())
+                .and_then(|o| o.flyleaf.as_mut())
                 .expect("a document");
             doc.tree_mut()["title"] = slpc::toml_edit::value("after");
             doc.record(None);
@@ -1870,11 +1872,11 @@ mod tests {
     /// conformance corpus checked out.
     fn a_container(dir: &std::path::Path) -> std::path::PathBuf {
         let path = dir.join("built-by-the-test.slpc");
-        let metadata: DocumentMut = "title = \"built by the test\"\n# a comment\n"
+        let flyleaf: DocumentMut = "title = \"built by the test\"\n# a comment\n"
             .parse()
             .expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes the container");
         path
     }
@@ -1923,8 +1925,8 @@ mod tests {
         assert!(app.opened.is_some());
     }
 
-    /// A payload waiting to replace the one in the container is something to
-    /// write, so Save has to be on even though nobody typed anything.
+    /// A content file waiting to replace the one in the container is something
+    /// to write, so Save has to be on even though nobody typed anything.
     #[test]
     fn a_waiting_replacement_turns_save_on() {
         let dir = tempfile::tempdir().expect("a temporary directory");
@@ -1942,34 +1944,34 @@ mod tests {
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
-    /// A file the specification will not let be a payload is refused where it
-    /// was chosen, and no second dialog is opened for a container that was
-    /// never going to be written.
+    /// A file the specification will not let be a content file is refused
+    /// where it was chosen, and no second dialog is opened for a container
+    /// that was never going to be written.
     ///
     /// **The defect this catches is asking somebody where to put a container
-    /// and then refusing to make it.** `take_new_payload` runs the same check
-    /// `take_replacement` does, and it runs it before the second question
-    /// rather than inside the packing thread. Break it by moving the check
-    /// after `start_picking` and this fails on `creating`, which would be
-    /// `Naming` with a file that cannot be a payload in it.
+    /// and then refusing to make it.** `take_new_content_file` runs the same
+    /// check `take_replacement` does, and it runs it before the second
+    /// question rather than inside the packing thread. Break it by moving the
+    /// check after `start_picking` and this fails on `creating`, which would
+    /// be `Naming` with a file that cannot be a content file in it.
     #[test]
     fn a_file_that_cannot_be_packed_is_refused_before_the_second_dialog() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let mut app = app(None);
 
         eframe::egui::__run_test_ui(|ui| {
-            app.take_new_payload(dir.path().join("slipcase.metadata.toml"), ui.ctx());
+            app.take_new_content_file(dir.path().join("slipcase.flyleaf.toml"), ui.ctx());
         });
 
         assert!(
             matches!(app.creating, Creating::Idle),
-            "a container is still being made out of a file that cannot be a payload"
+            "a container is still being made out of a file that cannot be a content file"
         );
         assert!(app.picking.is_none(), "a second dialog was opened anyway");
         let (_, said) = app.notes();
         let said = said.expect("it says why");
         assert!(said.wrong, "{}", said.text);
-        assert!(said.text.contains("slipcase.metadata.toml"), "{}", said.text);
+        assert!(said.text.contains("slipcase.flyleaf.toml"), "{}", said.text);
     }
 
     /// The row the empty state centres on measures what the buttons in it
@@ -2085,24 +2087,24 @@ mod tests {
 
         assert!(app.busy(), "a container being made is not a reason to wait");
         // The card's three buttons go with it, for the same reason.
-        let payload = payload(None);
+        let content = content(None);
         for ask in [Ask::Open, Ask::Extract, Ask::Replace] {
             assert!(
-                !ask.offered(&payload, app.busy()),
+                !ask.offered(&content, app.busy()),
                 "a button on the card was still offered"
             );
         }
         eframe::egui::__run_test_ui(|ui| app.render(ui));
     }
 
-    /// A file the specification will not let be a payload is refused where it
-    /// was chosen, and nothing is left waiting.
+    /// A file the specification will not let be a content file is refused
+    /// where it was chosen, and nothing is left waiting.
     #[test]
     fn a_replacement_that_cannot_be_one_is_refused_at_the_choice() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let mut app = app(Some(Opened::open(a_container(dir.path()))));
 
-        app.take_replacement(dir.path().join("slipcase.metadata.toml"));
+        app.take_replacement(dir.path().join("slipcase.flyleaf.toml"));
 
         assert_eq!(app.replacing, None, "nothing is waiting to be written");
         let (to_write, said) = app.notes();
@@ -2110,13 +2112,13 @@ mod tests {
 
         let said = said.expect("it says why");
         assert!(said.wrong, "{}", said.text);
-        assert!(said.text.contains("slipcase.metadata.toml"), "{}", said.text);
+        assert!(said.text.contains("slipcase.flyleaf.toml"), "{}", said.text);
     }
 
     /// The refusal has a line of its own on the card, drawn before anything is
     /// pressed rather than after something failed.
     #[test]
-    fn a_payload_that_cannot_be_read_renders_its_refusal() {
+    fn a_content_file_that_cannot_be_read_renders_its_refusal() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let mut app = app(Some(Opened::open(a_container(dir.path()))));
 
@@ -2124,7 +2126,7 @@ mod tests {
             .opened
             .as_mut()
             .expect("a container")
-            .payload
+            .content
             .as_mut()
             .expect("a conformant container has a card");
         assert!(card.can_be_decoded(), "the test built a plain container");
@@ -2221,11 +2223,11 @@ mod tests {
         );
     }
 
-    /// A payload this build cannot decode leaves Open disabled, and a focus
-    /// ring on a disabled button says press me about a button that cannot be
-    /// pressed. The flag stays up rather than being spent on it.
+    /// A content file this build cannot decode leaves Open disabled, and a
+    /// focus ring on a disabled button says press me about a button that
+    /// cannot be pressed. The flag stays up rather than being spent on it.
     #[test]
-    fn a_payload_that_cannot_be_read_does_not_take_the_focus() {
+    fn a_content_file_that_cannot_be_read_does_not_take_the_focus() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let mut app = app(Some(Opened::open(a_container(dir.path()))));
 
@@ -2233,7 +2235,7 @@ mod tests {
             .opened
             .as_mut()
             .expect("a container")
-            .payload
+            .content
             .as_mut()
             .expect("a conformant container has a card");
         card.unreadable = Some("the member is encrypted (SPEC 2.5)".to_owned());
@@ -2281,9 +2283,9 @@ mod save_failure_tests {
         std::fs::create_dir(&locked).expect("makes a directory");
 
         let path = locked.join("built-by-the-test.slpc");
-        let metadata: DocumentMut = "title = \"before\"\n".parse().expect("valid TOML");
+        let flyleaf: DocumentMut = "title = \"before\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes");
 
         // Nothing can be created beside it now, which is what a `Destination`
@@ -2306,7 +2308,7 @@ mod save_failure_tests {
             .opened
             .as_mut()
             .expect("a container")
-            .metadata
+            .flyleaf
             .as_mut()
             .expect("a document");
         set_value(

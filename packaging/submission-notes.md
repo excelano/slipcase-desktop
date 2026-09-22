@@ -13,9 +13,9 @@ in this file would reach nobody.
 
 Slipcase Desktop reads and writes Slipcase containers. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
 
-A container to open is at https://excelano.com/slipcase/quarterly-report.pdf.slpc — a one-page PDF inside a container with metadata rich enough to show every renderer the editor has. Download it and open it, or launch the application and use Open a container. The subject is invented: no real person, organisation, matter or date appears in it. It is built by `packaging/demo-container.sh` in the repository, which pins its archive timestamps so that any machine rebuilds the same bytes.
+A container to open is at https://excelano.com/slipcase/quarterly-report.pdf.slpc — a one-page PDF inside a container with a flyleaf rich enough to show every renderer the editor has. Download it and open it, or launch the application and use Open a container. The subject is invented: no real person, organisation, matter or date appears in it. It is built by `packaging/demo-container.sh` in the repository, which pins its archive timestamps so that any machine rebuilds the same bytes.
 
-To exercise the rest: the metadata pane on the right edits every value by its kind, and a save keeps the comments, key order, whitespace and quoting of everything you did not touch. New container... asks which file to put in and where the container should go, writes it, and opens it, so any file you have to hand is enough to make a second container from nothing.
+To exercise the rest: the flyleaf pane on the right edits every value by its kind, and a save keeps the comments, key order, whitespace and quoting of everything you did not touch. New container... asks which file to put in and where the container should go, writes it, and opens it, so any file you have to hand is enough to make a second container from nothing.
 
 The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume and swapped in with one call, so it stays inside that grant. There is no network entitlement and the application makes no network request.
 
@@ -41,8 +41,8 @@ package and the pictures are of the same build now. The four are:
 
 | Order | File | What it shows |
 | --- | --- | --- |
-| 1 | `01-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
-| 2 | `02-light-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| 1 | `01-light.png` | A conformant container open: the verdict, the card naming the content file, its size and what would open it, the three buttons, and the flyleaf tree |
+| 2 | `02-light-arrived-from-elsewhere.png` | The same container carrying a `Zone.Identifier`, so the card's provenance line reads *This container arrived from elsewhere, and the content file will carry that* |
 | 3 | `03-dark.png` | The first again, in dark mode |
 | 4 | `04-dark-arrived-from-elsewhere.png` | The second again, in dark mode |
 
@@ -73,7 +73,7 @@ needed images too. Three people building three containers from one prose
 description is three demonstrations that do not look alike, discovered after two
 listings are live.
 
-It holds a one-page PDF and a metadata document written to exercise the tree
+It holds a one-page PDF and a flyleaf document written to exercise the tree
 rather than to be minimal — a string, three dates in two shapes, an array,
 integers, a float, a boolean, a nested table and an array of tables — because
 the tree is the thing worth photographing and the walkthrough fixtures have
@@ -83,8 +83,8 @@ organisation.
 **The PDF is generated correctly rather than approximately, and that took two
 tries.** The first version declared a stream `Length` of 92 over 87 bytes and
 carried no cross-reference table at all, and poppler rendered it regardless,
-because mainstream viewers repair a broken xref rather than refusing. A payload
-that only opens in viewers that repair is not what goes in two store listings.
+because mainstream viewers repair a broken xref rather than refusing. A content
+file that only opens in viewers that repair is not what goes in two store listings.
 The script now measures the stream and builds the xref from where the objects
 actually landed, and both were checked: 88 declared against 88 written, and
 every offset resolving to the object it names.
@@ -104,8 +104,8 @@ has been available on any machine this project has run on.
 
 | Order | File | What it shows |
 | --- | --- | --- |
-| 1 | `03-light.png` | A conformant container open: the verdict, the card naming the payload, its size and what would open it, the three buttons, and the metadata tree |
-| 2 | `04-light-arrived.png` | The same container carrying `com.apple.quarantine`, so the card's provenance line reads *This container arrived from elsewhere, and the payload will carry that* |
+| 1 | `03-light.png` | A conformant container open: the verdict, the card naming the content file, its size and what would open it, the three buttons, and the flyleaf tree |
+| 2 | `04-light-arrived.png` | The same container carrying `com.apple.quarantine`, so the card's provenance line reads *This container arrived from elsewhere, and the content file will carry that* |
 | 3 | `01-dark.png` | The first again, in dark mode |
 | 4 | `02-dark-arrived.png` | The second again, in dark mode |
 

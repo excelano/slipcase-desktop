@@ -1,4 +1,4 @@
-slipcase_version_renamed = "1.0 (edited)"
+slipcase_version_renamed = "1.1 (edited)"
 author = "D. Anderson (edited)"
 retention_class = "7y (edited)"
 added_text = ""
@@ -12,7 +12,7 @@ added_local_time = 00:00:00
 added_array = []
 added_inline_table = {}
 
-[payload]
+[content]
 file_renamed = "report.pdf (edited)"
 added_text = ""
 added_integer = 0
@@ -25,6 +25,6 @@ added_local_time = 00:00:00
 added_array = []
 added_inline_table = {}
 
-[payload.added_table]
+[content.added_table]
 
 [added_table]

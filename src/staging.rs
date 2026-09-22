@@ -100,8 +100,8 @@ impl Staged {
             // and doing it twice costs a `Mark::AlreadyMarked` and nothing else.
             //
             // Not fatal. `carry` refuses when the copy would be ungated where
-            // the original was gated, and that rule is written for a payload
-            // about to be handed to the system. This is a container, and the
+            // the original was gated, and that rule is written for a content
+            // file about to be handed to the system. This is a container, and the
             // thing that opens a container is this application, which reports
             // provenance rather than acting on it — so a save that has already
             // been validated is not thrown away over it.

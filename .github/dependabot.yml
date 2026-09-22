@@ -7,14 +7,14 @@
 # this application enforces about what a container is comes from that library:
 # the bound on what identifying one costs, the refusal of an archive that names
 # its members twice, the escaping of a name before it is shown, the mark carried
-# onto an extracted payload. A version of it is a change to what this window
+# onto an extracted content file. A version of it is a change to what this window
 # says about somebody's file, and its release notes there are written to be read.
 #
 # **An `eframe` bump is the other one.** It carries `egui`, which draws the card
 # and lays out every name on it — including, one day, in an order this
 # application does not choose. `epaint` has a standing to-do to heed the
 # bidirectional formatting characters `DESIGN.md` §3 discusses, and the day that
-# lands is the day a payload name can be made to read backwards on the card.
+# lands is the day a content file name can be made to read backwards on the card.
 # `src/main.rs` escapes them already, so nothing breaks; but the comment there
 # says the immunity is somebody else's omission, and this is where the omission
 # ends.

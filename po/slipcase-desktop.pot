@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: slipcase-desktop\n"
 "Report-Msgid-Bugs-To: https://github.com/excelano/slipcase-desktop/issues\n"
-"POT-Creation-Date: 2026-09-09 07:38-0500\n"
+"POT-Creation-Date: 2026-09-21 22:18-0500\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,182 +18,184 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/lib.rs:406 src/lib.rs:550
-msgid "{file} has a name that is not UTF-8, and payload.file is a TOML string"
+#: src/lib.rs:420 src/lib.rs:564
+msgid "{file} has a name that is not UTF-8, and content.file is a TOML string"
 msgstr ""
 
-#: src/lib.rs:557
-msgid "{name} cannot be a payload's name: {reason}"
+#: src/lib.rs:571
+msgid "{name} cannot be a content file's name: {reason}"
 msgstr ""
 
-#: src/lib.rs:627
+#: src/lib.rs:642
 msgid "{n} byte"
 msgid_plural "{n} bytes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/lib.rs:646
+#: src/lib.rs:661
 msgid "{size} {unit} ({n} bytes)"
 msgstr ""
 
-#: src/lib.rs:741
+#: src/lib.rs:756
 msgid "cannot be read: {reason}"
 msgstr ""
 
-#: src/main.rs:652 src/main.rs:1124
+#: src/main.rs:669 src/main.rs:1142
 msgid "Open a container…"
 msgstr ""
 
-#: src/main.rs:653 src/main.rs:1125
+#: src/main.rs:670 src/main.rs:1143
 msgid "New container…"
 msgstr ""
 
-#: src/main.rs:657
+#: src/main.rs:674
 msgid "Save"
 msgstr ""
 
-#: src/main.rs:658 src/main.rs:1370
+#: src/main.rs:675 src/main.rs:1388
 msgid "Undo"
 msgstr ""
 
-#: src/main.rs:659
+#: src/main.rs:676
 msgid "Redo"
 msgstr ""
 
-#: src/main.rs:661
+#: src/main.rs:678
 msgid "edited"
 msgstr ""
 
-#: src/main.rs:690
+#: src/main.rs:707
 msgid "Saved."
 msgstr ""
 
-#: src/main.rs:694
+#: src/main.rs:711
 msgid "Nothing had changed, so nothing was written."
 msgstr ""
 
-#: src/main.rs:699
+#: src/main.rs:716
 msgid "Not saved. What was written did not read back conformant: {verdict}"
 msgstr ""
 
-#: src/main.rs:705
+#: src/main.rs:722
 msgid "Not saved: {reason}"
 msgstr ""
 
-#: src/main.rs:746
+#: src/main.rs:764
 msgid "the extraction stopped without saying why"
 msgstr ""
 
-#: src/main.rs:761
+#: src/main.rs:779
 msgid "the container was not made, and nothing said why"
 msgstr ""
 
-#: src/main.rs:780
+#: src/main.rs:798
 msgid "Made."
 msgstr ""
 
-#: src/main.rs:790
+#: src/main.rs:808
 msgid ""
-"Made. Where the payload came from could not be carried onto it: {reason}"
+"Made. Where the content file came from could not be carried onto it: {reason}"
 msgstr ""
 
-#: src/main.rs:799 src/main.rs:1394
+#: src/main.rs:817 src/main.rs:1412
 msgid "Stopped. Nothing was left behind."
 msgstr ""
 
-#: src/main.rs:832
+#: src/main.rs:850
 msgid "Not made. What was written did not read back conformant: {verdict}"
 msgstr ""
 
-#: src/main.rs:836
+#: src/main.rs:854
 msgid "Not made: {reason}"
 msgstr ""
 
-#: src/main.rs:887
+#: src/main.rs:905
 msgid "{file} was extracted, and the system would not open it: {reason}"
 msgstr ""
 
-#: src/main.rs:975
+#: src/main.rs:993
 msgid "Open a container"
 msgstr ""
 
-#: src/main.rs:976 src/main.rs:985
+#: src/main.rs:994 src/main.rs:1003
 msgid "slipcases"
 msgstr ""
 
-#: src/main.rs:977 src/main.rs:986
+#: src/main.rs:995 src/main.rs:1004
 msgid "All files"
 msgstr ""
 
-#: src/main.rs:980
-msgid "Extract the payload to"
+#: src/main.rs:998
+msgid "Extract the content file to"
 msgstr ""
 
-#: src/main.rs:981
-msgid "Replace the payload with"
+#: src/main.rs:999
+msgid "Replace the content file with"
 msgstr ""
 
-#: src/main.rs:982
+#: src/main.rs:1000
 msgid "Make a container out of"
 msgstr ""
 
-#: src/main.rs:984
+#: src/main.rs:1002
 msgid "Write the container to"
 msgstr ""
 
-#: src/main.rs:1164
+#: src/main.rs:1182
 msgid "Open a container to see what is in it, or make one out of a file."
 msgstr ""
 
-#: src/main.rs:1221
+#: src/main.rs:1239
 msgid "Stop"
 msgstr ""
 
-#: src/main.rs:1261
+#: src/main.rs:1279
 msgid "Opens with {application}"
 msgstr ""
 
-#: src/main.rs:1268
+#: src/main.rs:1286
 msgid "Cannot be opened here: {reason}"
 msgstr ""
 
-#: src/main.rs:1284
+#: src/main.rs:1302
 msgid ""
-"The payload is an executable file; the extracted copy will not be executable."
-msgstr ""
-
-#: src/main.rs:1300
-msgid "This container arrived from elsewhere, and the payload will carry that."
+"The content file is an executable file; the extracted copy will not be "
+"executable."
 msgstr ""
 
 #: src/main.rs:1318
+msgid ""
+"This container arrived from elsewhere, and the content file will carry that."
+msgstr ""
+
+#: src/main.rs:1336
 msgid "Cancel"
 msgstr ""
 
-#: src/main.rs:1325
+#: src/main.rs:1343
 msgid "Open"
 msgstr ""
 
-#: src/main.rs:1326
+#: src/main.rs:1344
 msgid "Extract…"
 msgstr ""
 
-#: src/main.rs:1327
+#: src/main.rs:1345
 msgid "Replace…"
 msgstr ""
 
-#: src/main.rs:1363
+#: src/main.rs:1381
 msgid "Will be replaced by {file} when this is saved."
 msgstr ""
 
-#: src/main.rs:1384
+#: src/main.rs:1402
 msgid "Extracted to {file}"
 msgstr ""
 
-#: src/main.rs:1438
+#: src/main.rs:1456
 msgid "no temporary directory to extract into: {reason}"
 msgstr ""
 
-#: src/main.rs:1449
+#: src/main.rs:1467
 msgid "no temporary directory to extract into"
 msgstr ""

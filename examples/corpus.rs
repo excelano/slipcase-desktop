@@ -60,12 +60,12 @@ const KNOWN: [&str; 4] = ["accept", "reject", "undetermined", "out-of-scope"];
 
 /// Whether DESIGN.md §6 owes this container a tree past its verdict.
 ///
-/// A conformant container's metadata member parsed, and so did that of one
+/// A conformant container's flyleaf member parsed, and so did that of one
 /// declaring a version this build does not implement, so both show a tree.
-/// `undetermined` is the answer given when the metadata member could not be
+/// `undetermined` is the answer given when the flyleaf member could not be
 /// read, so there is nothing to show and showing something would contradict the
 /// verdict. `reject` covers rows on both sides of the table: a container with no
-/// metadata member has no tree, and one whose `payload.file` names nothing has
+/// flyleaf member has no tree, and one whose `content.file` names nothing has
 /// one. Nothing is owed there, and `None` says so.
 fn owed_tree(expect: &str) -> Option<bool> {
     match expect {
@@ -75,12 +75,12 @@ fn owed_tree(expect: &str) -> Option<bool> {
     }
 }
 
-/// Whether DESIGN.md §6 owes this container a payload card.
+/// Whether DESIGN.md §6 owes this container a content card.
 ///
 /// One row of the table has one. A conformant container is the only kind with a
-/// payload this build has located: a container declaring another version has a
-/// payload the library deliberately did not look for, and every other row
-/// failed before there was a payload to name.
+/// content file this build has located: a container declaring another version
+/// has a content file the library deliberately did not look for, and every
+/// other row failed before there was a content file to name.
 fn owed_card(expect: &str) -> bool {
     expect == "accept"
 }
@@ -126,8 +126,8 @@ struct Report {
     renamed: usize,
     replaced: usize,
     packed: usize,
-    /// Payloads the card refused before anything was pressed, in the same words
-    /// extraction then used.
+    /// Content files the card refused before anything was pressed, in the same
+    /// words extraction then used.
     foretold: usize,
     disagreements: BTreeMap<String, Vec<String>>,
 }
@@ -141,11 +141,11 @@ impl Report {
     fn print(&self, total: usize) -> Result<(), String> {
         if self.disagreements.is_empty() {
             println!(
-                "{total} cases, all agree. {} showed a metadata tree, {} a payload card.",
+                "{total} cases, all agree. {} showed a flyleaf tree, {} a content card.",
                 self.trees, self.cards
             );
             println!(
-                "{} of {} payloads extracted at their declared length.",
+                "{} of {} content files extracted at their declared length.",
                 self.extracted,
                 self.extracted + self.unextractable.len()
             );
@@ -154,7 +154,7 @@ impl Report {
             }
             println!(
                 "{} of those the card refused before anything was pressed, in the same words, and \
-                 every payload it offered extracted.",
+                 every content file it offered extracted.",
                 self.foretold
             );
             println!(
@@ -166,11 +166,11 @@ impl Report {
                 self.renamed
             );
             println!(
-                "{} had their payload replaced, under its own name and under a new one.",
+                "{} had their content file replaced, under its own name and under a new one.",
                 self.replaced
             );
             println!(
-                "{} payloads were packed into a container of their own and read back conformant.",
+                "{} content files were packed into a container of their own and read back conformant.",
                 self.packed
             );
             return Ok(());
@@ -203,9 +203,9 @@ fn run(conformance: &Path) -> Result<(), String> {
     missing_files(&cases)?;
     ungoverned_files(conformance, &cases)?;
 
-    // One directory for all of them. Payload names repeat across the corpus, so
-    // each extraction overwrites the last, which is all this needs: the check is
-    // that the bytes arrived, not that they stayed.
+    // One directory for all of them. Content file names repeat across the
+    // corpus, so each extraction overwrites the last, which is all this needs:
+    // the check is that the bytes arrived, not that they stayed.
     let scratch = tempfile::Builder::new()
         .prefix("slipcase-corpus-")
         .tempdir()
@@ -227,24 +227,39 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
         ));
     }
 
+    // SPEC Appendix C names one case this build cannot reach the manifest's
+    // verdict for: `out-of-scope/version-1-0` is the only container whose
+    // flyleaf is named `slipcase.metadata.toml`, and reaching `out-of-scope`
+    // for it means reading a version key this build cannot find without
+    // already knowing that name. This build is 1.1-only (DESIGN.md "Why 1.1
+    // exists"), so it is unreadable rather than out of scope here, exactly as
+    // Appendix C says of "every reader written before" the rename. Checked
+    // against `reject` instead of the manifest's `out-of-scope` for this one
+    // case, so a real regression on any other case still fails the run.
+    let expect: &str = if c.id == "out-of-scope/version-1-0" {
+        "reject"
+    } else {
+        &c.expect
+    };
+
     let opened = Opened::open(&c.file);
     let mut ok = true;
 
     let got = opened.verdict_word();
-    if got != c.expect {
+    if got != expect {
         ok = false;
         report.disagree(
-            format!("the verdict: expected {}, got {got}", c.expect),
+            format!("the verdict: expected {expect}, got {got}"),
             c,
             &opened.verdict_line(),
         );
     }
 
-    let shown = opened.metadata.is_some();
+    let shown = opened.flyleaf.is_some();
     if shown {
         report.trees += 1;
     }
-    if let Some(owed) = owed_tree(&c.expect) {
+    if let Some(owed) = owed_tree(expect) {
         if shown != owed {
             ok = false;
             let said = if shown {
@@ -253,18 +268,18 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
                 "no tree, where §6 shows the verdict and the tree"
             };
             report.disagree(
-                format!("the tree: a {} container showed {said}", c.expect),
+                format!("the tree: a {expect} container showed {said}"),
                 c,
                 &opened.verdict_line(),
             );
         }
     }
 
-    let card = opened.payload.is_some();
+    let card = opened.content.is_some();
     if card {
         report.cards += 1;
     }
-    if card != owed_card(&c.expect) {
+    if card != owed_card(expect) {
         ok = false;
         let said = if card {
             "a card, where §6 gives one to a conformant container alone"
@@ -272,15 +287,15 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
             "no card, where §6 shows everything"
         };
         report.disagree(
-            format!("the card: a {} container showed {said}", c.expect),
+            format!("the card: a {expect} container showed {said}"),
             c,
             &opened.verdict_line(),
         );
     }
 
-    // Only a conformant container has a payload to extract, or metadata worth
-    // writing back.
-    if c.expect == "accept" {
+    // Only a conformant container has a content file to extract, or a flyleaf
+    // worth writing back.
+    if expect == "accept" {
         if !extracts(c, &opened, scratch, report) {
             ok = false;
         }
@@ -301,36 +316,38 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
     Ok(())
 }
 
-/// Whether a payload can be packed into a container of its own.
+/// Whether a content file can be packed into a container of its own.
 ///
 /// The other direction from every other pass here, and the reason it belongs
 /// in the harness rather than in a fixture of its own: what `create` is handed
 /// is a file on disk under whatever name a container recorded, and the corpus
-/// is where the awkward ones are. `accept/payload-name-bidi-override` alone is
-/// worth the pass — its payload is called `report<U+202E>fdp.exe`, and packing
-/// it means writing that name into `payload.file` and getting it back.
+/// is where the awkward ones are. `accept/content-file-name-bidi-override`
+/// alone is worth the pass — its content file is called `report<U+202E>fdp.exe`,
+/// and packing it means writing that name into `content.file` and getting it
+/// back.
 ///
 /// It extracts again rather than being handed what `extracts` already wrote.
 /// That check is about the card and what pressing Open comes to, and threading
 /// a path out of it to serve this would make it about two things; the second
-/// extraction costs a copy of a payload the corpus already bounds.
+/// extraction costs a copy of a content file the corpus already bounds.
 ///
-/// Skipped where the payload cannot be decoded, which is the one conformant
-/// container SPEC §2.5 leaves out of reach — there is nothing to pack.
+/// Skipped where the content file cannot be decoded, which is the one
+/// conformant container SPEC §2.5 leaves out of reach — there is nothing to
+/// pack.
 fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool {
-    if opened.payload.as_ref().is_some_and(|p| !p.can_be_decoded()) {
+    if opened.content.as_ref().is_some_and(|p| !p.can_be_decoded()) {
         return true;
     }
     // A failure here is already reported by `extracts`, which asks the same
     // question first.
-    let Ok(payload) = opened.extract_to(scratch) else {
+    let Ok(content) = opened.extract_to(scratch) else {
         return true;
     };
-    // Named after the case rather than after the payload, because payload names
-    // repeat across the corpus and this one has to be read back.
+    // Named after the case rather than after the content file, because content
+    // file names repeat across the corpus and this one has to be read back.
     let into = scratch.join(format!("{}.packed.slpc", c.id.replace('/', "-")));
 
-    let made = match create(&payload, &into, &Watch::new()) {
+    let made = match create(&content, &into, &Watch::new()) {
         Ok(Created::Written { .. }) => Opened::open(&into),
         Ok(Created::Cancelled) => {
             report.disagree(
@@ -349,12 +366,12 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
             return false;
         }
         Err(e) => {
-            report.disagree("packing: the payload would not pack".to_owned(), c, &e.to_string());
+            report.disagree("packing: the content file would not pack".to_owned(), c, &e.to_string());
             return false;
         }
     };
 
-    let Some(card) = &made.payload else {
+    let Some(card) = &made.content else {
         report.disagree(
             "packing: the container that was packed showed no card".to_owned(),
             c,
@@ -363,22 +380,22 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
         return false;
     };
 
-    // The name the payload went in under is the name the container reports, and
-    // it came off a file on disk rather than out of the container it started
-    // in — which is what makes the awkward names worth packing.
-    let expected = payload.file_name().unwrap_or_default().to_string_lossy();
+    // The name the content file went in under is the name the container
+    // reports, and it came off a file on disk rather than out of the container
+    // it started in — which is what makes the awkward names worth packing.
+    let expected = content.file_name().unwrap_or_default().to_string_lossy();
     if card.name != expected {
         report.disagree(
-            "packing: the container names a payload other than the file that went in".to_owned(),
+            "packing: the container names a content file other than the file that went in".to_owned(),
             c,
-            &format!("{:?} went in, payload.file says {:?}", expected, card.name),
+            &format!("{:?} went in, content.file says {:?}", expected, card.name),
         );
         return false;
     }
-    let declared = opened.payload.as_ref().map_or(0, |p| p.size);
+    let declared = opened.content.as_ref().map_or(0, |p| p.size);
     if card.size != declared {
         report.disagree(
-            "packing: the packed payload is a different length".to_owned(),
+            "packing: the packed content file is a different length".to_owned(),
             c,
             &format!("{} bytes went in, {} came back", declared, card.size),
         );
@@ -389,18 +406,20 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
     true
 }
 
-/// Whether the payload can be replaced, DESIGN.md §5's second explicit action.
+/// Whether the content file can be replaced, DESIGN.md §5's second explicit
+/// action.
 ///
-/// Twice, because the two cases are different writes. Under the payload's own
-/// name the metadata has nothing to say, so it has to come back byte for byte:
-/// the corpus holds a document with a byte order mark and one with CRLF line
-/// endings, and both would be rewritten by a build that handed the document
-/// over when nobody had edited it. Under a new name `payload.file` has to move
-/// with the payload, which is the one key a replacement may change.
+/// Twice, because the two cases are different writes. Under the content file's
+/// own name the flyleaf has nothing to say, so it has to come back byte for
+/// byte: the corpus holds a document with a byte order mark and one with CRLF
+/// line endings, and both would be rewritten by a build that handed the
+/// document over when nobody had edited it. Under a new name `content.file`
+/// has to move with the content file, which is the one key a replacement may
+/// change.
 ///
-/// This runs on every conformant case, the encrypted payload included. Nothing
-/// reads that member to replace it, so a container the Open button cannot serve
-/// is still one whose payload can be swapped out.
+/// This runs on every conformant case, the encrypted content file included.
+/// Nothing reads that member to replace it, so a container the Open button
+/// cannot serve is still one whose content file can be swapped out.
 ///
 /// On a copy. The corpus is the arbiter and nothing here may change it.
 fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
@@ -416,7 +435,7 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     }
 
     let opened = Opened::open(&copy);
-    let Some(payload) = &opened.payload else {
+    let Some(content) = &opened.content else {
         report.disagree(
             "the replacement: a conformant container arrived without a card".to_owned(),
             c,
@@ -424,10 +443,10 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         );
         return false;
     };
-    let own_name = payload.name.clone();
+    let own_name = content.name.clone();
 
-    // Payload names repeat across the corpus, so each case gets a directory to
-    // hold a file under the name its own container uses.
+    // Content file names repeat across the corpus, so each case gets a
+    // directory to hold a file under the name its own container uses.
     let holding = scratch.join(format!("replacement-{stem}"));
     if let Err(e) = std::fs::create_dir_all(&holding) {
         report.disagree(
@@ -438,17 +457,17 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         return false;
     }
 
-    // Through `payload_path` for the same reason `extract` goes through it: the
+    // Through `content_path` for the same reason `extract` goes through it: the
     // first name below is the container's, and on Windows a handful of names
     // are devices wherever they appear rather than files in a directory.
-    // `accept/payload-name-windows-reserved` is the case that found this, and
-    // it found it by hanging the whole run rather than by disagreeing.
-    let named = |name: &str| slpc::payload_path(&holding, name);
+    // `accept/content-file-name-windows-reserved` is the case that found this,
+    // and it found it by hanging the whole run rather than by disagreeing.
+    let named = |name: &str| slpc::content_path(&holding, name);
     let (Ok(same), Ok(renamed)) = (named(&own_name), named(REPLACEMENT)) else {
         report.disagree(
             "the replacement: the holding directory could not be named".to_owned(),
             c,
-            "payload_path refused the holding directory",
+            "content_path refused the holding directory",
         );
         return false;
     };
@@ -464,7 +483,7 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     }
 
     let before = match slpc::Container::open(&copy) {
-        Ok(container) => container.metadata_bytes().to_vec(),
+        Ok(container) => container.flyleaf_bytes().to_vec(),
         Err(e) => {
             report.disagree(
                 "the replacement: the copy could not be read".to_owned(),
@@ -481,12 +500,12 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
 
     // The one thing this write may not have touched.
     match slpc::Container::open(&copy) {
-        Ok(container) if container.metadata_bytes() == before => {}
+        Ok(container) if container.flyleaf_bytes() == before => {}
         Ok(_) => {
             report.disagree(
-                "the replacement: replacing the payload rewrote metadata nobody edited".to_owned(),
+                "the replacement: replacing the content file rewrote a flyleaf nobody edited".to_owned(),
                 c,
-                "the metadata member came back with different bytes",
+                "the flyleaf member came back with different bytes",
             );
             return false;
         }
@@ -507,13 +526,13 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     // The old name is gone from the document as well as from the archive.
     let after = Opened::open(&copy);
     let document = after
-        .metadata
+        .flyleaf
         .as_ref()
         .map(flyleaf::flyleaf_core::Document::render)
         .unwrap_or_default();
     if !document.contains(REPLACEMENT) {
         report.disagree(
-            "the replacement: payload.file did not move with the payload".to_owned(),
+            "the replacement: content.file did not move with the content file".to_owned(),
             c,
             &document,
         );
@@ -524,7 +543,7 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     true
 }
 
-/// Put a file in as the payload and read the container back.
+/// Put a file in as the content file and read the container back.
 fn swapped(
     c: &Case,
     copy: &Path,
@@ -538,7 +557,7 @@ fn swapped(
         Ok(Saved::Written) => {}
         Ok(Saved::Unchanged) => {
             report.disagree(
-                "the replacement: a payload to write is something to write".to_owned(),
+                "the replacement: a content file to write is something to write".to_owned(),
                 c,
                 "save said nothing had changed",
             );
@@ -568,7 +587,7 @@ fn swapped(
         return false;
     }
 
-    let Some(card) = &after.payload else {
+    let Some(card) = &after.content else {
         report.disagree(
             "the replacement: the replaced container has no card".to_owned(),
             c,
@@ -587,12 +606,12 @@ fn swapped(
 
     // And the bytes themselves, which is the only proof that the member holds
     // the file and not a reference to it.
-    let out = copy.with_extension("payload");
+    let out = copy.with_extension("content");
     match extract_at(copy, &out, &Watch::new()) {
         Ok(_) => {}
         Err(e) => {
             report.disagree(
-                "the replacement: the new payload would not come back out".to_owned(),
+                "the replacement: the new content file would not come back out".to_owned(),
                 c,
                 &e.to_string(),
             );
@@ -603,7 +622,7 @@ fn swapped(
         Ok(got) if got == bytes => true,
         Ok(got) => {
             report.disagree(
-                "the replacement: the payload that came back is not the one that went in".to_owned(),
+                "the replacement: the content file that came back is not the one that went in".to_owned(),
                 c,
                 &format!("{} bytes back, {} in", got.len(), bytes.len()),
             );
@@ -611,7 +630,7 @@ fn swapped(
         }
         Err(e) => {
             report.disagree(
-                "the replacement: the extracted payload could not be read".to_owned(),
+                "the replacement: the extracted content file could not be read".to_owned(),
                 c,
                 &e.to_string(),
             );
@@ -620,10 +639,11 @@ fn swapped(
     }
 }
 
-/// What goes in under the payload's own name, and under a new one. Different
-/// lengths, so a check that read the wrong one would not pass by accident.
-const SAME_NAME: &[u8] = b"a payload put in under the name the container already used";
-const NEW_NAME: &[u8] = b"a payload put in under a name of its own";
+/// What goes in under the content file's own name, and under a new one.
+/// Different lengths, so a check that read the wrong one would not pass by
+/// accident.
+const SAME_NAME: &[u8] = b"a content file put in under the name the container already used";
+const NEW_NAME: &[u8] = b"a content file put in under a name of its own";
 
 /// The new name, distinctive enough not to collide with a member the corpus
 /// put in a container on purpose.
@@ -664,7 +684,7 @@ fn rename_round_trips(
     report: &mut Report,
 ) -> bool {
     let mut opened = Opened::open(copy);
-    let Some(document) = opened.metadata.as_mut() else {
+    let Some(document) = opened.flyleaf.as_mut() else {
         return false;
     };
     if !rename_key(document.tree_mut().as_table_mut(), ADDED, RENAMED) {
@@ -775,11 +795,11 @@ fn edited_round_trips(
     report: &mut Report,
 ) -> bool {
     let mut edited = Opened::open(copy);
-    let Some(document) = edited.metadata.as_mut() else {
+    let Some(document) = edited.flyleaf.as_mut() else {
         report.disagree(
             "the rewrite: a conformant container had no document to edit".to_owned(),
             c,
-            "every accept case parses its metadata member",
+            "every accept case parses its flyleaf member",
         );
         return false;
     };
@@ -829,7 +849,7 @@ fn edited_round_trips(
         return false;
     }
     if !again
-        .metadata
+        .flyleaf
         .as_ref()
         .is_some_and(|d| d.tree().contains_key(ADDED))
     {
@@ -867,23 +887,24 @@ const RENAMED: &str = "x_slipcase_desktop_renamed";
 /// unconstrained, so adding one keeps every case conformant.
 const ADDED: &str = "x_slipcase_desktop_corpus";
 
-/// The top-level keys of a container's metadata, in document order.
+/// The top-level keys of a container's flyleaf, in document order.
 fn top_level_keys(opened: &Opened) -> Vec<String> {
-    opened.metadata.as_ref().map_or_else(Vec::new, |d| {
+    opened.flyleaf.as_ref().map_or_else(Vec::new, |d| {
         d.tree().as_table().iter().map(|(k, _)| k.to_owned()).collect()
     })
 }
 
-/// Whether the payload came out whole, and whether a refusal was one SPEC §2.5
-/// allows.
+/// Whether the content file came out whole, and whether a refusal was one
+/// SPEC §2.5 allows.
 fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool {
     // What the card said before anything was pressed, to be held against what
     // pressing it does. The pre-flight is only worth having if the two agree:
-    // a card that greys the Open button on a payload that would have extracted
-    // has taken away something that worked, and one that offers it on a
-    // payload that cannot be decoded has put the refusal back where it was.
+    // a card that greys the Open button on a content file that would have
+    // extracted has taken away something that worked, and one that offers it
+    // on a content file that cannot be decoded has put the refusal back where
+    // it was.
     let foretold = opened
-        .payload
+        .content
         .as_ref()
         .and_then(|p| p.unreadable.clone());
 
@@ -891,27 +912,27 @@ fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> b
         Ok(path) => {
             if let Some(why) = &foretold {
                 report.disagree(
-                    "the pre-flight: the card refused a payload that then extracted".to_owned(),
+                    "the pre-flight: the card refused a content file that then extracted".to_owned(),
                     c,
                     why,
                 );
                 return false;
             }
-            let declared = opened.payload.as_ref().map_or(0, |p| p.size);
+            let declared = opened.content.as_ref().map_or(0, |p| p.size);
             let arrived = std::fs::metadata(&path).map(|m| m.len()).unwrap_or_default();
             if arrived == declared {
                 report.extracted += 1;
                 return true;
             }
             report.disagree(
-                "the payload: extracted a different length than the central directory declared"
+                "the content file: extracted a different length than the central directory declared"
                     .to_owned(),
                 c,
                 &format!("{arrived} bytes arrived, {declared} declared"),
             );
             false
         }
-        // A sound container whose payload this build cannot decode. Not a
+        // A sound container whose content file this build cannot decode. Not a
         // disagreement, and the population the Open button cannot serve.
         Err(Error::Unsupported(u)) => {
             let said = u.to_string();
@@ -931,7 +952,7 @@ fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> b
                 }
                 None => {
                     report.disagree(
-                        "the pre-flight: the card offered a payload that cannot be decoded"
+                        "the pre-flight: the card offered a content file that cannot be decoded"
                             .to_owned(),
                         c,
                         &said,
@@ -942,7 +963,7 @@ fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> b
         }
         Err(e) => {
             report.disagree(
-                "the payload: a conformant container would not extract".to_owned(),
+                "the content file: a conformant container would not extract".to_owned(),
                 c,
                 &e.to_string(),
             );

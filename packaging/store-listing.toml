@@ -39,39 +39,39 @@ website = "https://excelano.com/slipcase/"
 support = "https://excelano.com/slipcase/"
 privacy = "https://excelano.com/legal/#slipcase"
 description = """
-Ein Slipcase-Container ist eine Datei, die ein Dokument beliebigen Typs zusammen mit den Metadaten enthält, die es beschreiben. Kopieren, senden oder verschieben Sie den Container — die Metadaten gehen mit. Statt in einem Dateinamen zu stecken, der abgeschnitten wird, in einer Begleitdatei, die verlorengeht, oder in der Datenbank eines anderen.
+Ein Slipcase-Container ist eine Datei, die ein Dokument beliebigen Typs zusammen mit dem Flyleaf enthält, das es beschreibt. Kopieren, senden oder verschieben Sie den Container — das Flyleaf geht mit. Statt in einem Dateinamen zu stecken, der abgeschnitten wird, in einer Begleitdatei, die verlorengeht, oder in der Datenbank eines anderen.
 
 Slipcase öffnet einen Container und zeigt, was darin ist, und erstellt einen aus einer Datei Ihrer Wahl.
 
 WAS SIE SEHEN
 
-Name und Größe der Nutzlast. Womit Ihr System sie öffnen würde. Die Metadaten als Baum, jeder Wert an Ort und Stelle bearbeitbar. Und das Urteil des Containers gegenüber der Spezifikation, in deren eigenen Worten — einschließlich der beiden Antworten, die weder Bestehen noch Scheitern sind: unbestimmt, wenn die Metadaten nicht gelesen werden können, und außerhalb des Geltungsbereichs, wenn er für eine neuere Fassung des Formats geschrieben wurde.
+Name und Größe der Inhaltsdatei. Womit Ihr System sie öffnen würde. Das Flyleaf als Baum, jeder Wert an Ort und Stelle bearbeitbar. Und das Urteil des Containers gegenüber der Spezifikation, in deren eigenen Worten — einschließlich der beiden Antworten, die weder Bestehen noch Scheitern sind: unbestimmt, wenn das Flyleaf nicht gelesen werden kann, und außerhalb des Geltungsbereichs, wenn er für eine neuere Fassung des Formats geschrieben wurde.
 
 WAS SIE TUN KÖNNEN
 
-Öffnen übergibt die Nutzlast dem Programm, das für diesen Dateityp vorgesehen ist. Entpacken schreibt sie, wohin Sie wollen. Ersetzen tauscht sie gegen eine andere Datei. Speichern schreibt bearbeitete Metadaten zurück — und behält dabei Ihre Kommentare, Ihre Schlüsselreihenfolge und jeden Leerraum, den Sie nicht angefasst haben, samt allem anderen im Container, das Slipcase nicht kennt.
+Öffnen übergibt die Inhaltsdatei dem Programm, das für diesen Dateityp vorgesehen ist. Entpacken schreibt sie, wohin Sie wollen. Ersetzen tauscht sie gegen eine andere Datei. Speichern schreibt das bearbeitete Flyleaf zurück — und behält dabei Ihre Kommentare, Ihre Schlüsselreihenfolge und jeden Leerraum, den Sie nicht angefasst haben, samt allem anderen im Container, das Slipcase nicht kennt.
 
 Neu Geschriebenes wird zurückgelesen und geprüft, bevor es etwas ersetzt: ein Speichern, das einen Container ergäbe, den das Format nicht annimmt, ändert nichts auf der Platte. Ein Container, den Sie nicht geändert haben, wird gar nicht erst neu geschrieben.
 
-Neuer Container fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn dann, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
+Neuer Container fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn dann, damit das Flyleaf dort entsteht, wo es auch bearbeitet wird. Eine große Inhaltsdatei packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Inhaltsdatei annimmt, wird abgelehnt, sobald Sie sie wählen.
 
 WAS ES IHNEN SAGT UND NICHT FÜR SIE ENTSCHEIDET
 
 Slipcase berichtet. Es hält nichts auf.
 
-Kam ein Container von anderswo — heruntergeladen oder Ihnen geschickt —, sagt Slipcase das, und auch die entpackte Nutzlast wird markiert, damit Ihr System sie mit der Vorsicht behandelt, die es allem von außen entgegenbringt, statt sie zu öffnen, als wäre sie Ihre eigene. Metadaten zu bearbeiten und zu speichern löscht das nicht still: Slipcase sagt Ihnen danach weiterhin, woher der Container kam. Es gilt auch andersherum: eine Datei von anderswo sagt das weiterhin auf dem Container, in den Sie sie packen.
+Kam ein Container von anderswo — heruntergeladen oder Ihnen geschickt —, sagt Slipcase das, und auch die entpackte Inhaltsdatei wird markiert, damit Ihr System sie mit der Vorsicht behandelt, die es allem von außen entgegenbringt, statt sie zu öffnen, als wäre sie Ihre eigene. Das Flyleaf zu bearbeiten und zu speichern löscht das nicht still: Slipcase sagt Ihnen danach weiterhin, woher der Container kam. Es gilt auch andersherum: eine Datei von anderswo sagt das weiterhin auf dem Container, in den Sie sie packen.
 
-Unter macOS sagt es Ihnen, wenn eine Nutzlast als ausführbare Datei abgelegt wurde und die entpackte Kopie es nicht sein wird. Das wird aus dem Container gelesen und nicht aus dem Namen geraten.
+Unter macOS sagt es Ihnen, wenn eine Inhaltsdatei als ausführbare Datei abgelegt wurde und die entpackte Kopie es nicht sein wird. Das wird aus dem Container gelesen und nicht aus dem Namen geraten.
 
-Namen werden mit ausgeschriebenen Zeichen gezeigt, die Text umordnen, damit sich eine Nutzlast nicht als ein Dateityp ausgeben kann, während sie ein anderer ist.
+Namen werden mit ausgeschriebenen Zeichen gezeigt, die Text umordnen, damit sich eine Inhaltsdatei nicht als ein Dateityp ausgeben kann, während sie ein anderer ist.
 
-Wo Ihr System nicht sagt, was eine Nutzlast öffnet, sagt Slipcase nichts, statt zu raten. Es bringt keine Tabelle mit, die Dateinamen auf Typen abbildet, und sieht nie in eine Nutzlast hinein, um einen zu erraten. Was Sie bekommen, sind Auskünfte — woher die Datei kam, was sie war, ob der Container wohlgeformt ist — und die Entscheidung bleibt Ihre.
+Wo Ihr System nicht sagt, was eine Inhaltsdatei öffnet, sagt Slipcase nichts, statt zu raten. Es bringt keine Tabelle mit, die Dateinamen auf Typen abbildet, und sieht nie in eine Inhaltsdatei hinein, um einen zu erraten. Was Sie bekommen, sind Auskünfte — woher die Datei kam, was sie war, ob der Container wohlgeformt ist — und die Entscheidung bleibt Ihre.
 
 WAS ES NICHT TUT
 
 Keinerlei Netzwerkverbindung. Kein Konto. Keine Telemetrie, keine Analyse, keine Absturzberichte. Nichts über Sie oder Ihre Dateien wird irgendwohin gesendet, weil es nirgendwohin zu senden gibt.
 
-Es zeigt keine Vorschau: die Nutzlast wird einem anderen Programm übergeben, statt hier dargestellt zu werden. Ein Container hält eine Nutzlast, was das Format entscheidet und nicht dieses Programm.
+Es zeigt keine Vorschau: die Inhaltsdatei wird einem anderen Programm übergeben, statt hier dargestellt zu werden. Ein Container hält eine Inhaltsdatei, was das Format entscheidet und nicht dieses Programm.
 
 OPEN SOURCE
 
@@ -80,72 +80,72 @@ Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothe
 
 [locales."de-de".apple]
 name = "Slipcase Desktop"
-subtitle = "Metadaten, die mitreisen"
-promotional-text = "Einen Container aus einer Datei erstellen oder einen öffnen, die mitgereisten Metadaten bearbeiten und die Nutzlast dem Programm übergeben, das sie öffnet."
-keywords = "Metadaten,Container,slpc,Archiv,TOML,Datei,Dokument,Verschlagwortung,zip"
+subtitle = "Das Flyleaf, das mitreist"
+promotional-text = "Einen Container aus einer Datei erstellen oder einen öffnen, das mitgereiste Flyleaf bearbeiten und die Inhaltsdatei dem Programm übergeben, das sie öffnet."
+keywords = "Flyleaf,Container,slpc,Archiv,TOML,Datei,Dokument,Verschlagwortung,zip"
 
 [locales."de-de".microsoft]
 name = "Slipcase"
 # Not the shared description. The paragraph about what a macOS build reports
-# when a payload was stored as an executable is cut here: that card line is
+# when a content file was stored as an executable is cut here: that card line is
 # gated to Unix, because a permission bit is not what makes a file executable
 # on Windows, so on Windows it describes something nobody will ever see.
 # Everything else is word for word the shared text above.
 description = """
-Ein Slipcase-Container ist eine Datei, die ein Dokument beliebigen Typs zusammen mit den Metadaten enthält, die es beschreiben. Kopieren, senden oder verschieben Sie den Container — die Metadaten gehen mit. Statt in einem Dateinamen zu stecken, der abgeschnitten wird, in einer Begleitdatei, die verlorengeht, oder in der Datenbank eines anderen.
+Ein Slipcase-Container ist eine Datei, die ein Dokument beliebigen Typs zusammen mit dem Flyleaf enthält, das es beschreibt. Kopieren, senden oder verschieben Sie den Container — das Flyleaf geht mit. Statt in einem Dateinamen zu stecken, der abgeschnitten wird, in einer Begleitdatei, die verlorengeht, oder in der Datenbank eines anderen.
 
 Slipcase öffnet einen Container und zeigt, was darin ist, und erstellt einen aus einer Datei Ihrer Wahl.
 
 WAS SIE SEHEN
 
-Name und Größe der Nutzlast. Womit Ihr System sie öffnen würde. Die Metadaten als Baum, jeder Wert an Ort und Stelle bearbeitbar. Und das Urteil des Containers gegenüber der Spezifikation, in deren eigenen Worten — einschließlich der beiden Antworten, die weder Bestehen noch Scheitern sind: unbestimmt, wenn die Metadaten nicht gelesen werden können, und außerhalb des Geltungsbereichs, wenn er für eine neuere Fassung des Formats geschrieben wurde.
+Name und Größe der Inhaltsdatei. Womit Ihr System sie öffnen würde. Das Flyleaf als Baum, jeder Wert an Ort und Stelle bearbeitbar. Und das Urteil des Containers gegenüber der Spezifikation, in deren eigenen Worten — einschließlich der beiden Antworten, die weder Bestehen noch Scheitern sind: unbestimmt, wenn das Flyleaf nicht gelesen werden kann, und außerhalb des Geltungsbereichs, wenn er für eine neuere Fassung des Formats geschrieben wurde.
 
 WAS SIE TUN KÖNNEN
 
-Öffnen übergibt die Nutzlast dem Programm, das für diesen Dateityp vorgesehen ist. Entpacken schreibt sie, wohin Sie wollen. Ersetzen tauscht sie gegen eine andere Datei. Speichern schreibt bearbeitete Metadaten zurück — und behält dabei Ihre Kommentare, Ihre Schlüsselreihenfolge und jeden Leerraum, den Sie nicht angefasst haben, samt allem anderen im Container, das Slipcase nicht kennt.
+Öffnen übergibt die Inhaltsdatei dem Programm, das für diesen Dateityp vorgesehen ist. Entpacken schreibt sie, wohin Sie wollen. Ersetzen tauscht sie gegen eine andere Datei. Speichern schreibt das bearbeitete Flyleaf zurück — und behält dabei Ihre Kommentare, Ihre Schlüsselreihenfolge und jeden Leerraum, den Sie nicht angefasst haben, samt allem anderen im Container, das Slipcase nicht kennt.
 
 Neu Geschriebenes wird zurückgelesen und geprüft, bevor es etwas ersetzt: ein Speichern, das einen Container ergäbe, den das Format nicht annimmt, ändert nichts auf der Platte. Ein Container, den Sie nicht geändert haben, wird gar nicht erst neu geschrieben.
 
-Neuer Container fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn dann, damit die Metadaten dort entstehen, wo sie auch bearbeitet werden. Eine große Nutzlast packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Nutzlast annimmt, wird abgelehnt, sobald Sie sie wählen.
+Neuer Container fragt, welche Datei hinein soll und wohin der Container gehört, schreibt ihn und öffnet ihn dann, damit das Flyleaf dort entsteht, wo es auch bearbeitet wird. Eine große Inhaltsdatei packt mit Fortschrittsbalken und Anhalten, und Anhalten lässt nichts zurück. Eine Datei, die das Format nicht als Inhaltsdatei annimmt, wird abgelehnt, sobald Sie sie wählen.
 
 WAS ES IHNEN SAGT UND NICHT FÜR SIE ENTSCHEIDET
 
 Slipcase berichtet. Es hält nichts auf.
 
-Kam ein Container von anderswo — heruntergeladen oder Ihnen geschickt —, sagt Slipcase das, und auch die entpackte Nutzlast wird markiert, damit Ihr System sie mit der Vorsicht behandelt, die es allem von außen entgegenbringt, statt sie zu öffnen, als wäre sie Ihre eigene. Metadaten zu bearbeiten und zu speichern löscht das nicht still: Slipcase sagt Ihnen danach weiterhin, woher der Container kam. Es gilt auch andersherum: eine Datei von anderswo sagt das weiterhin auf dem Container, in den Sie sie packen.
+Kam ein Container von anderswo — heruntergeladen oder Ihnen geschickt —, sagt Slipcase das, und auch die entpackte Inhaltsdatei wird markiert, damit Ihr System sie mit der Vorsicht behandelt, die es allem von außen entgegenbringt, statt sie zu öffnen, als wäre sie Ihre eigene. Das Flyleaf zu bearbeiten und zu speichern löscht das nicht still: Slipcase sagt Ihnen danach weiterhin, woher der Container kam. Es gilt auch andersherum: eine Datei von anderswo sagt das weiterhin auf dem Container, in den Sie sie packen.
 
-Namen werden mit ausgeschriebenen Zeichen gezeigt, die Text umordnen, damit sich eine Nutzlast nicht als ein Dateityp ausgeben kann, während sie ein anderer ist.
+Namen werden mit ausgeschriebenen Zeichen gezeigt, die Text umordnen, damit sich eine Inhaltsdatei nicht als ein Dateityp ausgeben kann, während sie ein anderer ist.
 
-Wo Ihr System nicht sagt, was eine Nutzlast öffnet, sagt Slipcase nichts, statt zu raten. Es bringt keine Tabelle mit, die Dateinamen auf Typen abbildet, und sieht nie in eine Nutzlast hinein, um einen zu erraten. Was Sie bekommen, sind Auskünfte — woher die Datei kam, was sie war, ob der Container wohlgeformt ist — und die Entscheidung bleibt Ihre.
+Wo Ihr System nicht sagt, was eine Inhaltsdatei öffnet, sagt Slipcase nichts, statt zu raten. Es bringt keine Tabelle mit, die Dateinamen auf Typen abbildet, und sieht nie in eine Inhaltsdatei hinein, um einen zu erraten. Was Sie bekommen, sind Auskünfte — woher die Datei kam, was sie war, ob der Container wohlgeformt ist — und die Entscheidung bleibt Ihre.
 
 WAS ES NICHT TUT
 
 Keinerlei Netzwerkverbindung. Kein Konto. Keine Telemetrie, keine Analyse, keine Absturzberichte. Nichts über Sie oder Ihre Dateien wird irgendwohin gesendet, weil es nirgendwohin zu senden gibt.
 
-Es zeigt keine Vorschau: die Nutzlast wird einem anderen Programm übergeben, statt hier dargestellt zu werden. Ein Container hält eine Nutzlast, was das Format entscheidet und nicht dieses Programm.
+Es zeigt keine Vorschau: die Inhaltsdatei wird einem anderen Programm übergeben, statt hier dargestellt zu werden. Ein Container hält eine Inhaltsdatei, was das Format entscheidet und nicht dieses Programm.
 
 OPEN SOURCE
 
 Slipcase ist Open Source, und ebenso das Format, das es liest, und die Bibliothek, die es liest. Jede Aussage oben ist überprüfbar: github.com/excelano/slipcase-desktop.
 """
 short-description = """
-Ein Slipcase-Container ist eine Datei, die ein Dokument samt seinen Metadaten enthält. Die Metadaten reisen mit dem Dokument, statt in einem Dateinamen, einer Begleitdatei oder fremden Datenbank zu stecken.
+Ein Slipcase-Container ist eine Datei, die ein Dokument samt seinem Flyleaf enthält. Das Flyleaf reist mit dem Dokument, statt in einem Dateinamen, einer Begleitdatei oder fremden Datenbank zu stecken.
 
-Slipcase erstellt Container und öffnet sie: die Nutzlast, womit Ihr System sie öffnen würde, und die Metadaten als bearbeitbaren Baum, mit Öffnen, Entpacken, Ersetzen und Speichern. Wo Ihr System nicht sagt, was eine Datei öffnet, sagt Slipcase nichts, statt zu raten.
+Slipcase erstellt Container und öffnet sie: die Inhaltsdatei, womit Ihr System sie öffnen würde, und das Flyleaf als bearbeitbaren Baum, mit Öffnen, Entpacken, Ersetzen und Speichern. Wo Ihr System nicht sagt, was eine Datei öffnet, sagt Slipcase nichts, statt zu raten.
 """
 features = [
-  "Die Metadaten reisen mit dem Dokument: eine Datei hält die Nutzlast und die Metadaten, die sie beschreiben.",
-  "Erstellt einen Container aus einer Datei Ihrer Wahl und öffnet ihn, damit die Metadaten dort entstehen, wo sie bearbeitet werden. Große Nutzlasten packen mit Fortschrittsbalken und Anhalten.",
-  "Metadaten an Ort und Stelle bearbeiten und speichern. Kommentare, Schlüsselreihenfolge und Leerraum, die Sie nicht angefasst haben, überleben das Neuschreiben.",
-  "Übergibt die Nutzlast dem Programm, das Ihr System für diesen Dateityp vorgesehen hat. Keine Vorschau, kein Raten von Typen.",
-  "Sagt, wenn ein Container von anderswo kam, und markiert die entpackte Nutzlast, damit Ihr System sie ebenso vorsichtig behandelt.",
+  "Das Flyleaf reist mit dem Dokument: eine Datei hält die Inhaltsdatei und das Flyleaf, das sie beschreibt.",
+  "Erstellt einen Container aus einer Datei Ihrer Wahl und öffnet ihn, damit das Flyleaf dort entsteht, wo es bearbeitet wird. Große Inhaltsdateien packen mit Fortschrittsbalken und Anhalten.",
+  "Das Flyleaf an Ort und Stelle bearbeiten und speichern. Kommentare, Schlüsselreihenfolge und Leerraum, die Sie nicht angefasst haben, überleben das Neuschreiben.",
+  "Übergibt die Inhaltsdatei dem Programm, das Ihr System für diesen Dateityp vorgesehen hat. Keine Vorschau, kein Raten von Typen.",
+  "Sagt, wenn ein Container von anderswo kam, und markiert die entpackte Inhaltsdatei, damit Ihr System sie ebenso vorsichtig behandelt.",
   "Nennt das Urteil des Containers gegenüber der Spezifikation in deren eigenen Worten, einschließlich unbestimmt und außerhalb des Geltungsbereichs.",
   "Neu Geschriebenes wird zurückgelesen und geprüft, bevor es etwas ersetzt, und ein unveränderter Container wird gar nicht neu geschrieben.",
   "Keinerlei Netzwerkverbindung. Kein Konto, keine Telemetrie, keine Analyse, nichts wird irgendwohin gesendet.",
   "Open Source, und ebenso das Format, das es liest, und die Bibliothek, die es liest.",
 ]
 keywords = [
-  "Metadaten",
+  "Flyleaf",
   "Container",
   "slpc",
   "TOML",
@@ -159,39 +159,39 @@ website = "https://excelano.com/slipcase/"
 support = "https://excelano.com/slipcase/"
 privacy = "https://excelano.com/legal/#slipcase"
 description = """
-A Slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
+A Slipcase container is one file holding a document of any type together with a flyleaf describing it. Copy the container, send it, or move it to another machine and the flyleaf goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
 
 Slipcase opens a container and shows what is inside, and makes one out of a file you choose.
 
 WHAT YOU SEE
 
-The payload's name and size. What your operating system says would open it. The metadata as a tree, with every value editable in place. And the container's verdict against the specification, in the specification's own words — including the two answers that are neither a pass nor a failure: a container whose metadata cannot be read is undetermined, and one written to a newer version of the format is out of scope.
+The content file's name and size. What your operating system says would open it. The flyleaf as a tree, with every value editable in place. And the container's verdict against the specification, in the specification's own words — including the two answers that are neither a pass nor a failure: a container whose flyleaf cannot be read is undetermined, and one written to a newer version of the format is out of scope.
 
 WHAT YOU CAN DO
 
-Open hands the payload to whatever application is registered for that kind of file. Extract writes it somewhere you choose. Replace swaps it for a different file. Save writes an edited metadata document back — keeping your comments, your key order, and any whitespace you did not touch, along with anything else in the container that Slipcase does not recognise.
+Open hands the content file to whatever application is registered for that kind of file. Extract writes it somewhere you choose. Replace swaps it for a different file. Save writes an edited flyleaf document back — keeping your comments, your key order, and any whitespace you did not touch, along with anything else in the container that Slipcase does not recognise.
 
 A rewrite is read back and checked before it replaces anything, so a save that would produce a container the format does not accept changes nothing on disk. A container you did not change is not rewritten at all.
 
-New container asks which file to put in and where the container should go, writes it, and then opens it, so the metadata is filled in where the rest of it gets edited. A large payload packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not accept as a payload is refused when you choose it, rather than after you have said where the container goes.
+New container asks which file to put in and where the container should go, writes it, and then opens it, so the flyleaf is filled in where the rest of it gets edited. A large content file packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not accept as a content file is refused when you choose it, rather than after you have said where the container goes.
 
 WHAT IT TELLS YOU, AND DOES NOT DECIDE FOR YOU
 
 Slipcase reports. It does not gate.
 
-If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the payload you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the metadata and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards. It travels the other way too: a file that arrived from elsewhere still says so on the container you pack it into.
+If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the content file you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the flyleaf and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards. It travels the other way too: a file that arrived from elsewhere still says so on the container you pack it into.
 
-On macOS it tells you when a payload was stored as an executable file, and that the copy you extract will not be. That is read out of the container rather than guessed from its name.
+On macOS it tells you when a content file was stored as an executable file, and that the copy you extract will not be. That is read out of the container rather than guessed from its name.
 
-Names are shown with the characters that reorder text written out, so a payload cannot present itself as one kind of file while being another.
+Names are shown with the characters that reorder text written out, so a content file cannot present itself as one kind of file while being another.
 
-Where your operating system will not say what opens a payload, Slipcase says nothing rather than guessing. It ships no table matching filenames to types and never inspects a payload's contents to guess at one. What you get is information — where the file came from, what it was, whether the container is well formed — and the decision stays yours.
+Where your operating system will not say what opens a content file, Slipcase says nothing rather than guessing. It ships no table matching filenames to types and never inspects a content file's contents to guess at one. What you get is information — where the file came from, what it was, whether the container is well formed — and the decision stays yours.
 
 WHAT IT DOES NOT DO
 
 No network connection of any kind. No account. No telemetry, no analytics, no crash reporting. Nothing about you or your files is sent anywhere, because there is nowhere for it to be sent.
 
-It shows no preview: the payload is handed to another application rather than rendered here. A container holds one payload, which is the format's decision rather than this application's.
+It shows no preview: the content file is handed to another application rather than rendered here. A container holds one content file, which is the format's decision rather than this application's.
 
 OPEN SOURCE
 
@@ -200,72 +200,72 @@ Slipcase is open source, and so is the format it reads and the library that read
 
 [locales."en-us".apple]
 name = "Slipcase Desktop"
-subtitle = "Metadata that travels along"
-promotional-text = "Make a container out of a file, or open one and read the metadata that travelled with it. Edit that metadata in place, and hand the payload to whatever opens it."
-keywords = "metadata,container,slpc,archive,toml,file,document,tagging,zip,viewer"
+subtitle = "A flyleaf that travels along"
+promotional-text = "Make a container out of a file, or open one and read the flyleaf that travelled with it. Edit that flyleaf in place, and hand the content file to whatever opens it."
+keywords = "flyleaf,container,slpc,archive,toml,file,document,tagging,zip,viewer"
 
 [locales."en-us".microsoft]
 name = "Slipcase"
 # Not the shared description. The paragraph about what a macOS build reports
-# when a payload was stored as an executable is cut here: that card line is
+# when a content file was stored as an executable is cut here: that card line is
 # gated to Unix, because a permission bit is not what makes a file executable
 # on Windows, so on Windows it describes something nobody will ever see.
 # Everything else is word for word the shared text above.
 description = """
-A Slipcase container is one file holding a document of any type together with metadata describing it. Copy the container, send it, or move it to another machine and the metadata goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
+A Slipcase container is one file holding a document of any type together with a flyleaf describing it. Copy the container, send it, or move it to another machine and the flyleaf goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
 
 Slipcase opens a container and shows what is inside, and makes one out of a file you choose.
 
 WHAT YOU SEE
 
-The payload's name and size. What your operating system says would open it. The metadata as a tree, with every value editable in place. And the container's verdict against the specification, in the specification's own words — including the two answers that are neither a pass nor a failure: a container whose metadata cannot be read is undetermined, and one written to a newer version of the format is out of scope.
+The content file's name and size. What your operating system says would open it. The flyleaf as a tree, with every value editable in place. And the container's verdict against the specification, in the specification's own words — including the two answers that are neither a pass nor a failure: a container whose flyleaf cannot be read is undetermined, and one written to a newer version of the format is out of scope.
 
 WHAT YOU CAN DO
 
-Open hands the payload to whatever application is registered for that kind of file. Extract writes it somewhere you choose. Replace swaps it for a different file. Save writes an edited metadata document back — keeping your comments, your key order, and any whitespace you did not touch, along with anything else in the container that Slipcase does not recognise.
+Open hands the content file to whatever application is registered for that kind of file. Extract writes it somewhere you choose. Replace swaps it for a different file. Save writes an edited flyleaf document back — keeping your comments, your key order, and any whitespace you did not touch, along with anything else in the container that Slipcase does not recognise.
 
 A rewrite is read back and checked before it replaces anything, so a save that would produce a container the format does not accept changes nothing on disk. A container you did not change is not rewritten at all.
 
-New container asks which file to put in and where the container should go, writes it, and then opens it, so the metadata is filled in where the rest of it gets edited. A large payload packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not accept as a payload is refused when you choose it, rather than after you have said where the container goes.
+New container asks which file to put in and where the container should go, writes it, and then opens it, so the flyleaf is filled in where the rest of it gets edited. A large content file packs with a progress bar and a Stop, and stopping leaves nothing behind. A file the format will not accept as a content file is refused when you choose it, rather than after you have said where the container goes.
 
 WHAT IT TELLS YOU, AND DOES NOT DECIDE FOR YOU
 
 Slipcase reports. It does not gate.
 
-If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the payload you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the metadata and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards. It travels the other way too: a file that arrived from elsewhere still says so on the container you pack it into.
+If a container arrived from elsewhere — downloaded, or sent to you — Slipcase says so, and the content file you extract is marked as well, so your computer treats it with the caution it gives anything that came from outside rather than opening it as though you had made it yourself. Editing the flyleaf and saving does not quietly erase that: Slipcase still tells you where the container came from afterwards. It travels the other way too: a file that arrived from elsewhere still says so on the container you pack it into.
 
-Names are shown with the characters that reorder text written out, so a payload cannot present itself as one kind of file while being another.
+Names are shown with the characters that reorder text written out, so a content file cannot present itself as one kind of file while being another.
 
-Where your operating system will not say what opens a payload, Slipcase says nothing rather than guessing. It ships no table matching filenames to types and never inspects a payload's contents to guess at one. What you get is information — where the file came from, what it was, whether the container is well formed — and the decision stays yours.
+Where your operating system will not say what opens a content file, Slipcase says nothing rather than guessing. It ships no table matching filenames to types and never inspects a content file's contents to guess at one. What you get is information — where the file came from, what it was, whether the container is well formed — and the decision stays yours.
 
 WHAT IT DOES NOT DO
 
 No network connection of any kind. No account. No telemetry, no analytics, no crash reporting. Nothing about you or your files is sent anywhere, because there is nowhere for it to be sent.
 
-It shows no preview: the payload is handed to another application rather than rendered here. A container holds one payload, which is the format's decision rather than this application's.
+It shows no preview: the content file is handed to another application rather than rendered here. A container holds one content file, which is the format's decision rather than this application's.
 
 OPEN SOURCE
 
 Slipcase is open source, and so is the format it reads and the library that reads it. Every claim above is checkable: github.com/excelano/slipcase-desktop.
 """
 short-description = """
-A Slipcase container is one file holding a document together with the metadata that describes it, so the metadata travels with the document instead of living in a filename, a sidecar, or somebody else's database.
+A Slipcase container is one file holding a document together with the flyleaf that describes it, so the flyleaf travels with the document instead of living in a filename, a sidecar, or somebody else's database.
 
-Slipcase makes containers and opens them: the payload, what would open it on your computer, and the metadata as a tree you can edit, with Open, Extract, Replace and Save. Where your computer will not say what opens a file, Slipcase says nothing rather than guessing.
+Slipcase makes containers and opens them: the content file, what would open it on your computer, and the flyleaf as a tree you can edit, with Open, Extract, Replace and Save. Where your computer will not say what opens a file, Slipcase says nothing rather than guessing.
 """
 features = [
-  "Metadata travels with the document: one file holds the payload and the metadata describing it.",
-  "Makes a container out of a file you choose, then opens it so the metadata is filled in where the rest gets edited. A large payload packs with a progress bar and a Stop.",
-  "Edit the metadata in place and save. Comments, key order and whitespace you did not touch survive the rewrite.",
-  "Hands the payload to whatever your computer has registered for that kind of file. No preview, no guessing at types.",
-  "Says when a container arrived from elsewhere, and marks the payload you extract so your computer treats it with the same caution.",
+  "The flyleaf travels with the document: one file holds the content file and the flyleaf describing it.",
+  "Makes a container out of a file you choose, then opens it so the flyleaf is filled in where the rest gets edited. A large content file packs with a progress bar and a Stop.",
+  "Edit the flyleaf in place and save. Comments, key order and whitespace you did not touch survive the rewrite.",
+  "Hands the content file to whatever your computer has registered for that kind of file. No preview, no guessing at types.",
+  "Says when a container arrived from elsewhere, and marks the content file you extract so your computer treats it with the same caution.",
   "Reports the container's verdict against the specification in its own words, including undetermined and out of scope.",
   "A rewrite is read back and checked before it replaces anything, and a container you did not change is not rewritten at all.",
   "No network connection of any kind. No account, no telemetry, no analytics, nothing sent anywhere.",
   "Open source, and so are the format it reads and the library that reads it.",
 ]
 keywords = [
-  "metadata",
+  "flyleaf",
   "container",
   "slpc",
   "TOML",

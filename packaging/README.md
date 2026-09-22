@@ -45,8 +45,8 @@ was made here and is recorded in `slipcase-common`'s README, which measured it
 again from the other direction.
 
 **The desktop entry names six types, not one.** `slipcase-common` declares a
-payload family per icon — `application/x.slipcase-pdf+zip` against `*.pdf.slpc`,
-and four more — so that a container named for its payload can be drawn with a
+content file family per icon — `application/x.slipcase-pdf+zip` against `*.pdf.slpc`,
+and four more — so that a container named for its content file can be drawn with a
 mark for it. Each is a `sub-class-of application/vnd.excelano.slipcase+zip`, and
 that inheritance carries the default application but not the *recommended* list,
 which is matched on the exact type. A family missing from `MimeType=` therefore

@@ -68,7 +68,7 @@ Wayland compositor can find the window's icon, and the equivalent here is
 ## The role is Editor
 
 `CFBundleTypeRole` is `Editor` rather than `Viewer`. `DESIGN.md` §5 writes
-edited metadata back into the container, so this application does modify the
+edited flyleaf back into the container, so this application does modify the
 documents it opens and `Viewer` would be a claim to the platform that is not
 true. The cost is that macOS offers Slipcase in more places, and it is bounded:
 the only type claimed is the one this bundle exports, so nothing but a `.slpc`
@@ -300,7 +300,7 @@ it is not what was asked for.
 `Info.plist` declares `LSMinimumSystemVersion` 12.0 because
 `src/opens_with.rs` calls `-[NSWorkspace URLForApplicationToOpenContentType:]`,
 which is macOS 12 and later, and uses `UTType`, which is macOS 11 and later.
-Below 12 that selector does not exist and asking what opens a payload would
+Below 12 that selector does not exist and asking what opens a content file would
 abort.
 
 The declaration binds the bundle: Finder will not launch it on an older system.

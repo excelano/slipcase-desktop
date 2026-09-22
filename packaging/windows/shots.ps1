@@ -16,7 +16,7 @@
 #
 # Two containers and two themes. The containers are the same one twice, the
 # second carrying a `Zone.Identifier`, so the card's provenance line reads
-# *This container arrived from elsewhere, and the payload will carry that* -
+# *This container arrived from elsewhere, and the content file will carry that* -
 # which is the one thing in this application worth a slot that a still frame
 # can show.
 #
@@ -69,7 +69,7 @@ $HEIGHT = 768
 # timestamps are pinned, so any machine rebuilds the same bytes and the pictures
 # match the container the review notes send a tester to.
 #
-# One container per language, because the metadata tree is most of what these
+# One container per language, because the flyleaf tree is most of what these
 # frames show: a German listing opening an English document would be mostly
 # English pixels whatever language the window is in. The two documents have the
 # same keys in the same order, which `demo-container.sh` says why.

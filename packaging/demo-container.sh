@@ -3,7 +3,7 @@
 # platform.
 #
 # `submission-notes.md` described this container in prose — a real one-page PDF, a
-# metadata document rich enough to exercise every renderer — and said rebuilding
+# flyleaf document rich enough to exercise every renderer — and said rebuilding
 # it was a few lines. It was not in the repository, so the four Windows
 # screenshots could not be reproduced anywhere, macOS was about to invent a
 # second container for its own, and the website would have invented a third.
@@ -57,20 +57,20 @@ done
 # screenshots: a German listing showing an English document is mostly English
 # pixels, and the tree is most of what these frames show.
 #
-# **The two metadata documents have the same keys in the same order.** The tree
+# **The two flyleaf documents have the same keys in the same order.** The tree
 # draws one row per key, so a German document with a key the English one does
 # not have moves every row under it, and a recipe's coordinates are a row
 # number in disguise. Tommy Flyleaf learned that the expensive way, on a German
 # comment that wrapped one line further than its English counterpart. Only the
 # values differ here, and the two keys the format owns - `slipcase_version` and
-# `payload.file` - are not translated at all.
+# `content.file` - are not translated at all.
 case "$lang" in
     en|en-US|en-us)
-        payload=quarterly-report.pdf
+        content=quarterly-report.pdf
         pdf_title='Quarterly Report'
         pdf_sub='Sample document' ;;
     de|de-DE|de-de)
-        payload=quartalsbericht.pdf
+        content=quartalsbericht.pdf
         pdf_title='Quartalsbericht'
         pdf_sub='Beispieldokument' ;;
     *) echo "demo-container.sh: no container is written for ${lang}" >&2; exit 2 ;;
@@ -95,8 +95,8 @@ trap 'rm -rf "$stage"' EXIT INT TERM
 # which is the reason for the passes. The stream declared `Length 92` over 87
 # bytes and there was no cross-reference table at all; poppler rendered it
 # anyway, because every mainstream viewer repairs a broken xref rather than
-# refusing. A payload that only opens in viewers that repair is not what belongs
-# in two store listings, so this computes both instead of asserting them.
+# refusing. A content file that only opens in viewers that repair is not what
+# belongs in two store listings, so this computes both instead of asserting them.
 stream="${stage}/content"
 # No character above ASCII in either title: a PDF literal string in the
 # Helvetica base font is WinAnsi, and an umlaut there is a second question this
@@ -105,7 +105,7 @@ printf 'BT /F1 18 Tf 72 760 Td (%s) Tj 0 -28 Td /F1 11 Tf (%s) Tj ET\n' \
     "$pdf_title" "$pdf_sub" > "$stream"
 length=$(wc -c < "$stream" | tr -d ' ')
 
-pdf="${stage}/${payload}"
+pdf="${stage}/${content}"
 {
     printf '%%PDF-1.4\n'
     printf '1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n'
@@ -131,14 +131,14 @@ xref_at=$(wc -c < "$pdf" | tr -d ' ')
     printf 'trailer<</Root 1 0 R/Size 6>>\nstartxref\n%s\n%%%%EOF\n' "$xref_at"
 } >> "$pdf"
 
-# The metadata is the thing being photographed: the tree is what this
+# The flyleaf is the thing being photographed: the tree is what this
 # application is for, and the walkthrough fixtures have three keys between them.
 # Every renderer `src/tree.rs` carries appears here at least once — string,
 # integer, float, boolean, array, array of tables, nested table, and the two
 # datetime shapes that render differently.
 if [ "$lang" = en ] || [ "${lang#en}" != "$lang" ]; then
-cat > "${stage}/slipcase.metadata.toml" <<'TOML'
-slipcase_version = "1.0"
+cat > "${stage}/slipcase.flyleaf.toml" <<'TOML'
+slipcase_version = "1.1"
 
 # A description written to be read, because the tree is what a person is
 # looking at in a screenshot.
@@ -151,7 +151,7 @@ confidence = 0.94
 
 keywords = ["quarterly", "consolidated", "northwind", "internal"]
 
-[payload]
+[content]
 file = "quarterly-report.pdf"
 
 [dates]
@@ -184,8 +184,8 @@ date = 2026-04-30
 note = "Issued."
 TOML
 else
-cat > "${stage}/slipcase.metadata.toml" <<'TOML'
-slipcase_version = "1.0"
+cat > "${stage}/slipcase.flyleaf.toml" <<'TOML'
+slipcase_version = "1.1"
 
 # Eine Beschreibung, die gelesen werden soll, denn der Baum ist das, was ein
 # Mensch auf einem Bildschirmfoto ansieht.
@@ -198,7 +198,7 @@ confidence = 0.94
 
 keywords = ["Quartal", "konsolidiert", "Nordwind", "intern"]
 
-[payload]
+[content]
 file = "quartalsbericht.pdf"
 
 [dates]
@@ -232,7 +232,7 @@ note = "Herausgegeben."
 TOML
 fi
 
-out="${outdir}/${payload}.slpc"
+out="${outdir}/${content}.slpc"
 rm -f "$out"
 
 # **The archive's two timestamps are pinned, so this is the same file
@@ -249,19 +249,19 @@ rm -f "$out"
 # Both halves are needed. `touch` fixes the instant, and `TZ=UTC` fixes what
 # ZIP writes for it: the DOS timestamp field is local time with no zone, so the
 # same instant in Houston and in Tokyo is two different fields. The date is the
-# one the metadata already gives as `dates.issued`, so the archive agrees with
+# one the flyleaf already gives as `dates.issued`, so the archive agrees with
 # the document it carries rather than naming some arbitrary epoch.
 touch -d '2026-04-30T09:15:00Z' \
-    "${stage}/slipcase.metadata.toml" "${stage}/${payload}"
+    "${stage}/slipcase.flyleaf.toml" "${stage}/${content}"
 
-# The metadata first, which is the order every other container this project
+# The flyleaf first, which is the order every other container this project
 # builds uses, and `zip -X` so no extra fields carry this machine's identity
 # into a file that goes in two store listings.
-( cd "$stage" && TZ=UTC zip -q -X "$out" slipcase.metadata.toml "$payload" )
+( cd "$stage" && TZ=UTC zip -q -X "$out" slipcase.flyleaf.toml "$content" )
 
 echo "built $out"
-echo "  payload   ${payload} ($(wc -c < "${stage}/${payload}") bytes)"
-echo "  metadata  $(grep -c . < "${stage}/slipcase.metadata.toml") non-empty lines"
+echo "  content   ${content} ($(wc -c < "${stage}/${content}") bytes)"
+echo "  flyleaf   $(grep -c . < "${stage}/slipcase.flyleaf.toml") non-empty lines"
 echo
 echo "for the 'arrived from elsewhere' screenshot, mark a copy the way a download would:"
 echo "  Linux    setfattr -n user.xdg.origin.url -v https://example.invalid/q2 <copy>"

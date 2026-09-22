@@ -1,10 +1,10 @@
 1x text 0.0,4.5 10.2x9.0 "#"
 1x rect inf,inf -infx-inf
-1x text 16.5,3.5 103.0x12.0 "slipcase metadata"
+1x text 16.5,3.5 85.0x12.0 "slipcase flyleaf"
 1x rect 0.0,21.0 162.0x19.0
 1x text 4.0,25.0 151.0x12.0 "slipcase_version_renamed"
 1x rect 198.0,21.0 320.0x19.0
-1x text 203.0,25.0 65.0x12.0 "1.0 (edited)"
+1x text 203.0,25.0 65.0x12.0 "1.1 (edited)"
 1x rect 526.0,21.5 24.4x18.0
 1x text 530.0,27.5 17.0x6.0 "text"
 1x text 558.4,26.0 10.2x9.0 "#"

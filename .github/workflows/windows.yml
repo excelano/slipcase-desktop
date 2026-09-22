@@ -106,7 +106,7 @@ jobs:
           install-args: '-NoBinary'
 
       # The run that found the device-name defect in the first place, and the
-      # only platform where `accept/payload-name-windows-reserved` is anything
+      # only platform where `accept/content-file-name-windows-reserved` is anything
       # but an ordinary filename. It hung here for ten minutes twice before the
       # case had a name, so a timeout is set: a run that hangs looks exactly
       # like a run that is slow, and the whole job's default of six hours is the
@@ -118,13 +118,13 @@ jobs:
       # security boundary and the corpus's own argument for determinism wants a
       # fixed input anyway. Bump this deliberately when the corpus changes.
       #
-      # SPEC-PIN: 996dcca3f65ed36728b11ee1741812b50def67b4
+      # SPEC-PIN: 69709be1dc3c8e77fd0954df59f913dbaccad3ab
       - name: The conformance corpus, every case
         if: github.event_name != 'push' && github.event_name != 'pull_request'
         timeout-minutes: 10
         run: |
           git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
-          git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach 996dcca3f65ed36728b11ee1741812b50def67b4
+          git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach 69709be1dc3c8e77fd0954df59f913dbaccad3ab
           python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
           cargo run --example corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
 
@@ -176,7 +176,7 @@ jobs:
         if: inputs.screenshots && inputs.screenshots != 'no'
         run: choco install zip --no-progress -y
 
-      # One per language: the metadata tree is most of what these frames show,
+      # One per language: the flyleaf tree is most of what these frames show,
       # so a German listing opening an English document would be mostly English
       # pixels whatever language the window is in.
       - name: Build the containers the pictures are of

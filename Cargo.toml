@@ -1,9 +1,9 @@
 [package]
 name = "slipcase-desktop"
-description = "Open a Slipcase container, read its metadata, and hand the payload to the application the system has registered for it"
+description = "Open a Slipcase container, read its flyleaf, and hand the content file to the application the system has registered for it"
 homepage = "https://excelano.com/slipcase/"
 readme = "README.md"
-keywords = ["slipcase", "container", "metadata", "gui", "egui"]
+keywords = ["slipcase", "container", "flyleaf", "gui", "egui"]
 categories = ["gui", "filesystem"]
 version = "0.1.10"
 edition = "2021"
@@ -22,10 +22,10 @@ path = "src/main.rs"
 
 [dependencies]
 # The `fs` feature is the library's file-placement half. `Destination`, which
-# DESIGN.md §5 writes edited metadata back through, is behind it and is
+# DESIGN.md §5 writes edited flyleaf back through, is behind it and is
 # compiled out without it.
-slpc = { version = "0.3.10", features = ["fs", "provenance"] }
-# The metadata editor: the tree DESIGN.md §4 describes and the operations §5
+slpc = { version = "0.4.0", features = ["fs", "provenance"] }
+# The flyleaf editor: the tree DESIGN.md §4 describes and the operations §5
 # describes, which were written here and moved out on 2026-09-07 so that
 # Tommy Flyleaf and this application share one TOML editor rather than two
 # that drift. That is what `excelano/flyleaf` exists for. From crates.io at a
@@ -42,7 +42,7 @@ slpc = { version = "0.3.10", features = ["fs", "provenance"] }
 flyleaf = { version = "0.2", default-features = false }
 # The language the window draws in, and the reader for the `.po` catalogues in
 # `po/`. Written in this repository and moved out on 2026-09-09, the same day
-# and for the same reason the editor moved to `flyleaf`: the metadata tree draws
+# and for the same reason the editor moved to `flyleaf`: the flyleaf tree draws
 # inside this window and carries its own strings, and a published crate cannot
 # reach into this one's `src/`. From crates.io at a published version, as `slpc`
 # and `flyleaf` are — never a path or git dependency in a committed manifest.
@@ -69,7 +69,7 @@ opener = "0.8"
 #
 # It is *not* 0700, which this said until 2026-08-27 and which was the stated
 # reason for choosing it. `Builder::tempdir` goes through the umask: 0755 under
-# the common one, 0775 under Debian's, so every payload somebody pressed Open on
+# the common one, 0775 under Debian's, so every content file somebody pressed Open on
 # was readable by any account on the machine. Both places that make a directory
 # here now ask for 0700 explicitly. `NamedTempFile` genuinely is 0600, which is
 # how the wrong half went unnoticed — the two are different code paths and only
@@ -130,7 +130,7 @@ zbus = { version = "5", default-features = false, features = ["async-io", "block
 # the icon is embedded as bytes and decoded at startup instead. Pure Rust; its
 # `png` is for the large entries, which are stored that way.
 ico = "0.5.0"
-# What the platform would open a payload with, which on Windows is a question
+# What the platform would open a content file with, which on Windows is a question
 # for the registry. `AssocQueryString` is the textbook answer and is a raw FFI
 # call this crate cannot make under `#![forbid(unsafe_code)]`; this is a safe
 # API over the same hive, with its unsafe inside it as `rfd` and `opener`
@@ -140,7 +140,7 @@ ico = "0.5.0"
 windows-registry = "0.6.1"
 
 # Only the tests reach for it now. The card's provenance line and the marks
-# carried onto an extracted payload both come from `slpc::provenance`, and a
+# carried onto an extracted content file both come from `slpc::provenance`, and a
 # test that marked a file with the code under test would be asking the library
 # whether it agrees with itself.
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]

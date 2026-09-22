@@ -22,7 +22,7 @@
 #
 # The fourth is the one thing a still frame can show without an edit: the same
 # container carrying a quarantine attribute, so the card's provenance line
-# reads that it arrived from elsewhere and the payload will carry that.
+# reads that it arrived from elsewhere and the content file will carry that.
 #
 # THE ACTIONS STAY INSIDE THE DOCUMENT
 #
@@ -175,7 +175,7 @@ shots() {
 
     # The container that arrived from elsewhere. The card's provenance line is
     # the one thing here worth a slot that a still frame can show, and the
-    # payload the reader extracts carries the marking onward.
+    # content file the reader extracts carries the marking onward.
     document=$marked
     shot 02-light-arrived-from-elsewhere
 

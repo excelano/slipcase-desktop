@@ -1,14 +1,14 @@
 1x text 0.0,4.5 10.2x9.0 "#"
 1x rect inf,inf -infx-inf
-1x text 16.5,3.5 103.0x12.0 "slipcase metadata"
+1x text 16.5,3.5 85.0x12.0 "slipcase flyleaf"
 1x text 0.0,24.5 93.0x12.0 "slipcase_version"
 1x rect 198.0,21.0 320.0x19.0
-1x text 203.0,26.0 17.0x9.0 "1.0"
+1x text 203.0,26.0 15.0x9.0 "1.1"
 1x text 526.0,26.0 10.2x9.0 "#"
 1x rect inf,inf -infx-inf
 1x text 543.5,25.0 139.0x12.0 "the specification version"
 1x path 6.0,49.0 6.0x6.0
-1x text 19.0,46.5 44.0x12.0 "payload"
+1x text 18.0,47.5 46.0x9.0 "content"
 1x text 18.0,68.5 10.2x9.0 "#"
 1x rect inf,inf -infx-inf
 1x text 35.5,67.5 152.0x10.0 "the member this describes"
@@ -36,15 +36,15 @@
 1x text 4.0,161.0 151.0x10.0 "add a comment at the end"
 1.5x text 0.0,4.4 11.0x9.3 "#"
 1.5x rect inf,inf -infx-inf
-1.5x text 16.5,2.9 103.3x13.3 "slipcase metadata"
+1.5x text 16.5,2.9 84.7x13.3 "slipcase flyleaf"
 1.5x text 0.0,24.0 92.7x13.3 "slipcase_version"
 1.5x rect 198.0,21.0 320.0x19.0
-1.5x text 203.3,25.7 16.0x9.3 "1.0"
+1.5x text 203.3,25.7 14.0x9.3 "1.1"
 1.5x text 526.0,25.9 11.0x9.3 "#"
 1.5x rect inf,inf -infx-inf
 1.5x text 543.2,24.4 139.3x13.3 "the specification version"
 1.5x path 6.0,49.0 6.0x6.0
-1.5x text 18.7,46.0 44.0x13.3 "payload"
+1.5x text 18.7,47.3 45.3x9.3 "content"
 1.5x text 18.0,68.3 11.0x9.3 "#"
 1.5x rect inf,inf -infx-inf
 1.5x text 35.2,66.8 152.7x10.7 "the member this describes"
@@ -72,15 +72,15 @@
 1.5x text 4.0,160.2 151.3x10.7 "add a comment at the end"
 2x text 0.5,4.5 9.8x9.0 "#"
 2x rect inf,inf -infx-inf
-2x text 17.0,3.5 102.5x12.5 "slipcase metadata"
+2x text 17.0,3.5 84.0x12.5 "slipcase flyleaf"
 2x text 0.5,24.5 91.5x12.5 "slipcase_version"
 2x rect 198.0,21.0 320.0x19.0
-2x text 203.0,26.0 16.5x9.0 "1.0"
+2x text 203.0,26.0 14.5x9.0 "1.1"
 2x text 526.5,26.0 9.8x9.0 "#"
 2x rect inf,inf -infx-inf
 2x text 543.5,25.0 138.5x12.5 "the specification version"
 2x path 6.0,49.0 6.0x6.0
-2x text 19.0,46.5 43.5x12.5 "payload"
+2x text 18.5,47.5 45.0x9.0 "content"
 2x text 18.5,68.5 9.8x9.0 "#"
 2x rect inf,inf -infx-inf
 2x text 35.5,67.5 152.0x10.0 "the member this describes"
@@ -108,15 +108,15 @@
 2x text 4.5,161.0 150.5x10.0 "add a comment at the end"
 3x text 0.3,4.5 9.9x9.0 "#"
 3x rect inf,inf -infx-inf
-3x text 16.8,3.5 102.3x12.3 "slipcase metadata"
+3x text 16.8,3.5 84.0x12.3 "slipcase flyleaf"
 3x text 0.3,24.5 92.0x12.3 "slipcase_version"
 3x rect 198.0,21.0 320.0x19.0
-3x text 203.3,26.0 16.0x9.0 "1.0"
+3x text 203.3,26.0 14.0x9.0 "1.1"
 3x text 526.3,26.0 9.9x9.0 "#"
 3x rect inf,inf -infx-inf
 3x text 543.5,25.0 138.3x12.3 "the specification version"
 3x path 6.0,49.0 6.0x6.0
-3x text 19.0,46.5 43.3x12.3 "payload"
+3x text 18.7,47.5 45.0x9.0 "content"
 3x text 18.3,68.5 9.9x9.0 "#"
 3x rect inf,inf -infx-inf
 3x text 35.5,67.5 151.7x10.0 "the member this describes"

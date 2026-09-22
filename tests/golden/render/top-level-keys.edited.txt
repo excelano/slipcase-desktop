@@ -1,7 +1,7 @@
 1x rect 0.0,0.0 162.0x19.0
 1x text 4.0,4.0 151.0x12.0 "slipcase_version_renamed"
 1x rect 198.0,0.0 320.0x19.0
-1x text 203.0,4.0 65.0x12.0 "1.0 (edited)"
+1x text 203.0,4.0 65.0x12.0 "1.1 (edited)"
 1x rect 526.0,0.5 24.4x18.0
 1x text 530.0,6.5 17.0x6.0 "text"
 1x rect 558.4,2.0 19.7x15.0
@@ -119,7 +119,7 @@
 1x text 328.0,353.0 23.0x10.0 "Add"
 1x line 8.5,326.5 1.0x40.0
 1x path 6.0,377.0 6.0x6.0
-1x text 19.0,374.5 44.0x12.0 "payload"
+1x text 18.0,375.5 46.0x9.0 "content"
 1x rect 18.0,392.0 162.0x19.0
 1x text 23.0,396.0 75.0x12.0 "file_renamed"
 1x rect 216.0,392.0 320.0x19.0

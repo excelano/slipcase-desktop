@@ -37,7 +37,7 @@ env:
   # run a script out of it, so whoever can land a commit there executes code
   # here. One copy, because the two jobs must never disagree about which
   # corpus they mean.
-  CORPUS_PIN: 996dcca3f65ed36728b11ee1741812b50def67b4
+  CORPUS_PIN: 69709be1dc3c8e77fd0954df59f913dbaccad3ab
 
 concurrency:
   # Keyed by the tag when this is releasing and by the ref when it is checking,

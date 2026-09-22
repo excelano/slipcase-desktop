@@ -1,6 +1,6 @@
-slipcase_version = "1.0"
+slipcase_version = "1.1"
 
-[payload]
+[content]
 file = "report.pdf"
 
 [provenance.system.source]

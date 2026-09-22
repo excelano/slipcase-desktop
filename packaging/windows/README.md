@@ -71,7 +71,7 @@ paperwork. macOS is the reason to say that plainly: the App Sandbox was assumed
 to be a formality there, and it turned out to need a new module, a rewritten
 save path, and a reopened section of `DESIGN.md`. MSIX is a container too. The
 questions were these; the short version is that this
-application reads the registry to answer what would open a payload, hands files
+application reads the registry to answer what would open a content file, hands files
 to the shell, and registers a file type — and MSIX has its own opinion about
 all three.
 
@@ -81,7 +81,7 @@ right to ask. Run 2026-08-26 against a signed package built from the release
 binary and installed.
 
 `opens_with` gets the same answers inside the container as outside — twenty
-payload types, no row different — because MSIX virtualises what a package
+content file types, no row different — because MSIX virtualises what a package
 writes and not what it reads, which was confirmed by watching a registry write
 from inside the container fail to appear outside it. `opener::open` reaches the
 shell from inside and the handler starts. And the association declared in

@@ -14,7 +14,7 @@ mod staging;
 /// `potext::catalog!` declares the catalogue and its four lookups **in this
 /// crate**, which is the point of it being a macro: a single global inside
 /// `potext` would be one catalogue shared by everything linked against it, and
-/// `flyleaf` — which draws the metadata tree inside this window — has to carry
+/// `flyleaf` — which draws the flyleaf tree inside this window — has to carry
 /// its own. The only thing that crosses either boundary is a language tag.
 /// DESIGN.md §10.
 pub mod i18n {
@@ -41,16 +41,16 @@ pub use flyleaf::flyleaf_core::{
     set_value, Kind,
 };
 
-/// What this application tells the tree about a metadata document: the two
+/// What this application tells the tree about a flyleaf document: the two
 /// keys SPEC §2.2 requires are shown and not edited, and so is the table
 /// holding one.
 ///
-/// `payload.file` names the member the container is built around, and
+/// `content.file` names the member the container is built around, and
 /// changing it without renaming that member leaves a container naming a
-/// payload that is not there; `slipcase_version` is the claim the whole
+/// content file that is not there; `slipcase_version` is the claim the whole
 /// verdict rests on, and `Repack` refuses to write a document disagreeing with
-/// the version it implements. `payload` is protected as well as
-/// `payload.file`, because deleting or renaming the table takes the required
+/// the version it implements. `content` is protected as well as
+/// `content.file`, because deleting or renaming the table takes the required
 /// key inside it with it, which the value being read-only would not have
 /// stopped.
 ///
@@ -62,21 +62,21 @@ pub struct RequiredKeys;
 impl flyleaf::Policy for RequiredKeys {
     fn protected(&self, path: &[String]) -> bool {
         let joined = path.join(".");
-        [slpc::VERSION_KEY, slpc::PAYLOAD_FILE_KEY]
+        [slpc::VERSION_KEY, slpc::CONTENT_FILE_KEY]
             .iter()
             .any(|required| *required == joined || required.starts_with(&format!("{joined}.")))
     }
 
-    /// One of the two protected strings, `payload.file`, is a member name, and
+    /// One of the two protected strings, `content.file`, is a member name, and
     /// SPEC §3 requires a name be shown escaped. The card does that through
-    /// `slpc::display_name` and the tree did not: a payload called
+    /// `slpc::display_name` and the tree did not: a content file called
     /// `report<U+202E>fdp.exe` read `report\u{202E}fdp.exe` on the card and
     /// `reportfdp.exe` two rows below it, because egui gives a bidirectional
     /// formatting character zero advance width. The tree was showing the spoof
     /// the escaping exists to prevent, under a card that was not.
     ///
     /// Found by hand on Windows on 2026-08-29 against
-    /// `accept/payload-name-bidi-override`, while running the card's item 3 —
+    /// `accept/content-file-name-bidi-override`, while running the card's item 3 —
     /// which asks about the card, so macOS and Linux had both ticked it without
     /// looking two rows down. The code is shared and all three platforms had
     /// this.
@@ -89,7 +89,7 @@ impl flyleaf::Policy for RequiredKeys {
 ///
 /// Two handles onto the same counters, so the thread doing the copying and the
 /// one drawing the window can hold one each. DESIGN.md §6 asks that a very
-/// large payload be extractable with a duration: something to watch and
+/// large content file be extractable with a duration: something to watch and
 /// something to press.
 #[derive(Clone, Default)]
 pub struct Watch {
@@ -128,7 +128,7 @@ impl Watch {
 
 /// What became of an extraction that did not fail.
 pub enum Extracted {
-    /// The payload is on disk, here.
+    /// The content file is on disk, here.
     Done(PathBuf),
     /// Stopping was asked for, and the part of the file that had been written
     /// is gone.
@@ -138,17 +138,17 @@ pub enum Extracted {
 /// The size of one chunk, and so how long a cancel waits to be noticed.
 const CHUNK: usize = 64 * 1024;
 
-/// Copy a container's payload into a directory, watchably.
+/// Copy a container's content file into a directory, watchably.
 ///
 /// Takes a path rather than an [`Opened`] because the thread doing this holds
-/// nothing else: `Container::payload` borrows its container, so no reader can
+/// nothing else: `Container::content` borrows its container, so no reader can
 /// be sent across a thread and the worker has to open the container itself.
 /// Reopening an [`Opened`] there would re-run the platform's type query, which
 /// starts processes.
 ///
 /// Nothing part-written survives a failure or a cancel. A half-copied file left
-/// under the payload's own name is one somebody finds later and takes for the
-/// payload.
+/// under the content file's own name is one somebody finds later and takes for
+/// the content file.
 ///
 /// # Errors
 ///
@@ -159,19 +159,20 @@ pub fn extract(container: &Path, into: &Path, watch: &Watch) -> slpc::Result<Ext
     let mut container = slpc::Container::open_with(container, LIMITS)?;
     // Through the library rather than by joining. A name checked against
     // SPEC 2.3 cannot leave the directory, and leaving it was never the only
-    // way for a name to fail to be a file: `slpc::payload_path` is where that
+    // way for a name to fail to be a file: `slpc::content_path` is where that
     // now lives, having been this application's `destination` until 0.3.5.
-    let out = slpc::payload_path(into, container.payload_name())?;
+    let out = slpc::content_path(into, container.content_name())?;
     copy_out(&mut container, source, &out, watch)
 }
 
-/// Copy a container's payload to a path somebody chose, watchably.
+/// Copy a container's content file to a path somebody chose, watchably.
 ///
-/// The other half of DESIGN.md §5's extract: [`extract`] puts the payload where
-/// the container names it, for handing to the platform, and this puts it where
-/// a person named it, which is the explicit action. The name is theirs, so it
-/// goes through no check of the library's: `check_payload_name` says what a
-/// member may be called inside a container, and this file is leaving one.
+/// The other half of DESIGN.md §5's extract: [`extract`] puts the content file
+/// where the container names it, for handing to the platform, and this puts it
+/// where a person named it, which is the explicit action. The name is theirs,
+/// so it goes through no check of the library's: `check_content_name` says
+/// what a member may be called inside a container, and this file is leaving
+/// one.
 ///
 /// # Errors
 ///
@@ -189,10 +190,10 @@ pub fn extract_at(container: &Path, out: &Path, watch: &Watch) -> slpc::Result<E
 /// somebody named in a save dialog may exist because the dialog asked them
 /// about it and they said yes. The handover directory may hold that name
 /// because it is one directory for a whole session and they opened a container
-/// with the same payload name earlier — which the conformance corpus found the
-/// moment this refused, twenty-five cases into a run that shares one scratch
-/// directory. There was a parameter here for the difference and it had one
-/// value at both call sites, which is not a difference.
+/// with the same content file name earlier — which the conformance corpus
+/// found the moment this refused, twenty-five cases into a run that shares one
+/// scratch directory. There was a parameter here for the difference and it had
+/// one value at both call sites, which is not a difference.
 ///
 /// Replacing is safe on both and for the same reason: `Destination` renames a
 /// finished file over the destination, and a rename replaces what is at a path
@@ -206,26 +207,26 @@ fn copy_out(
 ) -> slpc::Result<Extracted> {
     // Asked for before anything is reserved, so a container that refuses leaves
     // nothing behind at all.
-    let mut payload = container.payload()?;
+    let mut content = container.content()?;
 
     // Through the library rather than `File::create`, and what that replaces is
     // a defect rather than a style. `File::create` follows a symbolic link at
     // the destination and truncates whatever is on the other end, so extracting
-    // into a directory where somebody had planted one wrote the payload
+    // into a directory where somebody had planted one wrote the content file
     // somewhere this code never chose — and the cleanup then removed the *link*
     // and left the damage, having deleted the only evidence of where the bytes
-    // went. Measured 2026-08-27: a container whose payload fails its checksum
-    // reported failure, left an empty destination, and put 200,000 bytes into a
-    // file two directories away.
+    // went. Measured 2026-08-27: a container whose content file fails its
+    // checksum reported failure, left an empty destination, and put 200,000
+    // bytes into a file two directories away.
     //
     // `Destination` writes to a temporary file beside the destination and
-    // renames it into place, so nothing exists at `out` until the payload is
-    // whole. A rename replaces a symbolic link rather than following it, and a
-    // failure or a cancellation now leaves whatever was there untouched instead
-    // of truncating it and then deleting it.
+    // renames it into place, so nothing exists at `out` until the content file
+    // is whole. A rename replaces a symbolic link rather than following it, and
+    // a failure or a cancellation now leaves whatever was there untouched
+    // instead of truncating it and then deleting it.
     let mut landing = slpc::Destination::new(out, true)?;
 
-    if matches!(copy(&mut payload, landing.writer(), watch)?, Extracted::Cancelled) {
+    if matches!(copy(&mut content, landing.writer(), watch)?, Extracted::Cancelled) {
         // `landing` drops here and takes its temporary file with it. Nothing at
         // `out` was ever opened, which is what lets the window say that nothing
         // was left behind and be right.
@@ -237,17 +238,17 @@ fn copy_out(
     // a person will open and `commit` is what makes that file exist under its
     // own name. `provenance::carry` fails only where the platform gates opening
     // on a mark the container carried, so an error here is exactly the
-    // laundering case, and a payload that would open without the warning its
-    // origin earned must not be left under the name it is about to be handed
-    // to the system under. DESIGN.md §7.
+    // laundering case, and a content file that would open without the warning
+    // its origin earned must not be left under the name it is about to be
+    // handed to the system under. DESIGN.md §7.
     //
     // **This is the one path that does not leave the destination as it found
     // it**, and the comment above claimed otherwise until it was read back.
     // The commit has already replaced whatever was at `out`, so removing takes
     // the replacement away and leaves nothing where a file used to be. That is
-    // §7's decision rather than an oversight — an ungated payload under a name
-    // somebody is about to open is the worse thing to leave — but it is a real
-    // cost and it belongs written down beside the code that pays it. Not
+    // §7's decision rather than an oversight — an ungated content file under a
+    // name somebody is about to open is the worse thing to leave — but it is a
+    // real cost and it belongs written down beside the code that pays it. Not
     // reachable on Linux, where `carry`'s arm cannot fail.
     if let Err(why) = slpc::provenance::carry(source, out) {
         let _ = std::fs::remove_file(out);
@@ -257,14 +258,14 @@ fn copy_out(
 }
 
 /// The copy itself, in chunks, stopping when asked.
-fn copy(payload: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slpc::Result<Extracted> {
+fn copy(content: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slpc::Result<Extracted> {
     let mut buffer = vec![0u8; CHUNK];
 
     loop {
         if watch.is_cancelled() {
             return Ok(Extracted::Cancelled);
         }
-        let n = payload.read(&mut buffer)?;
+        let n = content.read(&mut buffer)?;
         if n == 0 {
             break;
         }
@@ -286,10 +287,10 @@ pub enum Created {
     Written {
         /// Where it is.
         path: PathBuf,
-        /// What the platform records about where the payload came from and
-        /// would not put on the container, where it would not. The card reads
-        /// that record, so a container it could not be written onto is one the
-        /// card will call local whatever the payload was.
+        /// What the platform records about where the content file came from
+        /// and would not put on the container, where it would not. The card
+        /// reads that record, so a container it could not be written onto is
+        /// one the card will call local whatever the content file was.
         provenance: Option<String>,
     },
     /// Stopping was asked for, and nothing was left at the destination.
@@ -299,12 +300,12 @@ pub enum Created {
     Refused(Verdict),
 }
 
-/// A payload being read into a container: counted, and stoppable.
+/// A content file being read into a container: counted, and stoppable.
 ///
-/// [`slpc::pack_reader`] asks a payload for nothing but `Read`, which is what
-/// lets both of those live here rather than in the library. `pack_file` is the
-/// shorter call and has nowhere to put either, so a two-gigabyte payload would
-/// pack behind a window that had stopped answering.
+/// [`slpc::pack_reader`] asks a content file for nothing but `Read`, which is
+/// what lets both of those live here rather than in the library. `pack_file`
+/// is the shorter call and has nowhere to put either, so a two-gigabyte
+/// content file would pack behind a window that had stopped answering.
 struct Watched<'a, R> {
     inner: R,
     watch: &'a Watch,
@@ -313,7 +314,7 @@ struct Watched<'a, R> {
 impl<R: Read> Read for Watched<'_, R> {
     /// An error rather than a quiet end of file, which is the difference
     /// between a cancel that cannot be committed by accident and one that can.
-    /// Reporting the end of the payload would have `pack_reader` finish
+    /// Reporting the end of the content file would have `pack_reader` finish
     /// successfully on a truncated one, and every caller from then on would be
     /// one forgotten check away from committing it.
     fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
@@ -326,15 +327,15 @@ impl<R: Read> Read for Watched<'_, R> {
     }
 }
 
-/// Make a container holding `payload`, at `into`, watchably.
+/// Make a container holding `content`, at `into`, watchably.
 ///
-/// The metadata is empty, and the two keys SPEC §2.2 requires are the
+/// The flyleaf is empty, and the two keys SPEC §2.2 requires are the
 /// library's to write: `pack_reader` puts `slipcase_version` and
-/// `payload.file` in whatever it is handed. What a person wants to say about
-/// the payload they say in the tree afterwards, which is the editor DESIGN.md
-/// §4 and §5 already describe — this application has no schema with which to
-/// ask them for anything else, and inventing a form here would be inventing a
-/// vocabulary the specification does not define.
+/// `content.file` in whatever it is handed. What a person wants to say about
+/// the content file they say in the tree afterwards, which is the editor
+/// DESIGN.md §4 and §5 already describe — this application has no schema with
+/// which to ask them for anything else, and inventing a form here would be
+/// inventing a vocabulary the specification does not define.
 ///
 /// `into` is replaced where something is there, because the save dialog that
 /// named it has already asked. `Destination` writes to a temporary file beside
@@ -343,13 +344,13 @@ impl<R: Read> Read for Watched<'_, R> {
 ///
 /// # Errors
 ///
-/// Returns whatever the library says about reading the payload or writing the
-/// container. A payload whose name SPEC §2.3 forbids is one of them, and
-/// [`why_not_a_payload`] is how the window refuses it earlier and in the same
-/// words.
-pub fn create(payload: &Path, into: &Path, watch: &Watch) -> slpc::Result<Created> {
-    let name = payload_name(payload)?;
-    let source = std::fs::File::open(payload)?;
+/// Returns whatever the library says about reading the content file or writing
+/// the container. A content file whose name SPEC §2.3 forbids is one of them,
+/// and [`why_not_a_content_file`] is how the window refuses it earlier and in
+/// the same words.
+pub fn create(content: &Path, into: &Path, watch: &Watch) -> slpc::Result<Created> {
+    let name = content_name(content)?;
+    let source = std::fs::File::open(content)?;
     let mut destination = slpc::Destination::new(into, true)?;
 
     let mut watched = Watched {
@@ -363,8 +364,8 @@ pub fn create(payload: &Path, into: &Path, watch: &Watch) -> slpc::Result<Create
         destination.writer(),
     );
     // Asked before the error is, because a cancel arrives as one and because a
-    // cancel arriving at the last read looks like a payload that ended. Either
-    // way `destination` drops here and takes its temporary file with it, so
+    // cancel arriving at the last read looks like a content file that ended.
+    // Either way `destination` drops here and takes its temporary file with it, so
     // nothing was ever at `into`.
     if watch.is_cancelled() {
         return Ok(Created::Cancelled);
@@ -381,21 +382,21 @@ pub fn create(payload: &Path, into: &Path, watch: &Watch) -> slpc::Result<Create
     destination.commit()?;
 
     // **Packing launders a download without this, and that is a defect rather
-    // than a nicety.** A payload the platform marked as having arrived from
-    // elsewhere goes into a container this process wrote, which carries no
-    // mark; `copy_out` then extracts it, asks `provenance::carry` about a
+    // than a nicety.** A content file the platform marked as having arrived
+    // from elsewhere goes into a container this process wrote, which carries
+    // no mark; `copy_out` then extracts it, asks `provenance::carry` about a
     // container that records nothing, and hands the platform an unmarked copy
     // of a file it had gated. The mark is carried here so that the round trip
     // through a container is not a way to remove one.
     //
     // Not fatal, which is `staging.rs`'s decision for the same question and for
     // the same reason: `carry` refuses when the copy would be ungated where the
-    // original was gated, and that rule is written for a payload about to be
-    // handed to the system. This is a container, and what opens a container is
-    // this application, which reports provenance rather than acting on it. So
-    // the container is kept and what could not be carried is said, rather than
-    // a container that validated being thrown away over a line on a card.
-    let provenance = slpc::provenance::carry(payload, into)
+    // original was gated, and that rule is written for a content file about to
+    // be handed to the system. This is a container, and what opens a container
+    // is this application, which reports provenance rather than acting on it.
+    // So the container is kept and what could not be carried is said, rather
+    // than a container that validated being thrown away over a line on a card.
+    let provenance = slpc::provenance::carry(content, into)
         .err()
         .map(|why| why.to_string());
 
@@ -405,18 +406,18 @@ pub fn create(payload: &Path, into: &Path, watch: &Watch) -> slpc::Result<Create
     })
 }
 
-/// What the payload will be called inside the container.
+/// What the content file will be called inside the container.
 ///
-/// `payload.file` is a TOML string, so a filename that is not UTF-8 is one this
-/// format cannot express. `pack_file` makes the same refusal and keeps it in
-/// the library; this is here because the count and the cancel above need
+/// `content.file` is a TOML string, so a filename that is not UTF-8 is one
+/// this format cannot express. `pack_file` makes the same refusal and keeps it
+/// in the library; this is here because the count and the cancel above need
 /// `pack_reader`, which takes the name rather than working it out.
-fn payload_name(path: &Path) -> slpc::Result<&str> {
+fn content_name(path: &Path) -> slpc::Result<&str> {
     path.file_name()
         .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| {
             std::io::Error::other(fill(
-                t("{file} has a name that is not UTF-8, and payload.file is a TOML string"),
+                t("{file} has a name that is not UTF-8, and content.file is a TOML string"),
                 &[("file", &path.display().to_string())],
             ))
             .into()
@@ -429,46 +430,46 @@ pub struct Opened {
     pub path: PathBuf,
     /// What came back.
     pub outcome: Outcome,
-    /// The metadata document, when the metadata member could be read and
+    /// The flyleaf document, when the flyleaf member could be read and
     /// parsed as TOML, with its edited baseline and its history: what
     /// `as_parsed` held here until flyleaf 0.2, and undo and redo besides.
     ///
-    /// `slpc::metadata_of` parses that member alone and asks nothing else of
+    /// `slpc::flyleaf_of` parses that member alone and asks nothing else of
     /// it, so a document survives a container that fails SPEC §2.1 somewhere
-    /// else entirely: a required key absent, `payload.file` naming no member or
+    /// else entirely: a required key absent, `content.file` naming no member or
     /// several, a version this build does not implement. Those are the rows of
     /// DESIGN.md §6 that show a verdict and a tree. The rows that show a
     /// verdict and nothing further are the ones where this is `None`.
-    pub metadata: Option<Document>,
-    /// The payload, when there is one this build can describe.
+    pub flyleaf: Option<Document>,
+    /// The content file, when there is one this build can describe.
     ///
     /// Only a conformant container has one. DESIGN.md §6 gives the card to that
     /// row alone: a container declaring a version this build does not implement
-    /// has a payload the library never located, and every other row failed
-    /// before there was a payload to name.
-    pub payload: Option<Payload>,
+    /// has a content file the library never located, and every other row
+    /// failed before there was a content file to name.
+    pub content: Option<Content>,
     /// Whether the platform records this container as having arrived from
     /// elsewhere.
     ///
     /// The card says so rather than acting on it. A person deciding whether to
-    /// open a payload is better served knowing where the container came from
-    /// than being stopped, and what the platform does about the mark is the
-    /// platform's business — which is DESIGN.md §3's rule applied to
+    /// open a content file is better served knowing where the container came
+    /// from than being stopped, and what the platform does about the mark is
+    /// the platform's business — which is DESIGN.md §3's rule applied to
     /// provenance instead of to type.
     pub from_elsewhere: bool,
 }
 
 /// What this application is willing to spend before it knows what it is holding.
 ///
-/// SPEC §6 requires a bound on the metadata member and leaves the number to the
+/// SPEC §6 requires a bound on the flyleaf member and leaves the number to the
 /// implementation. `slpc`'s default is 1 MiB, chosen against what parsing costs;
 /// this is a quarter of that, chosen against what *rendering* costs, which is
 /// the larger number here and which the library has no way to know about.
 ///
-/// Measured 2026-08-27, against the densest conformant metadata anybody can
+/// Measured 2026-08-27, against the densest conformant flyleaf anybody can
 /// write — shortest legal keys, shortest legal values — with the window up:
 ///
-/// | metadata | keys | resident |
+/// | flyleaf | keys | resident |
 /// | --- | --- | --- |
 /// | none (baseline) | — | 135 MB |
 /// | 256 KiB | 40,052 | 347 MB |
@@ -477,7 +478,7 @@ pub struct Opened {
 /// About 8.7 KB per key, of which roughly 1.3 KB is the parsed document and the
 /// rest is what `egui` retains for a row it has been shown. DESIGN.md §4's tree
 /// renders every entry rather than the visible ones, which is right for a
-/// metadata document and wrong for a hostile one, and this is the bound that
+/// flyleaf document and wrong for a hostile one, and this is the bound that
 /// keeps the second from mattering.
 ///
 /// 256 KiB is generous against every legitimate document: the format defines two
@@ -486,31 +487,31 @@ pub struct Opened {
 /// undetermined, which is SPEC §6's answer and not a verdict against the file.
 const LIMITS: slpc::Limits = {
     let mut l = slpc::Limits::DEFAULT;
-    l.metadata_bytes = 256 << 10;
+    l.flyleaf_bytes = 256 << 10;
     l
 };
 
-/// The payload, as the card states it.
-pub struct Payload {
-    /// The member `payload.file` names.
+/// The content file, as the card states it.
+pub struct Content {
+    /// The member `content.file` names.
     pub name: String,
     /// Its length uncompressed, read from the central directory.
     pub size: u64,
     /// What the platform says would open it, where the platform will say.
     pub opens_with: Option<String>,
-    /// Whether the container records the payload as an executable file.
+    /// Whether the container records the content file as an executable file.
     ///
     /// DESIGN.md §7: the card says so, and says that the extracted copy will
     /// not be. False where the container records no mode at all, which is every
     /// container a non-Unix writer produced, so the card is silent rather than
-    /// confident about a question nothing answered — `slpc::Container::payload_mode`
+    /// confident about a question nothing answered — `slpc::Container::content_mode`
     /// is what keeps that distinction, reading the external attributes rather
     /// than taking the ZIP crate's invented answer.
     ///
     /// False on Windows whatever the container records. A mode bit is not what
     /// makes a file executable there, so the sentence would be untrue.
     pub executable: bool,
-    /// Why this build cannot decode the payload, where it cannot.
+    /// Why this build cannot decode the content file, where it cannot.
     ///
     /// SPEC §2.5 puts encryption and compression method outside conformance, so
     /// this is a fact about the build and not a verdict on the container:
@@ -521,8 +522,8 @@ pub struct Payload {
     pub unreadable: Option<String>,
 }
 
-impl Payload {
-    /// Whether this build can decode the payload.
+impl Content {
+    /// Whether this build can decode the content file.
     ///
     /// Not a promise that extraction will succeed: the library says only that a
     /// decoder exists, and truncated bytes, a failed checksum, and an i/o error
@@ -545,9 +546,9 @@ pub enum Saved {
     Refused(Verdict),
 }
 
-/// Why a chosen file cannot become a payload, where it cannot.
+/// Why a chosen file cannot become a content file, where it cannot.
 ///
-/// The same checks `Repack::payload_file` makes, asked at the moment somebody
+/// The same checks `Repack::content_file` makes, asked at the moment somebody
 /// chooses the file rather than at the moment they press Save. A name SPEC §2.3
 /// forbids is a fact about the choice, and a person should hear it while they
 /// still have the dialog in mind.
@@ -556,24 +557,24 @@ pub enum Saved {
 /// holding another member under that name. That needs the container's member
 /// list, which is not public, so it stays a failure Save reports.
 #[must_use]
-pub fn why_not_a_payload(path: &Path) -> Option<String> {
+pub fn why_not_a_content_file(path: &Path) -> Option<String> {
     let name = path.file_name()?.to_str();
     let Some(name) = name else {
         return Some(fill(
-            t("{file} has a name that is not UTF-8, and payload.file is a TOML string"),
+            t("{file} has a name that is not UTF-8, and content.file is a TOML string"),
             &[("file", &path.display().to_string())],
         ));
     };
-    match slpc::check_payload_name(name) {
+    match slpc::check_content_name(name) {
         Ok(()) => None,
         Err(why) => Some(fill(
-            t("{name} cannot be a payload's name: {reason}"),
+            t("{name} cannot be a content file's name: {reason}"),
             &[("name", name), ("reason", &why.to_string())],
         )),
     }
 }
 
-/// Whether the container records the payload as an executable file.
+/// Whether the container records the content file as an executable file.
 ///
 /// One `#[cfg]` pair rather than a runtime test, because the answer on Windows
 /// is not *no mode was recorded* — a container written on Linux records one and
@@ -583,16 +584,17 @@ pub fn why_not_a_payload(path: &Path) -> Option<String> {
 /// written. DESIGN.md §5.
 ///
 /// The Unix arm asks the library rather than the archive, and the difference is
-/// the point. `slpc::Container::payload_mode` answers `None` where the container
+/// the point. `slpc::Container::content_mode` answers `None` where the container
 /// records nothing, where the ZIP crate's own `unix_mode` would invent
 /// `0o664` for an archive made on DOS and hand back a confident answer to a
 /// question nobody asked. `None` here is `false`, and `false` is a silent card.
 #[cfg(unix)]
 fn executable<R: std::io::Read + std::io::Seek>(container: &slpc::Container<R>) -> bool {
-    // Any of the three bits. A payload executable by its group and not its owner
-    // is still a payload that was executable where it came from.
+    // Any of the three bits. A content file executable by its group and not
+    // its owner is still a content file that was executable where it came
+    // from.
     container
-        .payload_mode()
+        .content_mode()
         .ok()
         .flatten()
         .is_some_and(|mode| mode & 0o111 != 0)
@@ -603,19 +605,19 @@ fn executable<R: std::io::Read + std::io::Seek>(_container: &slpc::Container<R>)
     false
 }
 
-impl Payload {
-    /// Describe the payload of a container already found conformant.
+impl Content {
+    /// Describe the content file of a container already found conformant.
     fn of(path: &Path) -> Option<Self> {
         let container = slpc::Container::open_with(path, LIMITS).ok()?;
-        let name = container.payload_name().to_owned();
+        let name = container.content_name().to_owned();
         // Read from the central directory, so this decompresses nothing and a
-        // payload whose compression or encryption this build cannot handle is
-        // still described.
-        let size = container.payload_size().ok()?;
+        // content file whose compression or encryption this build cannot
+        // handle is still described.
+        let size = container.content_size().ok()?;
         let opens_with = opens_with::opens_with(&name);
         // Borrows shared and decompresses nothing, so this costs the card the
         // central directory entry it already has.
-        let unreadable = container.check_payload_readable().err().map(|u| u.to_string());
+        let unreadable = container.check_content_readable().err().map(|u| u.to_string());
         let executable = executable(&container);
         Some(Self {
             name,
@@ -628,8 +630,8 @@ impl Payload {
 
     /// The size, stated plainly.
     ///
-    /// A payload of zero length is conformant under SPEC §2.3, and the card
-    /// says nothing about it beyond this. DESIGN.md §6.
+    /// A content file of zero length is conformant under SPEC §2.3, and the
+    /// card says nothing about it beyond this. DESIGN.md §6.
     #[must_use]
     pub fn size_line(&self) -> String {
         let n = self.size;
@@ -688,7 +690,7 @@ impl Opened {
     #[must_use]
     pub fn open(path: impl Into<PathBuf>) -> Self {
         let path = path.into();
-        // Two reads rather than one. `Container::read` fails the payload check
+        // Two reads rather than one. `Container::read` fails the content check
         // before it yields a document, so the tree for a container that failed
         // that check has to be asked for separately.
         // The library hands back a tree, and the Document is built from the
@@ -698,9 +700,9 @@ impl Opened {
         // two of the corpus's conformant containers do not re-serialize to
         // the bytes they came from, and §5 says a container nothing has
         // changed in is not written.
-        let metadata = std::fs::File::open(&path)
+        let flyleaf = std::fs::File::open(&path)
             .ok()
-            .and_then(|f| slpc::metadata_of_with(f, LIMITS).ok())
+            .and_then(|f| slpc::flyleaf_of_with(f, LIMITS).ok())
             .and_then(|tree| Document::parse(&tree.to_string()).ok());
 
         let outcome = match std::fs::File::open(&path) {
@@ -714,8 +716,8 @@ impl Opened {
         };
         // Only a conformant container is given a card, so this opens the file
         // a third time and only for the row of §6 that has one.
-        let payload = match &outcome {
-            Outcome::Judged(Verdict::Conformant) => Payload::of(&path),
+        let content = match &outcome {
+            Outcome::Judged(Verdict::Conformant) => Content::of(&path),
             _ => None,
         };
 
@@ -724,8 +726,8 @@ impl Opened {
         Self {
             path,
             outcome,
-            metadata,
-            payload,
+            flyleaf,
+            content,
             from_elsewhere,
         }
     }
@@ -757,15 +759,15 @@ impl Opened {
         }
     }
 
-    /// Whether the metadata document has changed since it was parsed.
+    /// Whether the flyleaf document has changed since it was parsed.
     #[must_use]
-    pub fn metadata_edited(&self) -> bool {
-        self.metadata.as_ref().is_some_and(Document::edited)
+    pub fn flyleaf_edited(&self) -> bool {
+        self.flyleaf.as_ref().is_some_and(Document::edited)
     }
 
     /// Write the edits back into the container.
     ///
-    /// `replacing` is a file to store as the payload, from DESIGN.md §5's
+    /// `replacing` is a file to store as the content file, from DESIGN.md §5's
     /// second explicit action. Both edits go out in one write: they are two
     /// members of one archive, and writing them separately would rewrite the
     /// container twice and give a failure between the two a container carrying
@@ -783,14 +785,14 @@ impl Opened {
     /// # Errors
     ///
     /// Returns whatever the library says about reading the container, reading
-    /// the replacement payload, or writing the result. A replacement that reads
-    /// back as anything but conformant is [`Saved::Refused`] rather than an
-    /// error: nothing failed, and nothing was replaced.
+    /// the replacement content file, or writing the result. A replacement that
+    /// reads back as anything but conformant is [`Saved::Refused`] rather than
+    /// an error: nothing failed, and nothing was replaced.
     pub fn save(&self, replacing: Option<&Path>) -> slpc::Result<Saved> {
-        let Some(document) = &self.metadata else {
+        let Some(document) = &self.flyleaf else {
             return Ok(Saved::Unchanged);
         };
-        let edited = self.metadata_edited();
+        let edited = self.flyleaf_edited();
         if !edited && replacing.is_none() {
             return Ok(Saved::Unchanged);
         }
@@ -802,13 +804,13 @@ impl Opened {
             // Only where it was edited. Handing the document over re-serializes
             // it, and §5 does not re-serialize what nobody touched: two of the
             // corpus's conformant containers come back changed by the round
-            // trip alone. A payload replaced under a new name still moves
-            // `payload.file`, which the library does from the stored bytes.
+            // trip alone. A content file replaced under a new name still moves
+            // `content.file`, which the library does from the stored bytes.
             if edited {
-                repack = repack.metadata(document.tree());
+                repack = repack.flyleaf(document.tree());
             }
             if let Some(file) = replacing {
-                repack = repack.payload_file(file)?;
+                repack = repack.content_file(file)?;
             }
             repack.write(destination.writer())?;
         }
@@ -825,16 +827,17 @@ impl Opened {
         Ok(Saved::Written)
     }
 
-    /// Extract the payload into a directory, and say where it landed.
+    /// Extract the content file into a directory, and say where it landed.
     ///
-    /// Streamed rather than buffered whole: a payload is a file of arbitrary
-    /// size, and `io::copy` moves it through a buffer of its own choosing.
+    /// Streamed rather than buffered whole: a content file is a file of
+    /// arbitrary size, and `io::copy` moves it through a buffer of its own
+    /// choosing.
     ///
     /// The failure that is not a defect is [`slpc::Error::Unsupported`], which
-    /// is what a conformant container whose payload is encrypted or compressed
-    /// by a method this build lacks comes back with. SPEC §2.5 puts both
-    /// outside conformance, so the container is sound and the bytes are still
-    /// out of reach.
+    /// is what a conformant container whose content file is encrypted or
+    /// compressed by a method this build lacks comes back with. SPEC §2.5 puts
+    /// both outside conformance, so the container is sound and the bytes are
+    /// still out of reach.
     ///
     /// # Errors
     ///
@@ -906,10 +909,10 @@ mod tests {
 }
 
 #[cfg(test)]
-mod payload_tests {
-    use super::Payload;
+mod content_tests {
+    use super::Content;
 
-    /// A container whose payload member records `mode` in its external
+    /// A container whose content member records `mode` in its external
     /// attributes.
     ///
     /// Written by patching what `pack_reader` produced rather than by pulling
@@ -918,15 +921,15 @@ mod payload_tests {
     /// accident, and a dev-dependency that reads like one is not worth a
     /// tidier fixture. What the patch produces is what it says on the label: a
     /// container some other tool wrote, carrying a mode this one never records.
-    fn with_payload_mode(dir: &std::path::Path, mode: u32) -> std::path::PathBuf {
+    fn with_content_mode(dir: &std::path::Path, mode: u32) -> std::path::PathBuf {
         let document = slpc::toml_edit::DocumentMut::new();
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], document, &mut bytes).expect("packs");
 
-        // Walk the central directory to the payload's header and write the mode
-        // into its external attributes, which sit at offset 38 of the 46-byte
-        // fixed part. `pack_reader` records nothing there, so this is the only
-        // thing in the file that changes.
+        // Walk the central directory to the content file's header and write
+        // the mode into its external attributes, which sit at offset 38 of the
+        // 46-byte fixed part. `pack_reader` records nothing there, so this is
+        // the only thing in the file that changes.
         let eocd = bytes
             .windows(4)
             .rposition(|w| w == 0x0605_4B50u32.to_le_bytes())
@@ -937,7 +940,7 @@ mod payload_tests {
             assert_eq!(
                 bytes[at..at + 4],
                 0x0201_4B50u32.to_le_bytes(),
-                "walked off the central directory without finding the payload"
+                "walked off the central directory without finding the content file"
             );
             let n = u16::from_le_bytes(bytes[at + 28..at + 30].try_into().unwrap()) as usize;
             let e = u16::from_le_bytes(bytes[at + 30..at + 32].try_into().unwrap()) as usize;
@@ -954,12 +957,12 @@ mod payload_tests {
         path
     }
 
-    /// A container whose metadata is past what this application will spend is
+    /// A container whose flyleaf is past what this application will spend is
     /// undetermined, and shows no tree.
     ///
     /// The defect this catches is a window that opens whatever it is given and
-    /// finds out afterwards. Measured 2026-08-27 before the bound: 256 KiB of
-    /// dense metadata cost 347 MB resident and 1 MiB cost 891 MB, against a
+    /// finds out afterwards. Measured 2026-08-27 before the bound: a 256 KiB
+    /// flyleaf cost 347 MB resident and a 1 MiB one cost 891 MB, against a
     /// 135 MB baseline, because DESIGN.md §4's tree renders every entry rather
     /// than the visible ones and `egui` retains about 8.7 KB for each row it has
     /// been shown. All of it inside a container this corpus calls conformant.
@@ -969,31 +972,31 @@ mod payload_tests {
     /// reader must not publish its own configuration as a property of somebody
     /// else's file.
     #[test]
-    fn metadata_past_what_this_application_will_spend_is_undetermined() {
+    fn flyleaf_past_what_this_application_will_spend_is_undetermined() {
         use std::fmt::Write as _;
 
         let dir = tempfile::tempdir().expect("a temporary directory");
         let path = dir.path().join("dense.slpc");
 
         // The densest conformant shape: shortest legal keys and values.
-        let mut metadata = String::from("slipcase_version = \"1.0\"\n\n[payload]\nfile = \"report.pdf\"\n\n[b]\n");
+        let mut flyleaf = String::from("slipcase_version = \"1.1\"\n\n[content]\nfile = \"report.pdf\"\n\n[b]\n");
         for i in 0..80_000u32 {
-            let _ = writeln!(metadata, "k{i}=1");
+            let _ = writeln!(flyleaf, "k{i}=1");
         }
         assert!(
-            metadata.len() as u64 > super::LIMITS.metadata_bytes,
+            flyleaf.len() as u64 > super::LIMITS.flyleaf_bytes,
             "the fixture has to be over the bound to test it"
         );
 
-        let document: slpc::toml_edit::DocumentMut = metadata.parse().expect("valid TOML");
+        let document: slpc::toml_edit::DocumentMut = flyleaf.parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], document, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes");
 
         let opened = super::Opened::open(&path);
         assert_eq!(opened.verdict_word(), "undetermined");
-        assert!(opened.metadata.is_none(), "no tree for a document not read");
-        assert!(opened.payload.is_none(), "and no card");
+        assert!(opened.flyleaf.is_none(), "no tree for a document not read");
+        assert!(opened.content.is_none(), "and no card");
     }
 
     /// Extraction does not write through a symbolic link at the destination.
@@ -1002,10 +1005,11 @@ mod payload_tests {
     /// `copy` used `File::create`, which follows a link and truncates whatever
     /// is on the other end, and `copy_out` then removed the *link* on failure —
     /// so a container extracted into a directory where somebody had planted one
-    /// wrote its payload two directories away, reported failure, left an empty
-    /// destination, and deleted the only evidence. Measured 2026-08-27 with a
-    /// payload whose stored checksum is a lie, which `validate` calls
-    /// conformant because nothing reads a payload to reach a verdict.
+    /// wrote its content file two directories away, reported failure, left an
+    /// empty destination, and deleted the only evidence. Measured 2026-08-27
+    /// with a content file whose stored checksum is a lie, which `validate`
+    /// calls conformant because nothing reads a content file to reach a
+    /// verdict.
     ///
     /// Break `copy_out` back to `File::create` and this fails at the first
     /// assertion.
@@ -1020,12 +1024,12 @@ mod payload_tests {
         std::fs::create_dir(&into).expect("a directory");
         std::os::unix::fs::symlink(&victim, into.join("report.pdf")).expect("links");
 
-        // A conformant container whose payload will fail its checksum.
+        // A conformant container whose content file will fail its checksum.
         let container = dir.path().join("c.slpc");
         let mut bytes = Vec::new();
         slpc::pack_reader(
             "report.pdf",
-            &b"the payload"[..],
+            &b"the content"[..],
             slpc::toml_edit::DocumentMut::new(),
             &mut bytes,
         )
@@ -1042,7 +1046,7 @@ mod payload_tests {
         assert_eq!(
             std::fs::read(&victim).expect("the victim survives"),
             b"IRREPLACEABLE",
-            "the payload was written through the link"
+            "the content file was written through the link"
         );
     }
 
@@ -1052,7 +1056,7 @@ mod payload_tests {
     /// 2026-08-27 that was false: the destination was truncated before a byte
     /// was read and then removed, so cancelling a copy over a file somebody had
     /// chosen to replace deleted it. Catches a return to opening the
-    /// destination before the payload is whole.
+    /// destination before the content file is whole.
     #[test]
     fn cancelling_leaves_the_chosen_file_alone() {
         let dir = tempfile::tempdir().expect("a temporary directory");
@@ -1063,7 +1067,7 @@ mod payload_tests {
         let mut bytes = Vec::new();
         slpc::pack_reader(
             "report.pdf",
-            &b"the payload"[..],
+            &b"the content"[..],
             slpc::toml_edit::DocumentMut::new(),
             &mut bytes,
         )
@@ -1080,35 +1084,35 @@ mod payload_tests {
         assert_eq!(std::fs::read(&chosen).expect("still there"), b"MINE");
     }
 
-    /// A payload stored executable is reported as one, on Unix.
+    /// A content file stored executable is reported as one, on Unix.
     ///
     /// DESIGN.md §7: the card says the extracted copy will not be executable,
     /// and it has to know. Catches the field being wired to nothing, which is
     /// what it was until `slpc` 0.3.6 gave it something to read.
     #[test]
     #[cfg(unix)]
-    fn an_executable_payload_is_reported_as_one() {
+    fn an_executable_content_file_is_reported_as_one() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = with_payload_mode(dir.path(), 0o100_755);
+        let path = with_content_mode(dir.path(), 0o100_755);
         let opened = super::Opened::open(&path);
         assert!(
-            opened.payload.expect("a card").executable,
+            opened.content.expect("a card").executable,
             "0o755 is executable"
         );
     }
 
-    /// A payload stored without an execute bit is not.
+    /// A content file stored without an execute bit is not.
     ///
     /// The other direction, and the one that would make the card shout at
     /// everybody. Catches a test of the mode being present rather than of what
     /// it says.
     #[test]
     #[cfg(unix)]
-    fn an_ordinary_payload_is_not() {
+    fn an_ordinary_content_file_is_not() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = with_payload_mode(dir.path(), 0o100_644);
+        let path = with_content_mode(dir.path(), 0o100_644);
         let opened = super::Opened::open(&path);
-        assert!(!opened.payload.expect("a card").executable);
+        assert!(!opened.content.expect("a card").executable);
     }
 
     /// A container recording no mode at all says nothing.
@@ -1118,19 +1122,19 @@ mod payload_tests {
     /// invents `0o664` for an archive made on DOS, and `0o664 & 0o111` is zero,
     /// so `executable` stays false and this passes whether the mode was
     /// invented or absent. `a_container_recording_no_mode_says_nothing` in
-    /// `slpc`'s own tests is what holds that — it asserts `payload_mode()` is
+    /// `slpc`'s own tests is what holds that — it asserts `content_mode()` is
     /// `None` and fails against the invention. This holds the smaller thing it
     /// can: that a container recording nothing produces no line.
     #[test]
     fn a_container_recording_no_mode_says_nothing() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = with_payload_mode(dir.path(), 0);
+        let path = with_content_mode(dir.path(), 0);
         let opened = super::Opened::open(&path);
-        assert!(!opened.payload.expect("a card").executable);
+        assert!(!opened.content.expect("a card").executable);
     }
 
-    fn sized(size: u64) -> Payload {
-        Payload {
+    fn sized(size: u64) -> Content {
+        Content {
             name: "report.pdf".to_owned(),
             size,
             opens_with: None,
@@ -1139,10 +1143,10 @@ mod payload_tests {
         }
     }
 
-    /// A payload of zero length is conformant under SPEC §2.3, and the card
-    /// states its size and editorialises none of it. DESIGN.md §6.
+    /// A content file of zero length is conformant under SPEC §2.3, and the
+    /// card states its size and editorialises none of it. DESIGN.md §6.
     #[test]
-    fn a_zero_length_payload_states_its_size() {
+    fn a_zero_length_content_file_states_its_size() {
         assert_eq!(sized(0).size_line(), "0 bytes");
     }
 
@@ -1176,29 +1180,29 @@ mod extraction_tests {
     use slpc::toml_edit::DocumentMut;
 
     /// A container this test built itself, so nothing here needs the
-    /// conformance corpus checked out. The payload is large enough to cross
-    /// `io::copy`'s buffer several times, which is the part of streaming that a
-    /// small fixture would not reach.
+    /// conformance corpus checked out. The content file is large enough to
+    /// cross `io::copy`'s buffer several times, which is the part of streaming
+    /// that a small fixture would not reach.
     #[test]
-    fn a_payload_extracts_byte_for_byte() {
+    fn a_content_file_extracts_byte_for_byte() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = dir.path().join("built-by-the-test.slpc");
 
-        let payload: Vec<u8> = (0..100_000u32).map(|i| u8::try_from(i % 251).unwrap()).collect();
-        let metadata: DocumentMut = "title = \"built by the test\"\n"
+        let content: Vec<u8> = (0..100_000u32).map(|i| u8::try_from(i % 251).unwrap()).collect();
+        let flyleaf: DocumentMut = "title = \"built by the test\"\n"
             .parse()
             .expect("valid TOML");
 
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &content[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes the container");
 
         let opened = Opened::open(&container);
         assert_eq!(opened.verdict_word(), "accept");
 
-        let card = opened.payload.as_ref().expect("a conformant container has a card");
+        let card = opened.content.as_ref().expect("a conformant container has a card");
         assert_eq!(card.name, "report.pdf");
-        assert_eq!(card.size, u64::try_from(payload.len()).unwrap());
+        assert_eq!(card.size, u64::try_from(content.len()).unwrap());
 
         let into = dir.path().join("out");
         std::fs::create_dir(&into).expect("a directory to extract into");
@@ -1206,33 +1210,33 @@ mod extraction_tests {
 
         // Into the directory it was given, under the name the container gave —
         // asked of the filesystem rather than of the two strings. On Windows
-        // `slpc::payload_path` answers in the verbatim form and expands 8.3
+        // `slpc::content_path` answers in the verbatim form and expands 8.3
         // short names, so on a runner whose `TEMP` is `C:\Users\RUNNER~1\…`
         // the same file has two spellings and only one comparison holds.
         assert_eq!(out.file_name().expect("a filename"), "report.pdf");
         assert_eq!(
             std::fs::canonicalize(&out).expect("the path resolves"),
             std::fs::canonicalize(into.join("report.pdf")).expect("so does the join"),
-            "the payload did not land in the directory it was given"
+            "the content file did not land in the directory it was given"
         );
-        assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
+        assert_eq!(std::fs::read(&out).expect("reads it back"), content);
     }
 
     /// The defect this catches is extraction laundering provenance: a container
-    /// that arrived from somewhere, and a payload leaving it as though this
-    /// machine had made it. On Linux the mark gates nothing, so what is checked
-    /// here is that the carrying is wired into the extraction path at all —
-    /// the platforms where it does gate opening run the same code down the
-    /// same call.
+    /// that arrived from somewhere, and a content file leaving it as though
+    /// this machine had made it. On Linux the mark gates nothing, so what is
+    /// checked here is that the carrying is wired into the extraction path at
+    /// all — the platforms where it does gate opening run the same code down
+    /// the same call.
     #[cfg(target_os = "linux")]
     #[test]
-    fn a_payload_leaves_a_downloaded_container_still_saying_so() {
+    fn a_content_file_leaves_a_downloaded_container_still_saying_so() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = dir.path().join("downloaded.slpc");
 
-        let metadata: DocumentMut = "title = \"downloaded\"\n".parse().expect("valid TOML");
+        let flyleaf: DocumentMut = "title = \"downloaded\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes the container");
         xattr::set(&container, "user.xdg.origin.url", b"https://example.invalid/a.slpc")
             .expect("marking the container as downloaded");
@@ -1242,24 +1246,24 @@ mod extraction_tests {
         let out = Opened::open(&container).extract_to(&into).expect("extracts");
 
         assert_eq!(
-            xattr::get(&out, "user.xdg.origin.url").expect("reading the payload"),
+            xattr::get(&out, "user.xdg.origin.url").expect("reading the content file"),
             Some(b"https://example.invalid/a.slpc".to_vec()),
-            "the payload left the container saying nothing about where it came from",
+            "the content file left the container saying nothing about where it came from",
         );
     }
 
-    /// The watch counts every byte, and a payload that is not a whole number
-    /// of chunks still finishes at its declared size.
+    /// The watch counts every byte, and a content file that is not a whole
+    /// number of chunks still finishes at its declared size.
     #[test]
     fn progress_reaches_the_declared_size() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = dir.path().join("built-by-the-test.slpc");
 
         // Not a multiple of the chunk, so the last read is a short one.
-        let payload = vec![7u8; 300_000];
-        let metadata: DocumentMut = "title = \"watched\"\n".parse().expect("valid TOML");
+        let content = vec![7u8; 300_000];
+        let flyleaf: DocumentMut = "title = \"watched\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &content[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes");
 
         let into = dir.path().join("out");
@@ -1270,20 +1274,21 @@ mod extraction_tests {
 
         let out = super::extract(&container, &into, &watch).expect("extracts");
         assert!(matches!(out, super::Extracted::Done(_)));
-        assert_eq!(watch.done(), u64::try_from(payload.len()).unwrap());
+        assert_eq!(watch.done(), u64::try_from(content.len()).unwrap());
     }
 
-    /// A cancel leaves nothing behind. A half-copied file under the payload's
-    /// own name is one somebody finds later and takes for the payload.
+    /// A cancel leaves nothing behind. A half-copied file under the content
+    /// file's own name is one somebody finds later and takes for the content
+    /// file.
     #[test]
     fn a_cancel_leaves_nothing_behind() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = dir.path().join("built-by-the-test.slpc");
 
-        let payload = vec![7u8; 300_000];
-        let metadata: DocumentMut = "title = \"stopped\"\n".parse().expect("valid TOML");
+        let content = vec![7u8; 300_000];
+        let flyleaf: DocumentMut = "title = \"stopped\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &payload[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &content[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes");
 
         let into = dir.path().join("out");
@@ -1334,9 +1339,9 @@ mod extraction_tests {
         assert_eq!(watch.done(), u64::try_from(super::CHUNK).unwrap());
     }
 
-    /// Nothing is written for a payload that cannot be read. The reader is
+    /// Nothing is written for a content file that cannot be read. The reader is
     /// asked for before the file is created, so a refusal leaves no empty file
-    /// where a person would later find one and take it for the payload.
+    /// where a person would later find one and take it for the content file.
     #[test]
     fn a_container_that_is_not_one_leaves_no_file_behind() {
         let dir = tempfile::tempdir().expect("a temporary directory");
@@ -1358,18 +1363,18 @@ mod save_tests {
     use super::{set_value, Opened, Saved};
     use slpc::toml_edit::{DocumentMut, Value};
 
-    const METADATA: &str = "\
+    const FLYLEAF: &str = "\
 # a leading comment
 title = \"before\"   # beside the title
 zzz = \"written first\"
 aaa = \"written second\"
 ";
 
-    fn build(dir: &std::path::Path, metadata: &str) -> std::path::PathBuf {
+    fn build(dir: &std::path::Path, flyleaf: &str) -> std::path::PathBuf {
         let path = dir.join("built-by-the-test.slpc");
-        let document: DocumentMut = metadata.parse().expect("valid TOML");
+        let document: DocumentMut = flyleaf.parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], document, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], document, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes");
         path
     }
@@ -1379,11 +1384,11 @@ aaa = \"written second\"
     #[test]
     fn a_container_nothing_changed_in_is_not_written() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = build(dir.path(), METADATA);
+        let path = build(dir.path(), FLYLEAF);
         let before = std::fs::read(&path).expect("reads");
 
         let opened = Opened::open(&path);
-        assert!(!opened.metadata_edited());
+        assert!(!opened.flyleaf_edited());
         assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
 
         assert_eq!(std::fs::read(&path).expect("reads"), before);
@@ -1396,26 +1401,26 @@ aaa = \"written second\"
     #[test]
     fn a_container_with_a_byte_order_mark_is_not_written_either() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = build(dir.path(), METADATA);
+        let path = build(dir.path(), FLYLEAF);
 
         // Put a mark on it, which no document can carry through a parse.
         let with_mark = {
             let plain = slpc::Container::open(&path).expect("opens");
             let mut bytes = "\u{feff}".as_bytes().to_vec();
-            bytes.extend_from_slice(plain.metadata_bytes());
+            bytes.extend_from_slice(plain.flyleaf_bytes());
             bytes
         };
         let marked = dir.path().join("marked.slpc");
         {
             let source = std::fs::File::open(&path).expect("opens");
             let out = std::fs::File::create(&marked).expect("creates");
-            slpc::rewrite_metadata_bytes(source, &with_mark, out).expect("rewrites");
+            slpc::rewrite_flyleaf_bytes(source, &with_mark, out).expect("rewrites");
         }
         let before = std::fs::read(&marked).expect("reads");
 
         let opened = Opened::open(&marked);
         assert_eq!(opened.verdict_word(), "accept");
-        assert!(!opened.metadata_edited(), "a mark is not an edit");
+        assert!(!opened.flyleaf_edited(), "a mark is not an edit");
         assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
 
         assert_eq!(std::fs::read(&marked).expect("reads"), before);
@@ -1427,21 +1432,21 @@ aaa = \"written second\"
     #[test]
     fn an_edit_changes_the_value_and_leaves_the_rest() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let path = build(dir.path(), METADATA);
+        let path = build(dir.path(), FLYLEAF);
 
         let mut opened = Opened::open(&path);
-        let document = opened.metadata.as_mut().expect("a document");
+        let document = opened.flyleaf.as_mut().expect("a document");
         set_value(
             document.tree_mut()["title"].as_value_mut().expect("a value"),
             Value::from("after"),
         );
 
-        assert!(opened.metadata_edited());
+        assert!(opened.flyleaf_edited());
         assert!(matches!(opened.save(None).expect("saves"), Saved::Written));
 
         let again = Opened::open(&path);
         assert_eq!(again.verdict_word(), "accept");
-        let written = again.metadata.as_ref().expect("a document").render();
+        let written = again.flyleaf.as_ref().expect("a document").render();
 
         assert!(written.contains("title = \"after\""), "{written}");
         assert!(written.contains("# a leading comment"), "{written}");
@@ -1451,12 +1456,12 @@ aaa = \"written second\"
             "written order, not sorted: {written}"
         );
 
-        // The payload came through untouched, which is `Repack`'s doing rather
-        // than this code's, and is the reason for using it. SPEC §3.
+        // The content file came through untouched, which is `Repack`'s doing
+        // rather than this code's, and is the reason for using it. SPEC §3.
         let into = dir.path().join("out");
         std::fs::create_dir(&into).expect("a directory");
         let out = again.extract_to(&into).expect("extracts");
-        assert_eq!(std::fs::read(out).expect("reads"), b"payload");
+        assert_eq!(std::fs::read(out).expect("reads"), b"content");
     }
 }
 
@@ -1466,7 +1471,7 @@ mod policy_tests {
     use flyleaf::Policy;
 
     /// The keys SPEC §2.2 requires are shown and not edited, and so is the
-    /// table holding one: deleting `[payload]` would take `payload.file` with
+    /// table holding one: deleting `[content]` would take `content.file` with
     /// it, which making the value read-only would not have stopped.
     ///
     /// A key of the same name under another table is a different key, and a
@@ -1477,18 +1482,18 @@ mod policy_tests {
             |parts: &[&str]| -> Vec<String> { parts.iter().map(|p| (*p).to_owned()).collect() };
 
         assert!(RequiredKeys.protected(&path(&["slipcase_version"])));
-        assert!(RequiredKeys.protected(&path(&["payload", "file"])));
-        assert!(RequiredKeys.protected(&path(&["payload"])));
+        assert!(RequiredKeys.protected(&path(&["content", "file"])));
+        assert!(RequiredKeys.protected(&path(&["content"])));
 
         assert!(!RequiredKeys.protected(&path(&["title"])));
-        assert!(!RequiredKeys.protected(&path(&["payload", "size"])));
+        assert!(!RequiredKeys.protected(&path(&["content", "size"])));
         assert!(!RequiredKeys.protected(&path(&[
             "elsewhere",
             "slipcase_version"
         ])));
     }
 
-    /// A payload name whose bidirectional override the tree swallowed.
+    /// A content file name whose bidirectional override the tree swallowed.
     ///
     /// Without the escape the field read `reportfdp.exe` — egui gives U+202E
     /// zero advance width — which is a name one character short of the file on
@@ -1506,16 +1511,16 @@ mod policy_tests {
 
 #[cfg(test)]
 mod replacement_tests {
-    use super::{extract, extract_at, why_not_a_payload, Extracted, Opened, Saved, Watch};
+    use super::{extract, extract_at, why_not_a_content_file, Extracted, Opened, Saved, Watch};
     use slpc::toml_edit::DocumentMut;
     use std::path::{Path, PathBuf};
 
     /// A container built by the test, so nothing here needs the corpus.
-    fn packed(dir: &Path, metadata: &str, name: &str, payload: &[u8]) -> PathBuf {
+    fn packed(dir: &Path, flyleaf: &str, name: &str, content: &[u8]) -> PathBuf {
         let path = dir.join("built-by-the-test.slpc");
-        let document: DocumentMut = metadata.parse().expect("valid TOML");
+        let document: DocumentMut = flyleaf.parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader(name, payload, document, &mut bytes).expect("packs");
+        slpc::pack_reader(name, content, document, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes the container");
         path
     }
@@ -1525,8 +1530,8 @@ mod replacement_tests {
     #[test]
     fn an_extraction_goes_where_it_was_told() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let payload = vec![3u8; 200_000];
-        let container = packed(dir.path(), "title = \"chosen\"\n", "report.pdf", &payload);
+        let content = vec![3u8; 200_000];
+        let container = packed(dir.path(), "title = \"chosen\"\n", "report.pdf", &content);
 
         let out = dir.path().join("somewhere/else.bin");
         std::fs::create_dir(dir.path().join("somewhere")).expect("a directory");
@@ -1538,8 +1543,8 @@ mod replacement_tests {
             Extracted::Done(at) => assert_eq!(at, out),
             Extracted::Cancelled => panic!("nothing asked it to stop"),
         }
-        assert_eq!(std::fs::read(&out).expect("reads it back"), payload);
-        assert_eq!(watch.done(), u64::try_from(payload.len()).unwrap());
+        assert_eq!(std::fs::read(&out).expect("reads it back"), content);
+        assert_eq!(watch.done(), u64::try_from(content.len()).unwrap());
     }
 
     /// A cancel takes the part-written file with it, wherever it was going. The
@@ -1550,7 +1555,7 @@ mod replacement_tests {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = packed(dir.path(), "title = \"stopped\"\n", "report.pdf", &vec![9u8; 200_000]);
 
-        let out = dir.path().join("half-a-payload.bin");
+        let out = dir.path().join("half-a-content-file.bin");
         let watch = super::Watch::new();
         watch.cancel();
 
@@ -1561,23 +1566,23 @@ mod replacement_tests {
         assert!(!out.exists(), "a part-written file is one somebody finds later");
     }
 
-    /// Replacing the payload under a new name moves `payload.file` with it, and
-    /// changes nothing else about the document.
+    /// Replacing the content file under a new name moves `content.file` with
+    /// it, and changes nothing else about the document.
     #[test]
-    fn a_replaced_payload_takes_payload_file_with_it() {
+    fn a_replaced_content_file_takes_content_file_with_it() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = packed(
             dir.path(),
             "title = \"before\" # beside the string\n",
             "report.pdf",
-            b"the old payload",
+            b"the old content",
         );
 
         let chosen = dir.path().join("report-v2.pdf");
-        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+        std::fs::write(&chosen, b"the new content").expect("writes the replacement");
 
         let opened = Opened::open(&container);
-        assert!(!opened.metadata_edited(), "nothing was typed into it");
+        assert!(!opened.flyleaf_edited(), "nothing was typed into it");
         assert!(matches!(
             opened.save(Some(&chosen)).expect("saves"),
             Saved::Written
@@ -1586,11 +1591,11 @@ mod replacement_tests {
         let again = Opened::open(&container);
         assert_eq!(again.verdict_word(), "accept");
 
-        let card = again.payload.as_ref().expect("a conformant container has a card");
+        let card = again.content.as_ref().expect("a conformant container has a card");
         assert_eq!(card.name, "report-v2.pdf");
         assert_eq!(card.size, 15);
 
-        let document = again.metadata.as_ref().expect("a document").render();
+        let document = again.flyleaf.as_ref().expect("a document").render();
         assert!(document.contains("report-v2.pdf"), "{document}");
         assert!(!document.contains("report.pdf"), "{document}");
         // The one key the replacement may move, and no other part of the file.
@@ -1601,52 +1606,52 @@ mod replacement_tests {
         extract(&container, &out, &super::Watch::new()).expect("extracts");
         assert_eq!(
             std::fs::read(out.join("report-v2.pdf")).expect("reads"),
-            b"the new payload"
+            b"the new content"
         );
     }
 
-    /// A replacement alone does not re-serialize the metadata. DESIGN.md §5.
+    /// A replacement alone does not re-serialize the flyleaf. DESIGN.md §5.
     ///
-    /// The fixture's metadata has CRLF line endings, which a parse and a
+    /// The fixture's flyleaf has CRLF line endings, which a parse and a
     /// re-serialization does not reproduce: this is one of the two shapes in
     /// the conformance corpus that comes back changed by the round trip alone.
     /// Handing the document to `Repack` when nobody edited it would rewrite
-    /// every line ending in a container whose payload was the only thing asked
-    /// about.
+    /// every line ending in a container whose content file was the only thing
+    /// asked about.
     #[test]
-    fn replacing_only_the_payload_leaves_the_metadata_byte_for_byte() {
+    fn replacing_only_the_content_file_leaves_the_flyleaf_byte_for_byte() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = packed(dir.path(), "title = \"placeholder\"\n", "report.pdf", b"old");
 
         let crlf: &[u8] =
-            b"slipcase_version = \"1.0\"\r\ntitle = \"before\"\r\n\r\n[payload]\r\nfile = \"report.pdf\"\r\n";
+            b"slipcase_version = \"1.1\"\r\ntitle = \"before\"\r\n\r\n[content]\r\nfile = \"report.pdf\"\r\n";
         let mut out = std::io::Cursor::new(Vec::new());
         slpc::Repack::new(std::fs::File::open(&container).expect("opens"))
-            .metadata_bytes(crlf)
+            .flyleaf_bytes(crlf)
             .write(&mut out)
             .expect("writes");
         std::fs::write(&container, out.into_inner()).expect("writes the container");
         assert_eq!(
-            slpc::Container::open(&container).expect("opens").metadata_bytes(),
+            slpc::Container::open(&container).expect("opens").flyleaf_bytes(),
             crlf,
             "the fixture starts with the bytes this is about"
         );
 
-        // The same name, so `payload.file` has nothing to move to either.
+        // The same name, so `content.file` has nothing to move to either.
         let chosen = dir.path().join("report.pdf");
-        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+        std::fs::write(&chosen, b"the new content").expect("writes the replacement");
 
         let opened = Opened::open(&container);
-        assert!(!opened.metadata_edited());
+        assert!(!opened.flyleaf_edited());
         assert!(matches!(
             opened.save(Some(&chosen)).expect("saves"),
             Saved::Written
         ));
 
         assert_eq!(
-            slpc::Container::open(&container).expect("opens").metadata_bytes(),
+            slpc::Container::open(&container).expect("opens").flyleaf_bytes(),
             crlf,
-            "nobody edited the metadata, so nothing rewrote it"
+            "nobody edited the flyleaf, so nothing rewrote it"
         );
 
         let into = dir.path().join("out");
@@ -1654,14 +1659,14 @@ mod replacement_tests {
         extract(&container, &into, &super::Watch::new()).expect("extracts");
         assert_eq!(
             std::fs::read(into.join("report.pdf")).expect("reads"),
-            b"the new payload",
-            "and the payload is the one that was chosen"
+            b"the new content",
+            "and the content file is the one that was chosen"
         );
     }
 
     /// Both edits go out in one write.
     #[test]
-    fn a_metadata_edit_and_a_replacement_are_one_save() {
+    fn a_flyleaf_edit_and_a_replacement_are_one_save() {
         use slpc::toml_edit::Value;
 
         let dir = tempfile::tempdir().expect("a temporary directory");
@@ -1669,32 +1674,32 @@ mod replacement_tests {
             dir.path(),
             "title = \"before\" # kept\n",
             "report.pdf",
-            b"the old payload",
+            b"the old content",
         );
 
         let chosen = dir.path().join("report-v2.pdf");
-        std::fs::write(&chosen, b"the new payload").expect("writes the replacement");
+        std::fs::write(&chosen, b"the new content").expect("writes the replacement");
 
         let mut opened = Opened::open(&container);
         super::set_value(
-            opened.metadata.as_mut().expect("a document").tree_mut()["title"]
+            opened.flyleaf.as_mut().expect("a document").tree_mut()["title"]
                 .as_value_mut()
                 .expect("a value"),
             Value::from("after"),
         );
-        assert!(opened.metadata_edited());
+        assert!(opened.flyleaf_edited());
         assert!(matches!(
             opened.save(Some(&chosen)).expect("saves"),
             Saved::Written
         ));
 
         let again = Opened::open(&container);
-        let document = again.metadata.as_ref().expect("a document").render();
+        let document = again.flyleaf.as_ref().expect("a document").render();
         assert!(document.contains("\"after\""), "{document}");
         assert!(document.contains("# kept"), "{document}");
         assert!(document.contains("report-v2.pdf"), "{document}");
         assert_eq!(
-            again.payload.as_ref().expect("a card").name,
+            again.content.as_ref().expect("a card").name,
             "report-v2.pdf"
         );
     }
@@ -1703,7 +1708,7 @@ mod replacement_tests {
     #[test]
     fn no_edit_and_no_replacement_writes_nothing() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let container = packed(dir.path(), "title = \"untouched\"\n", "report.pdf", b"payload");
+        let container = packed(dir.path(), "title = \"untouched\"\n", "report.pdf", b"content");
         let before = std::fs::read(&container).expect("reads");
 
         let opened = Opened::open(&container);
@@ -1715,16 +1720,16 @@ mod replacement_tests {
     /// A name SPEC §2.3 forbids is refused where the file was chosen, not where
     /// Save was pressed.
     #[test]
-    fn a_file_that_cannot_be_a_payload_says_so() {
-        assert_eq!(why_not_a_payload(Path::new("/anywhere/report.pdf")), None);
+    fn a_file_that_cannot_be_a_content_file_says_so() {
+        assert_eq!(why_not_a_content_file(Path::new("/anywhere/report.pdf")), None);
 
-        let reserved = why_not_a_payload(Path::new("/anywhere/slipcase.metadata.toml"))
-            .expect("the metadata member's own name is reserved");
-        assert!(reserved.contains("slipcase.metadata.toml"), "{reserved}");
+        let reserved = why_not_a_content_file(Path::new("/anywhere/slipcase.flyleaf.toml"))
+            .expect("the flyleaf member's own name is reserved");
+        assert!(reserved.contains("slipcase.flyleaf.toml"), "{reserved}");
 
         // Legal in a Linux filename, forbidden by SPEC §2.3, so it is a file
         // somebody can genuinely choose and genuinely cannot store.
-        let colon = why_not_a_payload(Path::new("/anywhere/notes:2026.txt"))
+        let colon = why_not_a_content_file(Path::new("/anywhere/notes:2026.txt"))
             .expect("a colon is not a member name");
         assert!(colon.contains("notes:2026.txt"), "{colon}");
     }
@@ -1735,20 +1740,20 @@ mod readable_tests {
     use super::Opened;
     use slpc::toml_edit::DocumentMut;
 
-    /// An ordinary container says its payload can be read, and says it without
-    /// reading the payload: the answer comes from the central directory entry
-    /// the card already collected.
+    /// An ordinary container says its content file can be read, and says it
+    /// without reading the content file: the answer comes from the central
+    /// directory entry the card already collected.
     #[test]
-    fn a_plain_payload_reports_readable() {
+    fn a_plain_content_file_reports_readable() {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let path = dir.path().join("built-by-the-test.slpc");
-        let metadata: DocumentMut = "title = \"readable\"\n".parse().expect("valid TOML");
+        let flyleaf: DocumentMut = "title = \"readable\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader("report.pdf", &b"payload"[..], metadata, &mut bytes).expect("packs");
+        slpc::pack_reader("report.pdf", &b"content"[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&path, &bytes).expect("writes");
 
         let card = Opened::open(&path)
-            .payload
+            .content
             .expect("a conformant container has a card");
         assert!(card.can_be_decoded());
         assert_eq!(card.unreadable, None);
@@ -1767,32 +1772,32 @@ mod windows_extraction_tests {
     /// bytes, which is the worst of the three answers.
     const DEVICE_NAMES: [&str; 6] = ["CON", "CON.txt", "con", "COM1", "AUX", "NUL"];
 
-    fn container_named(dir: &std::path::Path, payload_name: &str, payload: &[u8]) -> std::path::PathBuf {
-        let container = dir.join(format!("holds-{}.slpc", payload_name.replace('.', "-")));
-        let metadata: DocumentMut = "title = \"built by the test\"\n".parse().expect("valid TOML");
+    fn container_named(dir: &std::path::Path, content_name: &str, content: &[u8]) -> std::path::PathBuf {
+        let container = dir.join(format!("holds-{}.slpc", content_name.replace('.', "-")));
+        let flyleaf: DocumentMut = "title = \"built by the test\"\n".parse().expect("valid TOML");
         let mut bytes = Vec::new();
-        slpc::pack_reader(payload_name, payload, metadata, &mut bytes).expect("packs");
+        slpc::pack_reader(content_name, content, flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes the container");
         container
     }
 
     /// The defect this catches is extraction handing back the console device
-    /// instead of a file. `CON` is a legal payload name — `SPEC.md` §2.3
+    /// instead of a file. `CON` is a legal content file name — `SPEC.md` §2.3
     /// accepts it and the conformance corpus carries a case for it — and Win32
-    /// resolves the name to a device wherever it appears, so the payload went
-    /// to the console, no file was written, and anything reading the result
-    /// back waited forever on input that never came. The corpus met it for the
-    /// first time on 2026-08-26 and hung there rather than disagreeing.
+    /// resolves the name to a device wherever it appears, so the content file
+    /// went to the console, no file was written, and anything reading the
+    /// result back waited forever on input that never came. The corpus met it
+    /// for the first time on 2026-08-26 and hung there rather than disagreeing.
     ///
-    /// The directory is listed before the payload is read, and that order is
-    /// deliberate: against the defect the listing is empty and the test fails
-    /// there, where reading first would hang the whole suite instead.
+    /// The directory is listed before the content file is read, and that order
+    /// is deliberate: against the defect the listing is empty and the test
+    /// fails there, where reading first would hang the whole suite instead.
     #[test]
-    fn a_payload_named_for_a_device_extracts_as_an_ordinary_file() {
+    fn a_content_file_named_for_a_device_extracts_as_an_ordinary_file() {
         for name in DEVICE_NAMES {
             let dir = tempfile::tempdir().expect("a temporary directory");
-            let payload = format!("bytes for {name}").into_bytes();
-            let container = container_named(dir.path(), name, &payload);
+            let content = format!("bytes for {name}").into_bytes();
+            let container = container_named(dir.path(), name, &content);
 
             let out = match extract(&container, dir.path(), &Watch::new()) {
                 Ok(Extracted::Done(path)) => path,
@@ -1806,14 +1811,14 @@ mod windows_extraction_tests {
                 .collect();
             assert!(
                 listed.iter().any(|entry| entry == name),
-                "{name}: nothing by that name is in the directory, so the payload \
-                 went to a device rather than to a file. Listed: {listed:?}"
+                "{name}: nothing by that name is in the directory, so the content \
+                 file went to a device rather than to a file. Listed: {listed:?}"
             );
 
             assert_eq!(
-                std::fs::read(&out).expect("the extracted payload"),
-                payload,
-                "{name}: the extracted bytes are not the payload"
+                std::fs::read(&out).expect("the extracted content file"),
+                content,
+                "{name}: the extracted bytes are not the content file"
             );
         }
     }
@@ -1827,7 +1832,7 @@ mod windows_extraction_tests {
     #[test]
     fn a_path_a_person_chose_is_left_as_they_wrote_it() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let container = container_named(dir.path(), "report.pdf", b"payload bytes");
+        let container = container_named(dir.path(), "report.pdf", b"content bytes");
         let chosen = dir.path().join("where-they-said.pdf");
 
         let out = match super::extract_at(&container, &chosen, &Watch::new()) {
@@ -1855,19 +1860,19 @@ mod create_tests {
     /// **The defect this catches is a New container… that produces something
     /// nothing will open.** Every other path in this application starts from a
     /// container somebody else wrote, so nothing here had ever asserted that
-    /// what `create` writes is a container at all — and the metadata it hands
+    /// what `create` writes is a container at all — and the flyleaf it hands
     /// `pack_reader` is empty, which is only conformant because the library
     /// fills the two keys in. A change that stopped it doing so would leave a
     /// window happily writing files that fail their own read-back.
     #[test]
     fn a_container_made_here_reads_back_conformant() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let payload = dir.path().join("report.pdf");
-        std::fs::write(&payload, b"the payload").expect("writes the payload");
+        let content = dir.path().join("report.pdf");
+        std::fs::write(&content, b"the content file").expect("writes the content file");
         let into = dir.path().join("report.pdf.slpc");
 
         let watch = super::Watch::new();
-        let made = super::create(&payload, &into, &watch).expect("makes a container");
+        let made = super::create(&content, &into, &watch).expect("makes a container");
         let super::Created::Written { path, .. } = made else {
             panic!("a container was not made");
         };
@@ -1879,20 +1884,20 @@ mod create_tests {
             "{}",
             opened.verdict_line()
         );
-        let payload_in_it = opened.payload.expect("a card");
-        assert_eq!(payload_in_it.name, "report.pdf");
-        assert_eq!(payload_in_it.size, "the payload".len() as u64);
+        let content_in_it = opened.content.expect("a card");
+        assert_eq!(content_in_it.name, "report.pdf");
+        assert_eq!(content_in_it.size, "the content file".len() as u64);
 
-        let tree = opened.metadata.expect("a document");
+        let tree = opened.flyleaf.expect("a document");
         let tree = tree.tree();
         assert!(tree.get(slpc::VERSION_KEY).is_some(), "no version key");
         assert_eq!(
-            tree["payload"]["file"].as_str(),
+            tree["content"]["file"].as_str(),
             Some("report.pdf"),
-            "payload.file is not the name the payload went in under"
+            "content.file is not the name the content file went in under"
         );
         // And the count reached the end, or the progress bar is decoration.
-        assert_eq!(watch.done(), "the payload".len() as u64);
+        assert_eq!(watch.done(), "the content file".len() as u64);
     }
 
     /// Stopping leaves nothing at the destination, and does not report failure.
@@ -1904,20 +1909,20 @@ mod create_tests {
     /// is the half that bites.
     ///
     /// The other half is why that read raises an error rather than reporting
-    /// the end of the payload, and no test can reach it: reporting the end
-    /// would have `pack_reader` return `Ok` on a container holding part of a
-    /// payload, and only that one line would stand between it and a commit.
-    /// Belt and braces, and this test holds the braces.
+    /// the end of the content file, and no test can reach it: reporting the
+    /// end would have `pack_reader` return `Ok` on a container holding part of
+    /// a content file, and only that one line would stand between it and a
+    /// commit. Belt and braces, and this test holds the braces.
     #[test]
     fn a_container_that_is_stopped_is_not_left_behind() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let payload = dir.path().join("report.pdf");
-        std::fs::write(&payload, vec![0u8; 512 * 1024]).expect("writes the payload");
+        let content = dir.path().join("report.pdf");
+        std::fs::write(&content, vec![0u8; 512 * 1024]).expect("writes the content file");
         let into = dir.path().join("report.pdf.slpc");
 
         let watch = super::Watch::new();
         watch.cancel();
-        let made = super::create(&payload, &into, &watch).expect("stops rather than failing");
+        let made = super::create(&content, &into, &watch).expect("stops rather than failing");
 
         assert!(
             matches!(made, super::Created::Cancelled),
@@ -1926,23 +1931,23 @@ mod create_tests {
         assert!(!into.exists(), "a container was left at the destination");
     }
 
-    /// A file the specification will not let be a payload does not become one,
-    /// and nothing is left where the container was going.
+    /// A file the specification will not let be a content file does not become
+    /// one, and nothing is left where the container was going.
     ///
     /// **The defect this catches is a half-written destination.**
-    /// `Destination` is reserved before the payload is read, so a name refused
-    /// inside `pack_reader` is refused after there is a temporary file — and
-    /// the guarantee that nothing appears at the destination rests on that
-    /// temporary file being dropped rather than committed.
+    /// `Destination` is reserved before the content file is read, so a name
+    /// refused inside `pack_reader` is refused after there is a temporary file
+    /// — and the guarantee that nothing appears at the destination rests on
+    /// that temporary file being dropped rather than committed.
     #[test]
-    fn a_file_that_cannot_be_a_payload_makes_no_container() {
+    fn a_file_that_cannot_be_a_content_file_makes_no_container() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        // The one name SPEC §2.3 reserves: the metadata member's own.
-        let payload = dir.path().join(slpc::METADATA_MEMBER);
-        std::fs::write(&payload, b"title = \"not a payload\"\n").expect("writes the file");
+        // The one name SPEC §2.3 reserves: the flyleaf member's own.
+        let content = dir.path().join(slpc::FLYLEAF_MEMBER);
+        std::fs::write(&content, b"title = \"not a content file\"\n").expect("writes the file");
         let into = dir.path().join("refused.slpc");
 
-        let refused = super::create(&payload, &into, &super::Watch::new());
+        let refused = super::create(&content, &into, &super::Watch::new());
         assert!(refused.is_err(), "the reserved name was accepted");
         assert!(!into.exists(), "something was left at the destination");
     }

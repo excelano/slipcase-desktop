@@ -1,4 +1,4 @@
-//! What the metadata editor draws and what it saves, held against a record.
+//! What the flyleaf editor draws and what it saves, held against a record.
 //!
 //! The editor is being extracted into `flyleaf`, and the claim each step of
 //! that makes is "slipcase-desktop behaves as before". Nothing in the suite

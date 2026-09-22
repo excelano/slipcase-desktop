@@ -1,11 +1,11 @@
 # The goldens
 
-What the metadata editor draws and what it saves, recorded before the editor
+What the flyleaf editor draws and what it saves, recorded before the editor
 was extracted into `excelano/flyleaf`, so that every step of that extraction
 can fail on "slipcase-desktop behaves as before" rather than assert it.
 `tests/golden.rs` is the test; this file is the record.
 
-`fixtures/` holds the documents: four metadata members copied out of the
+`fixtures/` holds the documents: four flyleaf members copied out of the
 conformance corpus's accept cases (comments and blank lines, a multi-line inline
 table, nested tables, top-level keys), the every-type document from
 `src/tree.rs`'s own tests, and a long-comment document for the truncation

@@ -19,8 +19,8 @@
 
   `LSApplicationCategoryType` is required by App Store Connect and is refused
   at upload without one. Utilities is the honest fit: this opens a container,
-  shows what is in it, and hands the payload to whatever the system registered
-  for it. It is inert outside the Store, where it only tells Finder which
+  shows what is in it, and hands the content file to whatever the system
+  registered for it. It is inert outside the Store, where it only tells Finder which
   category the application belongs to.
 
   `LSMinimumSystemVersion` is 12.0 because `src/opens_with.rs` calls
@@ -66,8 +66,8 @@
 	  rule and the same choice `eframe::run_native` already makes for the
 	  window title. `display_name` in `src/opens_with.rs` reads
 	  CFBundleDisplayName first, so once this bundle is registered a
-	  container carrying a `.slpc` payload reports Slipcase by the same path
-	  that reports Preview for a PDF.
+	  container carrying a `.slpc` content file reports Slipcase by the same
+	  path that reports Preview for a PDF.
 	-->
 	<key>CFBundleName</key>
 	<string>Slipcase</string>
@@ -103,9 +103,9 @@
 	  a manual step on every patch, which is what declaring it here removes.
 
 	  `false` is the honest answer and not a convenience. This application
-	  implements no cryptography of its own, and `slpc` refuses a payload
+	  implements no cryptography of its own, and `slpc` refuses a content file
 	  encrypted by a method it lacks rather than decrypting one — SPEC 2.5,
-	  and the corpus case `accept/encrypted-payload` is the card saying so.
+	  and the corpus case `accept/encrypted-content-file` is the card saying so.
 	  The exemption for HTTPS does not even arise: nothing here makes a
 	  network call.
 	-->
@@ -114,7 +114,7 @@
 
 	<!--
 	  The role is Editor rather than Viewer. DESIGN.md 5 writes edited
-	  metadata back into the container through `Destination`, so this
+	  flyleaf back into the container through `Destination`, so this
 	  application does modify the documents it opens, and Viewer would be a
 	  claim to the platform that is not true. The cost of Editor is that
 	  macOS offers Slipcase in more places, and it is bounded: the only type
@@ -158,7 +158,7 @@
 	  invented here. There is no magic-bytes tag, for the same reason the
 	  Linux media type carries no `<magic>`: SPEC 4 reserves none, and a
 	  container is identified by opening it and finding a conformant
-	  metadata member, which is not a question Launch Services can ask.
+	  flyleaf member, which is not a question Launch Services can ask.
 	-->
 	<key>UTExportedTypeDeclarations</key>
 	<array>

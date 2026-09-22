@@ -1,35 +1,35 @@
-//! What the platform says would open a payload.
+//! What the platform says would open a content file.
 //!
 //! One function per platform returning an optional string, and no table of
 //! filenames mapped to types anywhere in this application. DESIGN.md §3.
 //!
-//! The question is asked from the payload's name alone, before anything has
-//! been extracted. Where the platform will not answer from a name, the answer
-//! is `None` and the card says nothing rather than guessing.
+//! The question is asked from the content file's name alone, before anything
+//! has been extracted. Where the platform will not answer from a name, the
+//! answer is `None` and the card says nothing rather than guessing.
 
-/// The name of the application the platform would open this payload with.
+/// The name of the application the platform would open this content file with.
 #[cfg(target_os = "linux")]
 #[must_use]
-pub fn opens_with(payload_name: &str) -> Option<String> {
-    let mime = linux::mime_of(payload_name)?;
+pub fn opens_with(content_name: &str) -> Option<String> {
+    let mime = linux::mime_of(content_name)?;
     let entry = linux::default_application(&mime)?;
     linux::display_name(&entry)
 }
 
-/// The name of the application the platform would open this payload with.
+/// The name of the application the platform would open this content file with.
 #[cfg(target_os = "macos")]
 #[must_use]
-pub fn opens_with(payload_name: &str) -> Option<String> {
-    let extension = macos::extension_of(payload_name)?;
+pub fn opens_with(content_name: &str) -> Option<String> {
+    let extension = macos::extension_of(content_name)?;
     let application = macos::application_for(extension)?;
     macos::display_name(&application)
 }
 
-/// The name of the application the platform would open this payload with.
+/// The name of the application the platform would open this content file with.
 #[cfg(target_os = "windows")]
 #[must_use]
-pub fn opens_with(payload_name: &str) -> Option<String> {
-    let extension = windows::extension_of(payload_name)?;
+pub fn opens_with(content_name: &str) -> Option<String> {
+    let extension = windows::extension_of(content_name)?;
     let progid = windows::progid_for(&extension)?;
     windows::display_name(&progid)
 }
@@ -55,22 +55,23 @@ mod linux {
     ///
     /// `xdg-mime` needs a file that is there, and an empty one reports as
     /// `application/x-zerosize` whatever it is called, so the question is asked
-    /// of two placeholders carrying the payload's name: one whose bytes sniff
-    /// as text and one whose bytes sniff as binary. Where the name matched a
-    /// glob, the glob wins over both and the answers agree. Where it matched
-    /// nothing, each answer is the content of the placeholder rather than
-    /// anything about the payload, the two differ, and there is nothing to say.
-    pub fn mime_of(payload_name: &str) -> Option<String> {
-        // A conformant container's payload name has been through
-        // `slpc::check_payload_name`, which rejects every separator, so this
+    /// of two placeholders carrying the content file's name: one whose bytes
+    /// sniff as text and one whose bytes sniff as binary. Where the name
+    /// matched a glob, the glob wins over both and the answers agree. Where it
+    /// matched nothing, each answer is the content of the placeholder rather
+    /// than anything about the content file, the two differ, and there is
+    /// nothing to say.
+    pub fn mime_of(content_name: &str) -> Option<String> {
+        // A conformant container's content file name has been through
+        // `slpc::check_content_name`, which rejects every separator, so this
         // joins a plain filename. Checked again rather than assumed.
-        if payload_name.is_empty() || payload_name.contains(['/', '\\']) {
+        if content_name.is_empty() || content_name.contains(['/', '\\']) {
             return None;
         }
 
         let dir = probe_dir()?;
-        let text = write_probe(dir.path(), "text", payload_name, b" ");
-        let binary = write_probe(dir.path(), "binary", payload_name, &[0u8; 4]);
+        let text = write_probe(dir.path(), "text", content_name, b" ");
+        let binary = write_probe(dir.path(), "binary", content_name, &[0u8; 4]);
 
         match (text, binary) {
             (Some(t), Some(b)) => {
@@ -86,8 +87,9 @@ mod linux {
         // `dir` drops here and takes the probes with it. Returning early above
         // is why it has to be a `TempDir` rather than a path removed at the
         // end: the previous version's `remove_dir_all` was skipped by every `?`
-        // in this function, so a probe carrying the payload's name outlived the
-        // question on any container whose type the platform would not name.
+        // in this function, so a probe carrying the content file's name
+        // outlived the question on any container whose type the platform
+        // would not name.
     }
 
     /// A directory of this process's own to put the probes in.
@@ -106,8 +108,8 @@ mod linux {
     ///
     /// The mode matters as much as the name. `tempfile`'s directories go
     /// through the umask — 0755 under the common one — so the probes, which
-    /// carry the payload's filename, were readable by every account on the
-    /// machine. `Cargo.toml` already argued all of this about the *other*
+    /// carry the content file's filename, were readable by every account on
+    /// the machine. `Cargo.toml` already argued all of this about the *other*
     /// scratch directory and this code did not get the message.
     fn probe_dir() -> Option<tempfile::TempDir> {
         tempfile::Builder::new()
@@ -117,8 +119,8 @@ mod linux {
             .ok()
     }
 
-    /// One probe: the payload's name, under a directory of its own so that two
-    /// probes can share the name that is the whole question.
+    /// One probe: the content file's name, under a directory of its own so
+    /// that two probes can share the name that is the whole question.
     fn write_probe(dir: &Path, which: &str, name: &str, bytes: &[u8]) -> Option<PathBuf> {
         let sub = dir.join(which);
         std::fs::create_dir_all(&sub).ok()?;
@@ -274,7 +276,7 @@ mod linux {
 
         /// The probe directory is private, whatever the umask says.
         ///
-        /// The probes carry the payload's filename, so a world-listable
+        /// The probes carry the content file's filename, so a world-listable
         /// directory publishes what somebody opened to every account on the
         /// machine. `tempfile` puts its directories through the umask — 0755
         /// under the common one — so this has to be asked for, and this crate
@@ -328,20 +330,20 @@ mod macos {
     ///
     /// Launch Services takes an extension rather than a whole name, so unlike
     /// Linux this needs no file on disk and no placeholder: the question can be
-    /// asked of a payload that has never been extracted, which is what
+    /// asked of a content file that has never been extracted, which is what
     /// DESIGN.md §3 wants and what the Linux arm has to work around.
     ///
     /// A name with no extension, a name that is nothing but an extension, and a
     /// name ending in a bare dot all give nothing. A separator is refused for
-    /// the same reason the Linux arm refuses one: `slpc::check_payload_name`
-    /// rejects every separator, so a name carrying one is not a payload's, and
-    /// answering for it would be answering about a path this application was
-    /// never given.
-    pub fn extension_of(payload_name: &str) -> Option<&str> {
-        if payload_name.contains(['/', '\\']) {
+    /// the same reason the Linux arm refuses one: `slpc::check_content_name`
+    /// rejects every separator, so a name carrying one is not a content file's,
+    /// and answering for it would be answering about a path this application
+    /// was never given.
+    pub fn extension_of(content_name: &str) -> Option<&str> {
+        if content_name.contains(['/', '\\']) {
             return None;
         }
-        let extension = std::path::Path::new(payload_name).extension()?.to_str()?;
+        let extension = std::path::Path::new(content_name).extension()?.to_str()?;
         if extension.is_empty() {
             None
         } else {
@@ -428,9 +430,9 @@ mod macos {
             assert_eq!(extension_of("a.tar.gz"), Some("gz"));
         }
 
-        /// A separator means this is not a payload's name — `check_payload_name`
-        /// rejects every one — and taking the extension from it would answer
-        /// about a path this application was never given.
+        /// A separator means this is not a content file's name —
+        /// `check_content_name` rejects every one — and taking the extension
+        /// from it would answer about a path this application was never given.
         #[test]
         fn a_name_carrying_a_separator_is_refused() {
             assert_eq!(extension_of("/etc/passwd.pdf"), None);
@@ -469,22 +471,22 @@ mod windows {
     const MUI_CACHE: &str =
         "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\Shell\\MuiCache";
 
-    /// The payload's extension, dot included, as Windows counts it.
+    /// The content file's extension, dot included, as Windows counts it.
     ///
     /// Everything from the last dot, so `report.tar.gz` is `.gz` and
     /// `.gitignore` is all extension — which is the shape the registry keys a
     /// name on. A name with no dot, or with nothing after it, has no extension
     /// and there is nothing to ask about.
-    pub fn extension_of(payload_name: &str) -> Option<String> {
-        // A conformant container's payload name has been through
-        // `slpc::check_payload_name`, which rejects every separator, so this is
+    pub fn extension_of(content_name: &str) -> Option<String> {
+        // A conformant container's content file name has been through
+        // `slpc::check_content_name`, which rejects every separator, so this is
         // a plain filename. Checked again rather than assumed, because a
         // separator here would turn an extension into a registry path.
-        if payload_name.is_empty() || payload_name.contains(['/', '\\']) {
+        if content_name.is_empty() || content_name.contains(['/', '\\']) {
             return None;
         }
-        let dot = payload_name.rfind('.')?;
-        let extension = &payload_name[dot..];
+        let dot = content_name.rfind('.')?;
+        let extension = &content_name[dot..];
         if extension.len() == 1 {
             return None;
         }

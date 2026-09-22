@@ -1,11 +1,11 @@
 # CLAUDE.md
 
-A desktop application that opens a `.slpc` container, shows its metadata as an editable
-tree, hands the payload to whatever the operating system has registered for it, and makes
-a container out of a file a person chooses. Presented as **Slipcase**; the crate and the
-binary are `slipcase-desktop`. It parses no containers: every read, write and verdict comes
-from `slpc` in `excelano/slpc-rust`, and behaviour that library lacks goes into that
-library. The metadata tree is `flyleaf::render` from `excelano/flyleaf`, called once from
+A desktop application that opens a `.slpc` container, shows its flyleaf as an editable
+tree, hands the content file to whatever the operating system has registered for it, and
+makes a container out of a file a person chooses. Presented as **Slipcase**; the crate and
+the binary are `slipcase-desktop`. It parses no containers: every read, write and verdict
+comes from `slpc` in `excelano/slpc-rust`, and behaviour that library lacks goes into that
+library. The flyleaf tree is `flyleaf::render` from `excelano/flyleaf`, called once from
 `src/main.rs` with `RequiredKeys`; behaviour the widget lacks goes there. `SPEC.md` in
 `excelano/slipcase` is the authority on the format and this repository neither restates nor
 amends it. `DESIGN.md` here is the authority on the application.
@@ -45,7 +45,7 @@ reads `/proc/PID/maps` under both display backends, and `build-app.sh` refuses a
 public framework header declares. A `cargo update` or an `eframe` bump off winit 0.30.13
 stops `[patch.crates-io]` applying, which is the moment to check whether the release it
 lands on carries the `private-apple-apis` gate. No table maps filenames to types: what the
-card says about a payload is what the platform said, and where it will not answer the card
+card says about a content file is what the platform said, and where it will not answer the card
 says nothing (`DESIGN.md` §3). This tree is not rustfmt-clean and has no fmt check: never run `cargo fmt` here, or a
 six-file change arrives swamped by eight hundred lines nobody asked for. Every test's doc
 comment says what defect it would catch,
