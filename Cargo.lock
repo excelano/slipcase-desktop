@@ -1079,9 +1079,9 @@ dependencies = [
 
 [[package]]
 name = "flyleaf"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39b9e0fc78b87a6f7949948034a623bf8a5e12b1553efc467782051f52e1e641"
+checksum = "4f4a34137fe223f79d8da55de94ee02a179bf20eeee883164a21cf098b146242"
 dependencies = [
  "egui",
  "flyleaf-core",
