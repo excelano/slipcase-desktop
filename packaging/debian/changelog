@@ -1,3 +1,12 @@
+slipcase-desktop (0.2.0) unstable; urgency=medium
+
+  * deps: bump flyleaf from 0.2.4 to 0.2.5 in the cargo group (#19)
+  * Release notes for the 1.1 rename, in both store locales
+  * The flyleaf tree, the content card: 1.1's rename, carried through
+  * The screenshot harness takes an appearance, and says which template wrote it
+
+ -- David M. Anderson <david.anderson@excelano.com>  Tue, 22 Sep 2026 10:25:09 -0500
+
 slipcase-desktop (0.1.10) unstable; urgency=medium
 
   * Say the media type once per script, and ask rather than name a version
