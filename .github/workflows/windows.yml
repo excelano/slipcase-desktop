@@ -1,14 +1,14 @@
-# The Windows checks a machine can run: that the tree builds and passes here,
-# that the shipped binary imports nothing Windows does not have, that the
-# install scripts go on and come off cleanly, that the committed icons still
-# match the drawings they were generated from, the conformance corpus, and, on
-# a release, the unsigned Store package. Out of reach: the window, the
-# certification kit, and the icon as a person sees it at any size.
+# Run the suite on Windows, check the things only a Windows machine can say,
+# and assemble the Store package, attaching it to a published release. The
+# checks themselves live in excelano/.github so every desktop-app repo in the
+# fleet runs the same ones and a correction reaches all of them at once; what
+# stays here is this product's own names, paths, screenshot recipe and the
+# pinned conformance corpus.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)
 
-name: Windows
+name: windows
 
 on:
   schedule:
@@ -30,9 +30,6 @@ on:
         description: 'Tag to package for (e.g. v0.1.9)'
         required: false
         type: string
-      # A choice rather than a boolean, because there is a third thing to ask
-      # for: `reference` takes the one plain frame a coordinate gets measured
-      # off, and `full` takes the set.
       screenshots:
         description: 'Store screenshots'
         required: false
@@ -45,159 +42,42 @@ permissions:
 
 jobs:
   windows:
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
-
-      # The packaging scripts are the only code here that nothing else compiles
-      # or runs, and there is no PowerShell on the Linux lane. The step is
-      # excelano/.github's because it is the same one in every repository that
-      # has them.
-      - name: The packaging scripts parse
-        uses: excelano/.github/.github/actions/powershell-parses@main
-
-      - name: What is installed
-        run: |
-          rustc -V
-          cargo -V
-          python -V
-
-      - name: Build
-        run: cargo build --all-targets
-
-      - name: Test
-        run: cargo test
-
-      # `CLAUDE.md` says clippy must be silent, so a warning is an error here.
-      - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
-
-      # The check that Slipcase 0.1.1 needed and did not have. It was packaged,
-      # certified by the Windows App Certification Kit, submitted, and failed
-      # Store policy 10.2.4.1 because it imported VCRUNTIME140.dll from the
-      # Visual C++ Redistributable - so on the tester's clean machine it
-      # installed and then would not start. Nothing in this file could have
-      # caught it: a GitHub runner has Visual Studio, exactly like every
-      # machine this project has ever built on.
-      #
-      # `.cargo/config.toml` is the fix and this is the guard on it. A
-      # dependency added on any of the three platforms can pull in a DLL that
-      # is not part of Windows without anybody here noticing, and the day that
-      # happens is the day this step has to be the thing that says so.
-      #
-      # The release binary rather than the debug one, because the release
-      # binary is what ships and is the only one whose import table is the
-      # artefact's.
-      - name: Every DLL the shipped binary imports comes with Windows
-        run: |
-          cargo build --release
-          powershell -ExecutionPolicy Bypass -File packaging/windows/check-imports.ps1
-
-      # The install scripts against the registry, read back. The steps are
-      # excelano/.github's: it was the same script in three repositories and
-      # absent from three more, and the absent ones included the repository
-      # whose uninstall reported success while leaving the association dead.
-      - name: The integration goes on and comes off cleanly
-        uses: excelano/.github/.github/actions/windows-install-check@main
-        with:
-          associations: '[{"extension": ".slpc", "progId": "Excelano.Slipcase", "contentType": "application/vnd.excelano.slipcase+zip"}]'
-          owns-extension: 'true'
-          install-args: '-NoBinary'
-
-      # The run that found the device-name defect in the first place, and the
-      # only platform where `accept/content-file-name-windows-reserved` is anything
-      # but an ordinary filename. It hung here for ten minutes twice before the
-      # case had a name, so a timeout is set: a run that hangs looks exactly
-      # like a run that is slow, and the whole job's default of six hours is the
-      # wrong thing to find out at.
-      # Pinned rather than tracking `main`. This clones another repository and
-      # runs a Python file out of it, before the build, on every push — so
-      # whoever can land a commit there executes code here. `excelano/slipcase`
-      # is ours and `generate.py` is read before every bump, but "ours" is not a
-      # security boundary and the corpus's own argument for determinism wants a
-      # fixed input anyway. Bump this deliberately when the corpus changes.
+    uses: excelano/.github/.github/workflows/windows-desktop-ci.yml@main
+    with:
+      tag: ${{ inputs.tag }}
+      binary-names: slipcase-desktop
+      icon-check: true
+      icon-check-paths: 'packaging/windows/slipcase.ico packaging/windows/assets packaging/windows/listing'
+      install-check-associations: '[{"extension": ".slpc", "progId": "Excelano.Slipcase", "contentType": "application/vnd.excelano.slipcase+zip"}]'
+      install-check-owns-extension: 'true'
+      screenshots: ${{ inputs.screenshots }}
+      shot-out: dist/store
+      # Info-ZIP's zip, which Git for Windows does not ship, and `7z` is not a
+      # substitute: its archives differ from Info-ZIP's in the bytes, and the
+      # same bytes on every machine is what makes the container in the
+      # pictures the container a reviewer downloads. One per language: the
+      # flyleaf tree is most of what these frames show, so a German listing
+      # opening an English document would be mostly English pixels whatever
+      # language the window is in. The container is opened through the shell,
+      # so the association has to exist; the install check above takes its
+      # own registration away again.
+      pre-screenshot-script: |
+        choco install zip --no-progress -y
+        bash packaging/demo-container.sh
+        bash packaging/demo-container.sh --lang de
+        powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
+      # The run that found the device-name defect in the first place. Pinned
+      # rather than tracking `main`: this clones another repository and runs a
+      # Python file out of it, before the build, on every push - so whoever
+      # can land a commit there executes code here. `excelano/slipcase` is
+      # ours and `generate.py` is read before every bump, but "ours" is not a
+      # security boundary and the corpus's own argument for determinism wants
+      # a fixed input anyway. Bump this deliberately when the corpus changes.
       #
       # SPEC-PIN: 69709be1dc3c8e77fd0954df59f913dbaccad3ab
-      - name: The conformance corpus, every case
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
-        timeout-minutes: 10
-        run: |
-          git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
-          git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach 69709be1dc3c8e77fd0954df59f913dbaccad3ab
-          python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
-          cargo run --example corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
-
-      # The `.ico` is a committed artifact rather than a build product, because
-      # `rc.exe` and `windres` are both tools `DESIGN.md` §2 keeps out of the
-      # build. A committed artifact can fall out of step with the source it was
-      # generated from and nothing would say so, so the generator is run and its
-      # output compared against what is in the tree.
-      #
-      # The same generator now writes the five PNGs `AppxManifest.xml` names,
-      # for the same reason and with the same exposure: nothing on Windows
-      # rasterizes an SVG, so those are committed too. The comparison is over
-      # the whole directory rather than the one file, because an asset that
-      # drifted from the drawing would otherwise reach a store listing with
-      # nothing having looked at it.
-      - name: The committed icon and Store assets still match their generator
-        run: |
-          cd packaging/windows/make-ico
-          cargo run --release
-          cd ../../..
-          git diff --exit-code -- packaging/windows/slipcase.ico packaging/windows/assets packaging/windows/listing
-
-      # The Store takes the package unsigned, and the runner assembles the one that
-      # is uploaded. The steps are excelano/.github's, because they were the same in
-      # every repository that has this target; the publisher is the organisation
-      # secret, being the one value in the identity that is an account's rather than
-      # this product's.
-      - name: The Store package
-        uses: excelano/.github/.github/actions/store-package@main
-        with:
-          publisher: ${{ secrets.STORE_PUBLISHER }}
-          tag: ${{ github.event.release.tag_name || inputs.tag }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # Off unless asked for. A bug fix should not pay for a set of Store
-      # screenshots, and a set nobody asked for is a set nobody looks at.
-      # `shots.ps1` carries the recipes and is the same command that retakes
-      # them by hand on the Windows machine.
-      #
-      # The container is built rather than committed, and its archive
-      # timestamps are pinned so any machine rebuilds the same bytes - which is
-      # what makes the pictures and the container a reviewer downloads the same
-      # container. The runner has Git bash.
-      # Info-ZIP's zip, which Git for Windows does not ship. `7z` is on the
-      # runner and is not a substitute: its archives differ from Info-ZIP's in
-      # the bytes, and the same bytes on every machine is what makes the
-      # container in the pictures the container a reviewer downloads.
-      - name: Install zip
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        run: choco install zip --no-progress -y
-
-      # One per language: the flyleaf tree is most of what these frames show,
-      # so a German listing opening an English document would be mostly English
-      # pixels whatever language the window is in.
-      - name: Build the containers the pictures are of
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        shell: bash
-        run: |
-          ./packaging/demo-container.sh
-          ./packaging/demo-container.sh --lang de
-
-      # The container is opened through the shell, so the association has to
-      # exist. The install check above takes its own registration away again.
-      - name: Install the association
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        run: powershell -ExecutionPolicy Bypass -File packaging/windows/install.ps1
-
-      - name: The Store screenshots
-        if: inputs.screenshots && inputs.screenshots != 'no'
-        uses: excelano/.github/.github/actions/store-screenshots@main
-        with:
-          mode: ${{ inputs.screenshots }}
-          languages: en de
-          out: dist/store
+      release-only-script: |
+        git clone --filter=blob:none --no-checkout https://github.com/excelano/slipcase.git "${env:RUNNER_TEMP}\slipcase"
+        git -C "${env:RUNNER_TEMP}\slipcase" checkout --detach 69709be1dc3c8e77fd0954df59f913dbaccad3ab
+        python "${env:RUNNER_TEMP}\slipcase\conformance\generate.py"
+        cargo run --example corpus -- "${env:RUNNER_TEMP}\slipcase\conformance"
+    secrets: inherit
