@@ -13,7 +13,9 @@ name: Linux
 
 on:
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   # Fires when a person publishes the release, which on this loop is what
   # happens: nothing else creates it. A release created by a workflow using the
   # default GITHUB_TOKEN fires no event at all, and a release event resolves

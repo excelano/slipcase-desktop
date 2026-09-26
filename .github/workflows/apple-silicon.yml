@@ -17,7 +17,9 @@ on:
   schedule:
     - cron: '0 6 * * 1'
   push:
+    branches: [main]
   pull_request:
+    branches: [main]
   # The release event is what builds the binary the Mac signs. A person's
   # token creates the release, so the event fires.
   release:
