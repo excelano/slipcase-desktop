@@ -67,7 +67,3 @@ its own.
 
 Every release lists a SHA-256 for each artefact. Verify a download before
 running it.
-
-<!--
-Author: David M. Anderson
--->
