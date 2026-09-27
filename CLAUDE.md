@@ -49,5 +49,4 @@ card says about a content file is what the platform said, and where it will not 
 says nothing (`DESIGN.md` §3). This tree is not rustfmt-clean and has no fmt check: never run `cargo fmt` here, or a
 six-file change arrives swamped by eight hundred lines nobody asked for. Every test's doc
 comment says what defect it would catch,
-and a new test is broken deliberately once to watch it fail. The commit trailer is one
-line, a `Co-Authored-By` naming the model: this repository is public, so no session URL.
+and a new test is broken deliberately once to watch it fail.
