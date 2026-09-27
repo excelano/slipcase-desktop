@@ -193,25 +193,7 @@ jobs:
       # `no-md5sums-control-file` when it is missing; and every recorded hash
       # agreeing with the file it names. The `.deb` shipped without `md5sums`
       # once and a release build passed over it.
-      - name: The package holds up
-        run: |
-          deb=$(ls dist/*.deb)
-          echo "checking ${deb}"
-
-          strange=$(dpkg-deb --contents "$deb" | awk '$2 != "root/root"')
-          [ -z "$strange" ] || { echo "not root/root:"; echo "$strange"; exit 1; }
-
-          strange=$(dpkg-deb --contents "$deb" |
-              awk '$1 !~ /^drwxr-xr-x/ && $1 !~ /^-rw-r--r--/ && $1 !~ /^-rwxr-xr-x/')
-          [ -z "$strange" ] || { echo "unexpected modes:"; echo "$strange"; exit 1; }
-
-          dpkg-deb --ctrl-tarfile "$deb" | tar t | grep -qx './md5sums' ||
-              { echo "the package ships no md5sums" >&2; exit 1; }
-
-          tree="${RUNNER_TEMP}/tree"
-          dpkg-deb -x "$deb" "$tree"
-          dpkg-deb -e "$deb" "${tree}/DEBIAN"
-          ( cd "$tree" && md5sum -c DEBIAN/md5sums --quiet )
+      - uses: excelano/.github/.github/actions/linux-package-integrity-check@main
 
       # A gate now, which it was not when this file was written. The first run
       # was the measurement and it produced two tags, `no-changelog` and
@@ -238,11 +220,7 @@ jobs:
       # needed one: a changelog is what an apt repository's installers read to
       # see what changed, and the manual page is the only place the one
       # positional argument is written down, there being no `--help`.
-      - name: What lintian says
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq lintian
-          lintian --info --tag-display-limit 0 --fail-on error,warning dist/*.deb
+      - uses: excelano/.github/.github/actions/linux-lintian-check@main
 
       # The only step that asks the platform anything, and the one that had
       # never run when this file was written. These are two questions with no
@@ -324,26 +302,9 @@ jobs:
       #
       # It does not reach a window, and it does not see a library opened by
       # name at run time, which `ldd` cannot see either.
-      - name: It installs, and the executable loads
-        run: |
-          set -eu
-          deb=$(ls dist/*.deb)
-          sudo apt-get install -y "./${deb#./}"
-
-          command -v slipcase-desktop
-          file -L "$(command -v slipcase-desktop)"
-
-          missing=$(ldd "$(command -v slipcase-desktop)" | grep 'not found' || true)
-          [ -z "$missing" ] || { echo "the package installed but does not resolve:"; echo "$missing"; exit 1; }
-
-          out=$(timeout 20 slipcase-desktop 2>&1 || true)
-          printf '%s\n' "$out" | sed 's/^/  /'
-          case "$out" in
-              *'error while loading shared libraries'*)
-                  echo "the loader refused the executable" >&2; exit 1 ;;
-              *'cannot execute binary file'*|*'Exec format error'*)
-                  echo "the executable is not this machine's architecture" >&2; exit 1 ;;
-          esac
+      - uses: excelano/.github/.github/actions/linux-install-check@main
+        with:
+          binaries: slipcase-desktop
 
       - uses: actions/upload-artifact@v7
         with:
@@ -359,18 +320,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: excelano/.github/.github/actions/linux-attach-release-packages@main
         with:
-          path: packages
-          merge-multiple: true
-
-      - name: Attach the packages to the release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -eu
-          ls -l packages
-          gh release upload \
-            "${{ github.event.release.tag_name || inputs.tag }}" \
-            packages/*.deb --clobber
+          tag: ${{ github.event.release.tag_name || inputs.tag }}
