@@ -55,18 +55,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name || inputs.tag || github.ref }}
 
-      # The architecture is the whole reason this workflow exists, and a label
-      # is a promise rather than a fact: `macos-13` is Intel and `macos-14`
-      # onwards is Apple silicon, which is a mapping GitHub can change. Checked,
-      # so that this fails loudly rather than quietly testing x86_64 twice.
       - name: The runner is Apple silicon
-        run: |
-          arch=$(uname -m)
-          echo "runner reports ${arch}"
-          [ "$arch" = arm64 ] || {
-            echo "this workflow exists to test arm64 and the runner is ${arch}" >&2
-            exit 1
-          }
+        uses: excelano/.github/.github/actions/mac-arch-check@main
 
       - name: What is installed
         run: rustc -V && cargo -V && python3 -V
@@ -197,20 +187,9 @@ jobs:
                exit 1 ;;
           esac
 
-      # For eyes, not for the verdict. The step above is what passes or fails.
       - name: Photograph it, for a person
         if: always()
-        run: |
-          screencapture -x "${RUNNER_TEMP}/screen.png" || true
-          ls -l "${RUNNER_TEMP}/screen.png" || true
-
-      - name: Keep the photograph
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: arm64-window
-          path: ${{ runner.temp }}/screen.png
-          if-no-files-found: warn
+        uses: excelano/.github/.github/actions/mac-photograph@main
 
       # Built here and signed on the Mac: the Distribution certificate stays
       # where it is, and the slow half plus the two checks that cost a review
