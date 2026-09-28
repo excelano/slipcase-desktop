@@ -1,27 +1,16 @@
 # Submission notes
 
-What a store submission needs from a person and no file supplies: the notes an
-App Review or certification reader is handed, the answers a form asks that no
-build can give, and the reasoning behind the screenshots.
+What a store submission needs from a person and no file supplies: the notes a
+certification reader is handed, the answers a form asks that no build can
+give, and the reasoning behind the screenshots.
 
 The listing text itself is not here. It is `store-listing.toml` beside this,
 which `ship` checks before the tag and pushes to both stores on every release,
 and what a release tells them changed is `release-notes.toml`. A field edited
-in this file would reach nobody.
-
-## App Review notes
-
-Slipcase Desktop reads and writes Slipcase containers. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
-
-A container to open is at https://excelano.com/slipcase/quarterly-report.pdf.slpc — a one-page PDF inside a container with a flyleaf rich enough to show every renderer the editor has. Download it and open it, or launch the application and use Open a container. The subject is invented: no real person, organisation, matter or date appears in it. It is built by `packaging/demo-container.sh` in the repository, which pins its archive timestamps so that any machine rebuilds the same bytes.
-
-To exercise the rest: the flyleaf pane on the right edits every value by its kind, and a save keeps the comments, key order, whitespace and quoting of everything you did not touch. New container... asks which file to put in and where the container should go, writes it, and opens it, so any file you have to hand is enough to make a second container from nothing.
-
-The App Sandbox is on with exactly two entitlements: the sandbox itself and read-write access to user-selected files. A save replaces the file the person chose, staged in the replacement directory macOS provides on the file's own volume and swapped in with one call, so it stays inside that grant. There is no network entitlement and the application makes no network request.
-
-The application declares the Slipcase container type and claims it at rank Owner. This is the format's own application and the declaration below it in the bundle is the exported one, so Owner is the true rank; an application that merely opened somebody else's format would rank Alternate.
-
-Slipcase implements no cryptography and makes no network request. It reads containers whose members may be encrypted and refuses those, which is a different claim from encrypting anything itself. The full privacy statement is at https://excelano.com/legal/#slipcase and the complete source is at https://github.com/excelano/slipcase-desktop.
+in this file would reach nobody. Apple's Notes for Review are there too, as
+`apple-review-notes`, which `ship` pushes to `appStoreReviewDetail` on every
+Mac App Store submission - Microsoft's Notes for certification below have no
+such field and are still typed in by hand.
 
 ## Screenshots (Microsoft Store)
 
