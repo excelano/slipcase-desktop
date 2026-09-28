@@ -15,7 +15,7 @@
 # apple.keywords 100 including the commas, description 4,000 - the Microsoft
 # Store allows 10,000 and this is written to Apple's - microsoft.short-description
 # 500, microsoft.features 20 of 200, microsoft.keywords 7 of 30, apple-review-notes
-# 4,000.
+# and microsoft-review-notes 4,000 each.
 #
 # What is *not* here is what changed in this release. That is
 # release-notes.toml, which is rewritten every time; this changes when the
@@ -47,6 +47,17 @@ The App Sandbox is on with exactly two entitlements: the sandbox itself and read
 The application declares the Slipcase container type and claims it at rank Owner. This is the format's own application and the declaration below it in the bundle is the exported one, so Owner is the true rank; an application that merely opened somebody else's format would rank Alternate.
 
 Slipcase implements no cryptography and makes no network request. It reads containers whose members may be encrypted and refuses those, which is a different claim from encrypting anything itself. The full privacy statement is at https://excelano.com/legal/#slipcase and the complete source is at https://github.com/excelano/slipcase-desktop.
+"""
+microsoft-review-notes = """
+Slipcase Desktop reads and writes Slipcase containers. No account, no sign-in, no test credentials, and no network connection of any kind are needed to test it.
+
+A container to open is at https://excelano.com/slipcase/quarterly-report.pdf.slpc — a one-page PDF inside a container with a flyleaf rich enough to show every renderer the editor has. Download it, then double-click it, or right-click it and choose Slipcase Desktop under Open With. The subject is invented: no real person, organisation, matter or date appears in it.
+
+To exercise the rest: the flyleaf pane on the right edits every value by its kind, and a save keeps the comments, key order, whitespace and quoting of everything you did not touch. New container asks which file to put in and where the container should go, writes it, and opens it, so any file you have to hand is enough to make a second container from nothing.
+
+The package declares runFullTrust and no other capability. It opens the file it was launched with or one chosen through Open, and writes only where a person points a save dialog; it asks for no broad filesystem access and no device. It makes no network connection of any kind.
+
+The .slpc file type association is registered so a downloaded container opens with a double-click, and is claimed only as this application's own format.
 """
 
 [locales."de-de"]
