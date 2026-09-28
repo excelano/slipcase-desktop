@@ -11,6 +11,21 @@ Notes for certification are there too, as `apple-review-notes` and
 `microsoft-review-notes`, which `ship` pushes to `appStoreReviewDetail` and
 `NotesForCertification` on every submission.
 
+## Capability justification
+
+The package declares `runFullTrust`, and Partner Center's justification field
+for it is asked once when the capability is first declared on the product
+rather than on every resubmission - it is not part of the submission document
+`ship` reads and writes, and this repo's own resubmissions have gone to
+certification since without one being sent. 500-character limit, which counts
+newlines.
+
+> Slipcase Desktop is a full-trust Win32 desktop application packaged as
+> MSIX. It needs this capability to run at all. It opens the container it
+> was launched with, or one chosen through Open, and writes only where a
+> save dialog points. It makes no network connection, needs no broad
+> filesystem access, and uses no device.
+
 ## Screenshots (Microsoft Store)
 
 **1366 x 768, PNG**, which is the Store's minimum for a desktop screenshot and
