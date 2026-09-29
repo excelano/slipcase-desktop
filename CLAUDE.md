@@ -27,7 +27,7 @@ amends it. `DESIGN.md` here is the authority on the application.
 
 The target directory may not be `./target`: `[build] target-dir` moves it and no
 environment variable says so, which is why the packaging scripts ask `cargo metadata`.
-Releases: run `ship slipcase/slipcase-desktop`. There is no release document.
+Releases: the apps in excelano/shipping, run from this directory. There is no release document.
 
 ## Rules
 
