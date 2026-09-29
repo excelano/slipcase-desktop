@@ -31,3 +31,6 @@ dist-devid/
 # that belongs on a public record, and this one is deliberately local.
 /packaging/windows/SUBMITTING.local.md
 dist-refused/
+ship.toml
+packaging/windows/screenshots/
+packaging/macos/screenshots/
