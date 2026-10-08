@@ -53,6 +53,10 @@ flyleaf = { version = "0.2", default-features = false }
 potext = "0.1"
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
 eframe = "0.36"
+# What the desktop says about light and dark, on the one platform where `winit`
+# does not say: it reads the XDG portal and follows it, and is empty elsewhere.
+# `DESIGN.md` §3.
+portal-theme = "0.1"
 # Defaults are `xdg-portal` and `wayland`, both pure Rust. The `gtk3` feature
 # links C through gtk-sys and stays off, which is what taking the defaults
 # does — naming features here would be the way to turn it on by accident.
@@ -108,20 +112,6 @@ objc2-app-kit = { version = "0.3", default-features = false, features = ["std", 
 # second one's directory constant. `NSError` is what both report through. All
 # three are features of a crate already here, so none adds anything to the tree.
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSBundle", "NSData", "NSAppleEventManager", "NSAppleEventDescriptor", "NSNotification", "NSOperation", "NSFileManager", "NSPathUtilities", "NSError", "block2", "objc2-core-services"] }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-# What the desktop says about light and dark. `winit` answers this on the other
-# two platforms and returns a hardcoded `None` here, so egui falls back to dark
-# and no desktop setting reaches the window — measured 2026-08-28, with the
-# titlebar following the setting while the card ignored it. `DESIGN.md` §2 and §3.
-#
-# The answer lives on D-Bus, in the XDG desktop portal. zbus is pure Rust with
-# no build script, and it is already compiled on this target under
-# `accesskit_unix`, which arrives through `egui-winit`; `blocking-api` is a
-# feature of that same crate and adds no crate to the tree. `default-features`
-# is off so that `async-io` is named rather than taken, which is what
-# `accesskit` already turns on.
-zbus = { version = "5", default-features = false, features = ["async-io", "blocking-api"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Reading the window's icon out of the `.ico` the installer also registers.
