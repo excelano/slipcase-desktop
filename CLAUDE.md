@@ -31,8 +31,8 @@ Releases: the apps in excelano/shipping, run from this directory. There is no re
 
 ## Rules
 
-Stay inside your own platform's arm: its `#[cfg]` arm of `src/opens_with.rs`, its directory
-under `packaging/`, its file under `.github/workflows/`. Reviewing another platform's arm
+Stay inside your own platform's arm: its `#[cfg]` arm of `src/opens_with.rs` and its directory
+under `packaging/`. Reviewing another platform's arm
 is worth doing and is how the worst defects here were found; what you cannot settle from
 here goes to David rather than into a guess. `src/lib.rs` is `forbid(unsafe_code)` and does
 not move; `src/main.rs` is `deny`, lifted for `src/opened_document.rs` alone, where macOS

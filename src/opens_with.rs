@@ -6,6 +6,9 @@
 //! The question is asked from the content file's name alone, before anything
 //! has been extracted. Where the platform will not answer from a name, the
 //! answer is `None` and the card says nothing rather than guessing.
+//
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
 
 /// The name of the application the platform would open this content file with.
 #[cfg(target_os = "linux")]

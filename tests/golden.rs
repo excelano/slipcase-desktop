@@ -17,6 +17,9 @@
 //! purpose: a golden that changed is either a defect or a decision, and the
 //! commit that regenerates it should say which. The render golden is tied to
 //! egui's glyph metrics, so an egui bump regenerates it by decision.
+//
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
 
 use std::fmt::Write as _;
 use std::fs;

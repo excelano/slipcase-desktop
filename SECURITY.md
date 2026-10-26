@@ -65,5 +65,10 @@ its own.
 
 ## Verifying releases
 
-Every release lists a SHA-256 for each artefact. Verify a download before
-running it.
+Every GitHub release carries the `.deb` packages, the MSIX and the macOS binary,
+built by `build-release`, the release program in excelano/shipping, from the
+tagged commit using the packaging under `packaging/` in this repository, which
+is public and auditable. The release attaches no checksum file, so a download
+from it is vouched for only by where it came from. Packages served from the
+Excelano apt repository are signed; https://excelano.com/apt/ has the key and
+the one-line setup.
