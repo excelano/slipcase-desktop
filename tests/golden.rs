@@ -1,11 +1,10 @@
-//! What the flyleaf editor draws and what it saves, held against a record.
+//! What the editor draws and what it saves, held against a record.
 //!
-//! The editor is being extracted into `flyleaf`, and the claim each step of
-//! that makes is "slipcase-desktop behaves as before". Nothing in the suite
-//! could fail on that claim: the unit tests check behaviours one at a time, the
-//! corpus runner checks only whether a tree appears, and the rest is
-//! run by hand at a keyboard. These two tests turn the claim into a file
-//! that diffs.
+//! The editor is `flyleaf`'s, so a change in either repository can alter what
+//! slipcase-desktop draws or saves. Nothing else in the suite would catch it:
+//! the unit tests check behaviours one at a time, the corpus runner checks
+//! only whether a tree appears, and the rest is run by hand at a keyboard.
+//! These two tests turn the rendering and the save into a file that diffs.
 //!
 //! Every fixture in `tests/golden/fixtures/` is rendered headlessly at four
 //! scales and every shape egui emitted is written down with its kind, its
