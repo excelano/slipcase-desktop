@@ -24,7 +24,7 @@ path = "src/main.rs"
 # The `fs` feature is the library's file-placement half. `Destination`, which
 # DESIGN.md §5 writes edited flyleaf back through, is behind it and is
 # compiled out without it.
-slpc = { version = "0.4.0", features = ["fs", "provenance"] }
+slpc = { version = "0.6.0", features = ["fs", "provenance"] }
 # The flyleaf editor: the tree DESIGN.md §4 describes and the operations §5
 # describes, which were written here and moved out on 2026-09-07 so that
 # Tommy Flyleaf and this application share one TOML editor rather than two
@@ -52,7 +52,7 @@ flyleaf = { version = "0.2", default-features = false }
 # person reads; both are already in this tree on their platforms.
 potext = "0.1"
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
-eframe = "0.36"
+eframe = "0.37"
 # What the desktop says about light and dark, on the one platform where `winit`
 # does not say: it reads the XDG portal and follows it, and is empty elsewhere.
 # `DESIGN.md` §3.
