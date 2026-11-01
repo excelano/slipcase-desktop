@@ -63,7 +63,7 @@ portal-theme = "0.1"
 rfd = "0.17"
 # Hands a path to the platform's own mechanism rather than carrying a table of
 # programs to run. DESIGN.md §3.
-opener = "0.8"
+opener = "0.9"
 # The directory extraction goes to. Already in the tree under slpc's `fs`
 # feature, so this compiles nothing new. Named here rather than hand-rolled
 # because a directory built from a process id is wrong twice: a crashed run
@@ -119,7 +119,7 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 # a resource compiler is exactly what DESIGN.md §2 keeps out of the build, so
 # the icon is embedded as bytes and decoded at startup instead. Pure Rust; its
 # `png` is for the large entries, which are stored that way.
-ico = "0.5.0"
+ico = "0.6.0"
 # What the platform would open a content file with, which on Windows is a question
 # for the registry. `AssocQueryString` is the textbook answer and is a raw FFI
 # call this crate cannot make under `#![forbid(unsafe_code)]`; this is a safe
