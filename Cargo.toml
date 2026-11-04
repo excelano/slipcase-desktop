@@ -24,6 +24,10 @@ path = "src/main.rs"
 # The `fs` feature is the library's file-placement half. `Destination`, which
 # DESIGN.md §5 writes edited flyleaf back through, is behind it and is
 # compiled out without it.
+#
+# A new version is read before it is taken: every rule this application enforces
+# about what a container is comes from this library, so a change to it is a
+# change to what the window says about somebody's file.
 slpc = { version = "0.4.0", features = ["fs", "provenance"] }
 # The flyleaf editor: the tree DESIGN.md §4 describes and the operations §5
 # describes, which were written here and moved out on 2026-09-07 so that
@@ -52,6 +56,12 @@ flyleaf = { version = "0.2", default-features = false }
 # person reads; both are already in this tree on their platforms.
 potext = "0.1"
 # Defaults carry accesskit, which DESIGN.md §3 keeps on.
+#
+# A new version is read before it is taken. Its `egui` lays out every name on
+# the card, and `epaint` has a standing to-do to heed the bidirectional
+# formatting characters DESIGN.md §3 discusses; `src/main.rs` escapes them
+# already, so the day that lands nothing breaks, but the immunity it relies on
+# ends there.
 eframe = "0.36"
 # What the desktop says about light and dark, on the one platform where `winit`
 # does not say: it reads the XDG portal and follows it, and is empty elsewhere.
@@ -127,6 +137,10 @@ ico = "0.5.0"
 # already have theirs. Pure Rust, no build script, and its three dependencies
 # were already in the tree under `eframe`, so it compiles one new crate.
 # DESIGN.md §3.
+#
+# Held on the 0.6 line until `eframe` moves to windows-rs's 0.100 generation:
+# 0.100 sits beside eframe's 0.2/0.4/0.5 support crates rather than replacing
+# them, so it would compile four crates where this one compiles one.
 windows-registry = "0.6.1"
 
 # Only the tests reach for it now. The card's provenance line and the marks
