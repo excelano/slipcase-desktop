@@ -12,10 +12,10 @@
 # Nothing else reads this. The GitHub release, the Debian changelog and the
 # AppStream entry take commit subjects.
 
-version = "0.2.0"
+version = "0.3.0"
 
 [locales]
 [locales.de-de]
-whats-new = "Das Containerformat wechselt von 1.0 zu 1.1. Zwei Namen ändern sich in jedem Container: Die Beschreibungsdatei heißt jetzt slipcase.flyleaf.toml statt slipcase.metadata.toml, und der Schlüssel, der die beschriebene Datei benennt, heißt content.file statt payload.file. Slipcase benennt dieselben zwei Dinge auch in der eigenen Oberfläche um: aus den Metadaten wird das Flyleaf, aus der Nutzlast die Inhaltsdatei.\n\nEin Container aus einer früheren Version trägt noch die Namen von 1.0, daher meldet diese Version ihn als nicht konform, statt ihn zu öffnen. Dabei geht nichts verloren: Eine .slpc ist im Kern ein gewöhnliches ZIP-Archiv, jedes Archivprogramm öffnet sie und entpackt beide Dateien direkt. Ein neuer Container aus dem Entpackten ergibt einen im Format 1.1."
+whats-new = "Sicherheitsversion: Die ZIP-Bibliothek, mit der Slipcase Container liest, ist auf 9.1 aktualisiert und schließt damit eine kritische und mehrere schwere Lücken beim Lesen von Archiven. Ein Eintrag, der sich beim Entpacken über seine angegebene Größe hinaus ausdehnt, wird jetzt als Fehler abgewiesen."
 [locales.en-us]
-whats-new = "The container format moves from 1.0 to 1.1. Two names inside every container change: the description file is now slipcase.flyleaf.toml rather than slipcase.metadata.toml, and the key naming the file it describes is content.file rather than payload.file. Slipcase renames the same two things throughout its own interface: \"metadata\" becomes \"flyleaf,\" \"payload\" becomes \"content file.\"\n\nA container made by an earlier version still carries 1.0's names, so this version reports it as not conformant rather than opening it. Nothing in the file is lost: a .slpc is an ordinary ZIP archive underneath, so any archive tool opens one and extracts both files directly. Making a new container from what you extract gives you a 1.1 one."
+whats-new = "Security release: the ZIP library Slipcase reads containers with moves to 9.1, closing a critical and several high-severity flaws in archive reading. A member that inflates past its recorded size is now refused as an error."

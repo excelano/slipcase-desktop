@@ -28,7 +28,7 @@ path = "src/main.rs"
 # A new version is read before it is taken: every rule this application enforces
 # about what a container is comes from this library, so a change to it is a
 # change to what the window says about somebody's file.
-slpc = { version = "0.4.0", features = ["fs", "provenance"] }
+slpc = { version = "0.7", features = ["fs", "provenance"] }
 # The flyleaf editor: the tree DESIGN.md §4 describes and the operations §5
 # describes, which were written here and moved out on 2026-09-07 so that
 # Tommy Flyleaf and this application share one TOML editor rather than two
