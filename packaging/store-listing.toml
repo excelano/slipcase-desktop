@@ -62,7 +62,7 @@ The .slpc file type association is registered so a downloaded container opens wi
 
 [locales."de-de"]
 website = "https://excelano.com/slipcase/"
-support = "https://excelano.com/slipcase/"
+support = "https://excelano.com/support/?app=Slipcase&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#slipcase"
 description = """
 Ein Slipcase-Container ist eine Datei, die ein Dokument beliebigen Typs zusammen mit dem Flyleaf enthält, das es beschreibt. Kopieren, senden oder verschieben Sie den Container — das Flyleaf geht mit. Statt in einem Dateinamen zu stecken, der abgeschnitten wird, in einer Begleitdatei, die verlorengeht, oder in der Datenbank eines anderen.
@@ -182,7 +182,7 @@ keywords = [
 
 [locales."en-us"]
 website = "https://excelano.com/slipcase/"
-support = "https://excelano.com/slipcase/"
+support = "https://excelano.com/support/?app=Slipcase&channel=Mac%20App%20Store"
 privacy = "https://excelano.com/legal/#slipcase"
 description = """
 A Slipcase container is one file holding a document of any type together with a flyleaf describing it. Copy the container, send it, or move it to another machine and the flyleaf goes too — instead of living in a filename that gets truncated, a sidecar file that gets separated, or a database on somebody else's computer.
