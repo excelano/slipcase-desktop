@@ -1,3 +1,26 @@
+slipcase-desktop (0.3.0) unstable; urgency=medium
+
+  * slpc 0.7 and zip 9.1: fixes GHSA-m665-v7pm-7grj (critical) and four high/medium advisories in archive reading
+  * Dependabot off: no workflows to track, and package versions move at release; the slpc, eframe and windows-registry notes move to Cargo.toml
+  * golden.rs describes the test against flyleaf as it stands; screenshot scripts drop the generated-by-ship line
+  * Remove ship.conf; SECURITY.md describes the release contents and the apt signing; CLAUDE.md drops the workflows directory from the platform arm; attribution headers
+  * Follow the desktop's theme through portal-theme
+  * Releases are the apps in excelano/shipping
+  * Retire the release workflows
+  * Write down the runFullTrust capability justification
+  * Move Microsoft's Notes for certification into the field ship pushes
+  * Move Apple's Notes for Review into the field ship pushes
+  * Remove author and AI-assistance attribution; it belongs in source file headers
+  * Drop commit trailer and file header rules; the global CLAUDE.md states them
+  * Drop AI-assistance disclosure sentence from README/SECURITY footer
+  * The Linux lane uses the fleet's composite actions for the checks it shares
+  * The arch check and screenshot use the fleet's composite actions
+  * The Windows lane calls the fleet's reusable workflow
+  * A pull request runs the matrix once, not twice
+  * ship sync: take-shots.sh's dark-mode wait now polls and reports why
+
+ -- David M. Anderson <david.anderson@excelano.com>  Wed, 04 Nov 2026 21:59:11 -0600
+
 slipcase-desktop (0.2.0) unstable; urgency=medium
 
   * deps: bump flyleaf from 0.2.4 to 0.2.5 in the cargo group (#19)
