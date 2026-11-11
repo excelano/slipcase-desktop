@@ -13,10 +13,9 @@
 //! every container built to break a reader produces a rendered state rather
 //! than a panic.
 //!
-//! An example rather than a second binary, so that `cargo install` puts one
-//! executable on a person's PATH. 0.1.4 on crates.io was the measurement: it
-//! installed a `corpus` beside `slipcase-desktop`, a name that claims nothing
-//! and collides with anything.
+//! An example rather than a second binary, so that the package has one
+//! executable: `corpus` on a person's PATH is a name that claims nothing and
+//! collides with anything.
 //
 // Author: David M. Anderson
 // Built with AI assistance (Claude, Anthropic)
