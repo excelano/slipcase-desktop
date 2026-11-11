@@ -3,8 +3,8 @@
 `DESIGN.md` §8. One directory per platform, plus `debian` for the way Linux is
 distributed.
 
-All four exist. Each platform's own README says what was decided there and what
-was measured rather than assumed.
+Each platform's own README says what was decided there and what was measured
+rather than assumed.
 
 ## linux
 
@@ -17,9 +17,8 @@ into a prefix, which defaults to `~/.local`:
     ./packaging/linux/uninstall.sh
 
 The script installs the executable too, found by asking `cargo metadata` where
-the target directory is. Guessing at `./target` was tried first and found
-nothing, because `[build] target-dir` in a Cargo configuration file moves it and
-no environment variable then says so.
+the target directory is, because `[build] target-dir` in a Cargo configuration
+file can move it and no environment variable then says so.
 
 Check that it took:
 
@@ -31,22 +30,16 @@ Check that it took:
 Before the media type is installed a `.slpc` reports as `application/zip`, which
 is true and useless: it is what every Slipcase is underneath.
 
-**The media type and the icon a container is drawn with left this repository.**
-They are `slipcase-common`'s, which this package depends on. Two packages cannot
-ship one path — dpkg refuses the second install outright — so as soon as
-`slipcase-open` claimed the same association the type could be declared here or
-there and not both, and the icon could only ever be in one of them. Every
-container on a machine with the other product drew as a blank generic document.
-Declaring it once and depending on it is the arrangement that has no such side.
+**The media type and the icon a container is drawn with are `slipcase-common`'s**,
+which this package depends on. Two packages cannot ship one path (dpkg refuses
+the second install outright), and `slipcase-open` claims the same association,
+so the type is declared once and every product depends on it.
+`slipcase-common`'s README says why the icon is named as the generic icon as
+well as the icon.
 
-The reasoning that used to sit in the XML's comments went with it, including why
-the icon has to be named as the generic icon as well as the icon. That finding
-was made here and is recorded in `slipcase-common`'s README, which measured it
-again from the other direction.
-
-**The desktop entry names six types, not one.** `slipcase-common` declares a
+**The desktop entry names every content file family, not one type.** `slipcase-common` declares a
 content file family per icon — `application/x.slipcase-pdf+zip` against `*.pdf.slpc`,
-and four more — so that a container named for its content file can be drawn with a
+and others like it — so that a container named for its content file can be drawn with a
 mark for it. Each is a `sub-class-of application/vnd.excelano.slipcase+zip`, and
 that inheritance carries the default application but not the *recommended* list,
 which is matched on the exact type. A family missing from `MimeType=` therefore
@@ -54,7 +47,7 @@ still opens on a double-click and still drops out of the top of Open With. The
 list is the one part of the arrangement that could not stay in `slipcase-common`,
 and adding a family there means adding it here.
 
-`install.sh` now says so when the machine has no declaration of the type, asked
+`install.sh` says so when the machine has no declaration of the type, asked
 of `share/mime/types` rather than of the filenames in `packages/`, since each
 product names its declaration differently.
 
@@ -65,12 +58,10 @@ The application bundle, the exported type declaration, and the icon:
     cargo build --release
     ./packaging/macos/build-app.sh
 
-`packaging/macos/README.md` is the detail. Two things there are worth knowing
-before reading anything else. Double-clicking works, but only because the Apple
-Event handler is registered at `applicationWillFinishLaunching:` — the two other
-plausible moments are tabulated there, and both fail. And `mdls` reports the
-wrong type for a `.slpc` even after the bundle is registered, while Launch
-Services reports the right one, which is measured and unresolved.
+`packaging/macos/README.md` is the detail, including why double-clicking works
+only because the Apple Event handler is registered at
+`applicationWillFinishLaunching:`, and why `mdls` reports the right type only
+once the bundle is signed.
 
 ## windows
 
@@ -83,10 +74,9 @@ Linux script's default of `~/.local`.
     powershell -ExecutionPolicy Bypass -File packaging\windows\uninstall.ps1
 
 `packaging/windows/README.md` says where each key goes and why, and records
-three things that were measured there rather than assumed — including that
+what was measured there rather than assumed, including that
 `assoc` and `ftype` cannot see a per-user registration and report a successful
 install as no association at all.
-
 
 ## debian
 
@@ -102,29 +92,25 @@ almost disjoint and that is the trap this package exists to avoid.
 **Why the two lists barely overlap is `DESIGN.md` §2's**, and it is not
 restated here. What follows from it is this directory's: `Depends` in
 `control.in` is written by hand rather than derived, and
-`packaging/linux/check-libraries.sh` is what keeps it honest — it runs the
-window under both display backends and refuses any library whose package
-`Depends` does not transitively reach. Run it after touching a dependency. Two
-releases shipped without `libxkbcommon-x11-0` before it existed.
+`packaging/linux/check-libraries.sh` keeps it accurate: it runs the window
+under both display backends and refuses any library whose package `Depends`
+does not transitively reach. Run it after touching a dependency.
 
 The package carries no maintainer scripts. `desktop-file-utils` and
 `hicolor-icon-theme` own dpkg triggers on the two directories this package
 writes into, so the desktop and icon caches are rebuilt by dpkg without a
 `postinst` asking for it. Both are in `Depends` for that reason as much as for
-anything they provide at run time. `shared-mime-info` is no longer named,
-because `slipcase-common` pulls it in.
+anything they provide at run time. `shared-mime-info` is not named, because
+`slipcase-common` pulls it in.
 
 ## The icon
 
 `packaging/linux/icons/slipcase-desktop.svg`, drawn on a 64-unit grid: a card
-sliding into an open-topped case. This is the *application* icon. The icon a
-container is drawn with was the same file under another name and now lives in
-`slipcase-common`, which is a different role and free to diverge from this one.
-It is the source for every platform's icon —
-macOS wants `.icns` and Windows wants `.ico`, both converted from this.
-`packaging/windows/make-ico` is the converter for the second; a `.icns` one has
-still to be written.
+sliding into an open-topped case. This is the *application* icon; the icon a
+container is drawn with is `slipcase-common`'s, a different role and free to
+diverge from this one. It is the source for every platform's application icon:
+`packaging/windows/make-ico` converts it to `.ico`, and
+`packaging/macos/build-app.sh` renders it into the `.icns`.
 
-It is deliberately two shapes and one band. The first version had a third text
-line on the card and an inset lip on the case, and both turned to mud at 48
-pixels. Check any change at 16, 24, 32, and 48 before committing it.
+It is deliberately two shapes and one band, because finer detail turns to mud at
+48 pixels. Check any change at 16, 24, 32, and 48 before committing it.

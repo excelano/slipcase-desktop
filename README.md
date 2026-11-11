@@ -18,18 +18,8 @@ A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
 
 ## Install
 
-**On macOS, Slipcase is on the
-[Mac App Store](https://apps.apple.com/us/app/slipcase-desktop/id6806461555?mt=12);
-on Windows it is in the Microsoft Store**, and on Linux it is in the Excelano apt
-repository. That is where a person should get it rather than from here.
-`https://excelano.com/slipcase/` is the product page for all three, and what
+`https://excelano.com/slipcase/` is the product page for every platform. What
 follows is the from-source route, which is what this repository is for.
-
-Two things about that link. It lists as **Slipcase Desktop** rather than
-*Slipcase*, because the name was taken on that store alone —
-`packaging/store-listing.toml` carries both names and `packaging/submission-notes.md` the reasoning. And the
-`?mt=12` is the Mac-software media type rather than decoration: without it the
-link can route a visitor to the iOS store.
 
 From crates.io, `cargo install slipcase-desktop` builds and installs the
 binary alone, on any platform with a Rust toolchain. It opens a container from
@@ -52,16 +42,12 @@ can ship it — two packages cannot install the same path.
 `packaging/debian/build-deb.sh` builds the package the Excelano apt repository
 ships. `packaging/README.md` has the detail.
 
-## Status
-
-Opening a container, editing its flyleaf, extracting and replacing the content
-file and file association all ship on Linux, macOS and Windows. Making a
-container out of a file ships on Linux.
+## Languages
 
 The window draws in German where the desktop asks for German, with English
 falling back wherever a sentence has none. `DESIGN.md` §10 is the mechanism and
-the two places English still shows; `po/` holds the catalogues and the two
-commands that keep them current.
+the places English still shows; `po/` holds the catalogs and the commands that
+keep them current.
 
 ## Testing
 
@@ -86,4 +72,4 @@ back.
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).

@@ -42,11 +42,10 @@
 # frame's top-left corner on a shot of the same size, so a coordinate read off
 # an earlier shot is the coordinate to give.
 #
-# They exist because a listing wants more than a document at rest. Apple
-# rejected this application's first Mac screenshots under guideline 2.3.3 for
-# exactly that: four frames of a document sitting still, nothing selected, and
-# the element pane reading *Select an element* in every one. A shot has to
-# show the application being used, and driving it is the only way to get one.
+# They exist because a listing wants more than a document at rest. App Review
+# guideline 2.3.3 asks that screenshots show the app in use, and frames of a
+# document sitting still with nothing selected do not. Driving the
+# application is the only way to get a shot of it being used.
 #
 # THREE THINGS MEASURED RATHER THAN ASSUMED
 #

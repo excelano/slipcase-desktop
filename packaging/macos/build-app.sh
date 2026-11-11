@@ -189,21 +189,19 @@ fi
     exit 1
 }
 
-# **A private symbol in the binary is a rejection, and one cost a review cycle.**
-# Slipcase 0.1.1 was refused on 2026-08-31 for referencing
-# `_CGSSetWindowBackgroundBlurRadius`, which arrived through `winit` and which
-# this application neither calls nor had heard of. Review scans the symbol table
-# rather than the call graph, so *unreachable* is not *absent*: the same build
-# with fat LTO and `-Wl,-dead_strip` still carried it. `Cargo.toml`'s
-# `[patch.crates-io]` is what removed it, and this is what notices if it or
-# anything like it comes back.
+# **A private symbol in the binary is a rejection under guideline 2.5.1.**
+# `_CGSSetWindowBackgroundBlurRadius` arrives through `winit`, and this
+# application never calls it. Review scans the symbol table rather than the
+# call graph, so *unreachable* is not *absent*: a build with fat LTO and
+# `-Wl,-dead_strip` still carries it. `Cargo.toml`'s `[patch.crates-io]`
+# removes it, and this is what notices if it or anything like it comes back.
 #
 # **The question it asks is a real one rather than a list of names.** A denylist
-# of symbols Apple has already rejected somebody for would have caught nothing
-# here until after the rejection. So: for every undefined symbol the executable
+# of symbols Apple has already rejected somebody for catches a symbol only
+# after somebody's rejection. So: for every undefined symbol the executable
 # imports from a system *framework*, does that framework's own public headers
-# declare it? That is exactly the line Apple draws — measured against the
-# refused binary, `CGShieldingWindowLevel` is in `CGDirectDisplay.h` and is
+# declare it? That is exactly the line Apple draws — measured against a
+# binary carrying the blur symbol, `CGShieldingWindowLevel` is in `CGDirectDisplay.h` and is
 # fine, while the two `CGS` symbols appear in no header and only in
 # `CoreGraphics.tbd`.
 #
@@ -229,7 +227,7 @@ fi
 # umbrella yields 59 headers and no `ColorSyncDevice.h`; with `-L`, 1281
 # headers and the declaration.
 #
-# Measured on the refused binary: two findings, both correct, in 3.5 seconds.
+# Measured on a binary carrying the blur symbol: two findings, both correct, in 3.5 seconds.
 # On the patched one: none.
 private_symbols() {
     exe="$1"

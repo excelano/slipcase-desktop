@@ -21,8 +21,7 @@ by git and a deleted bundle otherwise leaves a claim behind it.
 
 ## The bundle is the unit
 
-A bare executable draws a window on macOS and this application was first run
-here that way, but it is not a thing the platform can associate anything with.
+A bare executable draws a window on macOS, but it is not a thing the platform can associate anything with.
 `lsappinfo` reports `bundleID=[ NULL ]` and `bundle path=[ NULL ]` for one, and
 Launch Services files it as a nameless foreground process. Nothing below works
 without the bundle.
@@ -90,51 +89,38 @@ path a person actually sees:
     cargo run --example opens-with -- some.slpc report.pdf
 
 Before the bundle is registered this prints nothing for `some.slpc`, because
-macOS synthesises a dynamic type for an extension nothing declares and nothing
-claims a synthesised type. After it is registered it prints `Slipcase`, by the
+macOS synthesizes a dynamic type for an extension nothing declares and nothing
+claims a synthesized type. After it is registered it prints `Slipcase`, by the
 same code that prints `Preview` for the PDF: `display_name` reads
 `CFBundleDisplayName`, and this bundle's is `Slipcase`.
 
-**Resolved: `mdls` agrees once the bundle is signed.** Measured 2026-08-25
-against a bundle signed with an Apple Development certificate: `lsregister
--dump` flags the type `trusted` where it flagged it `untrusted` before, `mdls
--name kMDItemContentType` reports `com.excelano.slipcase`, and `kMDItemKind`
-reports `Slipcase container`. The paragraph below was right about the cause and
-is kept because it is the measurement that made the suspicion worth having. A
-distribution certificate is not needed for this — any signature is.
+**`mdls` agrees once the bundle is signed.** Unsigned, the registration record
+carries an `untrusted` flag and Spotlight will not take the exported type: `mdls
+-name kMDItemContentType some.slpc` reports a dynamic `dyn.…` type even though
+Launch Services resolves the extension to `com.excelano.slipcase` with
+`isDeclared` true. Signed, `lsregister -dump` flags the type `trusted`, `mdls`
+reports `com.excelano.slipcase`, and `kMDItemKind` reports `Slipcase
+container`. Any signature does it; a distribution certificate is not needed.
 
-**`mdls` disagreed while the bundle was unsigned, and was not the authority
-then.** After registration,
-`mdls -name kMDItemContentType some.slpc` still reports the dynamic
-`dyn.ah62d4rv4ge81g5duqq`, on a file created after registration and after
-`mdimport` was run against it by hand. Launch Services resolves the extension to
-`com.excelano.slipcase` at the same moment, with `isDeclared` true and
-`isDynamic` false. The registration record carries an `untrusted` flag, which is
-what an unsigned bundle's exported type gets, and that is the likeliest reason
-Spotlight will not take it. That was untested when it was written, and the
-paragraph above is what checking it found.
+## The double-click
 
-## The double-click, and the three attempts it took
-
-**A double-clicked container opens.**
-This section used to say it could not be done. It could.
+A double-clicked container opens.
 
 macOS does not deliver an opened document as `argv[1]` the way Linux and
 Windows do; it launches the application with no arguments at all and sends an
-Apple Event. Nothing was listening, so `AppKit` refused it and Finder reported
+Apple Event. With nothing listening, `AppKit` refuses it and Finder reports
 *The document could not be opened. Slipcase cannot open files in the "Slipcase
-container" format* — an accusation against an application whose association was
-correct all along.
+container" format*, though the association is correct.
 
-`src/opened_document.rs` listens now. It handles the event rather than
+`src/opened_document.rs` listens. It handles the event rather than
 replacing the application delegate: `NSApplication` has exactly one delegate and
 winit owns it, but `NSAppleEventManager` takes a handler directly and a
 notification has any number of observers, so nothing of winit's is displaced.
 It is the one module in this application that writes `unsafe`, and `CLAUDE.md`
 says what that costs.
 
-**The moment of registration is the whole problem.** Two of the three plausible
-moments fail, and both were measured rather than reasoned about:
+**The moment of registration decides it.** Two of the three plausible moments
+fail, measured:
 
 | Registered | Cold launch | Double-clicked into a running window |
 |---|---|---|
@@ -167,44 +153,37 @@ unsigned one, and makes every sandbox measurement taken against it meaningless.
 
 **Signing is not optional here, and not only for distribution.** The App
 Sandbox is inert until the entitlement is inside a signature, so an unsigned
-bundle carrying that file is simply not sandboxed. Every sandbox measurement in
-Every measurement here was made against a signed bundle for that reason.
+bundle carrying that file is simply not sandboxed, and every sandbox
+measurement is made against a signed bundle for that reason.
 
-**Which certificate does what.** An **Apple Development** identity, which this
-machine already holds, signs a bundle that runs and sandboxes here — enough for everything measured so far, and it needs nothing from the
-developer portal. An **Apple Distribution** identity is what a Store upload must
-be signed with, and a **Mac Installer Distribution** identity signs the package
-that carries it. Neither is on this machine yet and both are created in the
-account that already ships two iOS applications. A **Developer ID Application**
-identity is a third thing again, for distributing outside the Store, and only
-that path involves notarization: a Store submission is reviewed rather than
-notarized.
+**Which certificate does what.** An **Apple Development** identity signs a
+bundle that runs and sandboxes on a registered machine, which is enough to
+measure with and needs nothing further from the developer portal. An **Apple
+Distribution** identity is what a Store upload must be signed with, and a **Mac
+Installer Distribution** identity signs the package that carries it. A
+**Developer ID Application** identity is a third thing again, for distributing
+outside the Store, and only that path involves notarization: a Store submission
+is reviewed rather than notarized.
 
-**What an unsigned bundle did, kept because it is why the above matters.**
-`spctl -a -t exec` reported `rejected`, `source=no usable signature`. A bundle
-built here carries no `com.apple.quarantine` attribute, so `open` launched it
-with no prompt, which is what made the unsigned build-and-test loop possible at
-all. A bundle that reached a person by download would carry that attribute and
-Gatekeeper would refuse it, with System Settings → Privacy & Security → Open
-Anyway the only way past.
+**An unsigned bundle is refused by Gatekeeper.** `spctl -a -t exec` reports
+`rejected`, `source=no usable signature`. A bundle built locally carries no
+`com.apple.quarantine` attribute, so `open` launches it with no prompt, which is
+what makes an unsigned build-and-test loop possible. A bundle that reaches a
+person by download carries that attribute and Gatekeeper refuses it, with System
+Settings → Privacy & Security → Open Anyway the only way past.
 
 ## What a Store build is
 
-It exists and it ships. `build-app.sh --store PROFILE` produces it and
-`ship` has the process; what belongs here is why it is shaped that way.
+`build-app.sh --store PROFILE` produces it and the release apps in
+excelano/shipping upload it; what belongs here is why it is shaped that way.
 
-**The sandbox is the gate**, and it is not a formality. Every Store binary is
-sandboxed, and the sandbox is inert until the entitlement is inside a signature
-— so an unsigned bundle carrying the entitlements file is simply not sandboxed,
-and every measurement taken against one is meaningless. Signing is therefore not
-only a distribution concern here. An Apple Development certificate is enough to
-measure with; a distribution certificate is only needed for the upload itself.
+**Every Store binary is sandboxed**, so the Signing section above applies to
+everything here.
 
-**Three paths were measured against a real sandbox rather than reasoned about,
-and the prediction was wrong in both directions.** The handover survives:
-`opener` forks `/usr/bin/open`, which this file once said the sandbox would deny
-outright, and it does not — exec is permitted, the child inherits the sandbox,
-and Launch Services is reachable over Mach IPC from inside it. The save did not:
+**The handover and the save were measured against a real sandbox.** The
+handover survives: `opener` forks `/usr/bin/open`, exec is permitted, the child
+inherits the sandbox, and Launch Services is reachable over Mach IPC from inside
+it. The in-place save does not:
 `Destination::in_place` creates a randomly-named sibling of the container, and
 the grant a person gives through the open panel covers the file rather than its
 directory. That is what `src/staging.rs` exists for, and `DESIGN.md` §5 carries
@@ -218,7 +197,7 @@ Store build also needs `com.apple.application-identifier` and
 The profile grants `keychain-access-groups` as well and it is declined, because
 a capability asked for and unused is a question at review with no good answer.
 
-**A Store-signed bundle cannot be launched here.** AMFI refuses a restricted
+**A Store-signed bundle cannot be launched locally.** AMFI refuses a restricted
 entitlement without a profile covering the machine, and a Mac App Store profile
 covers none, so anything needing a running application uses a Developer ID build
 and the real article is reached through TestFlight.
@@ -231,55 +210,52 @@ a claim on that path, and the claim survives the rebuild — so once the install
 copy is older than the submission build, or absent, every double-click on a
 container launches the submission build and the kernel kills it on the spot:
 `SIGKILL (Code Signature Invalid)`, `Taskgated Invalid Signature`, one crash
-report per attempt and no window. Measured 2026-09-04, with the Store copy in
-the Trash. `build-app.sh --store` now withdraws the claim with `lsregister -u`
-as its last step, and that holds: Spotlight indexing the bundle did not register
-it over three minutes, only a deliberate hand-off did. A bundle copied aside
+report per attempt and no window. `build-app.sh --store` withdraws the claim
+with `lsregister -u` as its last step, and that holds: Spotlight indexing the
+bundle does not register it again, only a deliberate hand-off does. A bundle copied aside
 (`dist-refused/` is one) keeps whatever claim it had, so unregister it by hand.
 If a container opens Archive Utility, that is the *absence* of a claim — the
 Store copy is not installed — rather than a defect here.
 
 ## No private symbol reaches the binary
 
-Guideline 2.5.1, and it cost a review cycle. The submission was refused for
-referencing `_CGSSetWindowBackgroundBlurRadius`, which nothing here calls: it is
+Guideline 2.5.1 refuses a binary that references a private symbol, and
+`_CGSSetWindowBackgroundBlurRadius` is one that nothing here calls: it is
 `winit`'s, declared in `platform_impl/macos/ffi.rs` and called from
 `WindowDelegate::set_blur` with neither a feature nor a `cfg` in front of it.
 **Review reads the symbol table and not the call graph**, so unreachable is not
-absent, and every macOS binary this project has built carried it.
+absent.
 
-Three things were eliminated by measurement before anything was forked. Nothing
+Three things are ruled out by measurement. Nothing
 here reaches blur — `egui-winit` has no reference to it and eframe's only one is
 in `src/web/`. A build flag does not remove it: fat LTO with `-Wl,-dead_strip`
 still carries the symbol, the call sitting behind a runtime `if attrs.blur` the
 optimizer will not fold. And the other CoreGraphics symbol in that file is fine,
 `CGShieldingWindowLevel` being declared in the public `CGDirectDisplay.h` while
-the two `CGS` ones appear in no header at all — which is the whole definition of
-private, and the line the check below draws.
+the two `CGS` ones appear in no header at all, which is what private means and
+the line the check below draws.
 
 `Cargo.toml`'s `[patch.crates-io]` removes it and says when to delete itself.
 
 **`build-app.sh` refuses to bundle an executable that imports a symbol from a
 system framework which that framework's own public headers do not declare.** A
-list of names Apple has already caught somebody with would have found nothing
-here until after the rejection, so it asks a question instead. Frameworks only:
+list of names Apple has already caught somebody with finds a symbol only after
+somebody's rejection, so it asks a question instead. Frameworks only:
 libSystem and libobjc are the compiler's own runtime, and asking about them
-produced a dozen findings that were all noise. The whole `.framework` is
-searched rather than its `Headers`, because Carbon and CoreServices are
-umbrellas and scoping to `Headers` reported five false positives from those two
-alone. It also refuses a binary `nm` read no imports from, an empty list being
+finds only noise. The full `.framework` is searched rather than its `Headers`,
+because Carbon and CoreServices are umbrellas and scoping to `Headers` reports
+false positives from those two. It also refuses a binary `nm` read no imports from, an empty list being
 `nm` having failed rather than a clean answer.
 
-It was watched to fail on the refused executable before it was believed.
-`apple-silicon.yml` already calls `build-app.sh`, so it runs on every push.
+It fails on an executable carrying the blur symbol, and every bundle goes
+through it because `build-app.sh` is the only way a bundle is made.
 
 ## The icon
 
 One drawing, `packaging/linux/icons/slipcase-desktop.svg`, which
-`packaging/README.md` names as the source for every platform. Linux carries the
-application icon and the document icon as two files with byte-identical content;
-macOS needs one `.icns` and both `CFBundleIconFile` and `UTTypeIconFile` point
-at it.
+`packaging/README.md` names as the source for every platform's application
+icon. macOS needs one `.icns`, and both `CFBundleIconFile` and `UTTypeIconFile`
+point at it.
 
 `build-app.sh` renders the ten sizes `iconutil` wants using `sips`, which reads
 SVG. It rasterizes at whatever width and height the document declares and then
@@ -287,8 +263,8 @@ resamples to the size asked for, so rendering the 64-unit source at 1024 gives a
 soft upscale of a 64-pixel bitmap rather than a large clean drawing. The script
 rewrites the declared size before each rendering, which makes every size a true
 rendering at that size and matches how the Linux icon theme draws the same file.
-Both ways were compared at 16 pixels and they are near-identical there; the
-native rendering was taken because it needs no intermediate.
+Rendering native and downsampling a large rendering are near-identical at 16
+pixels; native needs no intermediate.
 
 That rewrite is a substitution on the SVG's `width` and `height` attributes and
 would fail silently if they were ever written differently, leaving every icon a

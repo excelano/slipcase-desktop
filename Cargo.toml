@@ -150,9 +150,9 @@ windows-registry = "0.6.1"
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
 xattr = { version = "1.6", default-features = false }
 
-# A Mac App Store submission was refused on 2026-08-31 under Guideline 2.5.1 for
-# referencing `_CGSSetWindowBackgroundBlurRadius`, a private CoreGraphics symbol
-# nothing here calls. `winit` declares it in `platform_impl/macos/ffi.rs` and
+# App Review refuses a binary under Guideline 2.5.1 for referencing
+# `_CGSSetWindowBackgroundBlurRadius`, a private CoreGraphics symbol nothing
+# here calls. `winit` declares it in `platform_impl/macos/ffi.rs` and
 # calls it from `WindowDelegate::set_blur`, neither behind a feature nor a `cfg`,
 # and review reads the symbol table rather than the call graph.
 #

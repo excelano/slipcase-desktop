@@ -14,11 +14,10 @@
 #
 # WHAT THE SET SHOWS, AND WHY
 #
-# An edit is under way in three of the four. Apple rejected Segler's first set
-# under guideline 2.3.3 - *the screenshots do not show the actual app in use* -
-# for four frames of a window at rest, and the Microsoft set here is exactly
-# that shape: two containers photographed twice with nothing happening. It
-# passes there and would not pass here.
+# An edit is under way in three of the four. App Review guideline 2.3.3 asks
+# that screenshots show the actual app in use, and frames of a window at rest
+# do not. The Microsoft set here is that shape, two containers photographed
+# twice with nothing happening, which Microsoft accepts and Apple does not.
 #
 # The fourth is the one thing a still frame can show without an edit: the same
 # container carrying a quarantine attribute, so the card's provenance line

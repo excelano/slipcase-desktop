@@ -3,14 +3,11 @@
 # declares — the Linux half of the pair `packaging/windows/check-imports.ps1`
 # is the other half of.
 #
-# **It exists because the same defect shipped on both platforms in one day.**
-# Windows linked `VCRUNTIME140.dll`, which is not part of Windows, and 0.1.1
-# failed Store certification on a clean machine. Looking for the Linux
-# equivalent the same afternoon found one: `libxkbcommon-x11-0` was opened by
-# name on the X11 path, was absent from `Depends`, and is reachable from
-# nothing else in the list — so an X11 machine that installed the package got
-# an application that panicked at startup. Measured rather than reasoned about,
-# by putting a broken copy earlier on the search path:
+# **A library opened by name is invisible to `dpkg-shlibdeps`.**
+# `libxkbcommon-x11-0` is opened by name on the X11 path, and if `Depends` does
+# not reach it an X11 machine that installs the package gets an application
+# that panics at startup. Measured by putting a broken copy earlier on the
+# search path:
 #
 #     thread 'main' panicked at xkbcommon-dl-0.4.2/src/x11.rs:59:28:
 #     Library libxkbcommon-x11.so could not be loaded.
@@ -18,7 +15,7 @@
 # **A dependency on the toolchain is invisible from inside the toolchain**, and
 # a dependency on the desktop is invisible from inside the desktop. Every
 # machine this project builds on has the whole display stack, so neither
-# platform's miss could be seen by running the application where it was built.
+# platform's miss can be seen by running the application where it was built.
 #
 # It is a command and never a test, for the reason the conformance corpus is:
 # it needs a display, and a test that has to choose between skipping quietly
@@ -30,9 +27,7 @@
 #
 # **Both backends, because they load disjoint sets.** A Wayland session never
 # opens libX11 or libxkbcommon-x11, and an X11 session never opens
-# libwayland-client. Half the list is unexercised by any single run, which is
-# exactly how the gap survived: this machine is Wayland, so nobody had run the
-# half that was broken.
+# libwayland-client. Half the list is unexercised by any single run.
 #
 # Author: David M. Anderson
 # Built with AI assistance (Claude, Anthropic)

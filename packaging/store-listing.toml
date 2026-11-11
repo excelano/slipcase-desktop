@@ -2,7 +2,7 @@
 #
 # Every line of this is a claim about the code, and a claim like that goes
 # stale silently in a web form nobody diffs. So it lives here, is reviewed and
-# committed like anything else, and `ship` pushes it to both stores on every
+# committed like anything else, and the release apps push it to both stores on every
 # release. Edit here; do not edit a listing in a browser.
 #
 # The fields both stores take sit at the top of a language. The rest sit under
@@ -10,7 +10,7 @@
 # not count them the same way. The name is under each store because the two can
 # disagree about it.
 #
-# Limits, which ship checks before the tag and counts in characters rather than
+# Limits, which the release apps check before the tag and counts in characters rather than
 # bytes: apple.name and apple.subtitle 30, apple.promotional-text 170,
 # apple.keywords 100 including the commas, description 4,000 - the Microsoft
 # Store allows 10,000 and this is written to Apple's - microsoft.short-description
@@ -28,12 +28,12 @@
 #
 # THE GERMAN HALF
 #
-# Terminology is the application's own, out of the catalogue at `po/de.po`. A
+# Terminology is the application's own, out of the catalog at `po/de.po`. A
 # listing that calls a thing something the window does not teaches a reader a
-# word the product has no use for, so where the catalogue has a term it wins.
+# word the product has no use for, so where the catalog has a term it wins.
 #
 # German runs longer than English, which is what the limits above are for:
-# `ship` counts every field before the tag, in characters rather than bytes,
+# The release apps count every field before the tag, in characters rather than bytes,
 # and a release stops rather than a submission failing.
 
 apple-review-notes = """

@@ -3,27 +3,29 @@
     Refuse a binary that imports a DLL Windows does not ship.
 
 .DESCRIPTION
-    Slipcase 0.1.1 failed Microsoft Store certification on 2026-08-29 under
-    policy 10.2.4.1. The package installed on the tester's clean machine and
-    then would not start: *The code execution cannot proceed because
-    VCRUNTIME140.dll was not found.* That DLL ships in the Visual C++
-    Redistributable, not in Windows.
+    A binary importing a DLL that is not part of Windows installs on a clean
+    machine and then will not start: *The code execution cannot proceed
+    because VCRUNTIME140.dll was not found.* That DLL ships in the Visual C++
+    Redistributable, not in Windows, and Store policy 10.2.4.1 refuses it.
 
-    Nothing this project runs could have caught it. The tests pass, the
-    conformance corpus passes, the certification kit passed, and the
+    Nothing else this project runs catches it. The tests pass, the
+    conformance corpus passes, the certification kit passes, and the
     application starts - on a machine with Visual Studio installed, which is
-    every machine any of the three platforms has ever built on. The defect is
+    every machine this project builds on. The defect is
     invisible from inside the toolchain that causes it, so the check has to be
-    about the artefact rather than about whether it runs here.
+    about the artifact rather than about whether it runs here.
 
     This is the Windows analogue of the `ldd` line CLAUDE.md uses to check what
     the Linux binary links, and it exists for the same reason: the rule means
     the outcome, so check the outcome.
 
+    Author: David M. Anderson
+    Built with AI assistance (Claude, Anthropic)
+
     It parses the PE import table itself rather than shelling out to dumpbin,
     because dumpbin comes with Visual C++ and a check that needs the toolchain
     is a check that cannot run where the toolchain is absent. Cross-checked
-    against `dumpbin /dependents` on 2026-08-29: same names, same order.
+    against `dumpbin /dependents`: same names, same order.
 
 .PARAMETER Binary
     The executable to read. Defaults to the release build.
@@ -44,7 +46,7 @@ function Refuse([string] $why) {
 # Every DLL here has been confirmed present in C:\Windows\System32 on a stock
 # Windows 10 or 11 install. The list is deliberately explicit: a dependency
 # this project has never seen before should stop a build and be looked at by a
-# person, which is the step that was missing when VCRUNTIME140.dll arrived.
+# person before it reaches a package.
 $InBox = @(
     'advapi32.dll', 'bcryptprimitives.dll', 'combase.dll', 'dwmapi.dll',
     'dxgi.dll', 'gdi32.dll', 'imm32.dll', 'kernel32.dll', 'ntdll.dll',
