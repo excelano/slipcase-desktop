@@ -2,10 +2,10 @@
 # The version, in whichever spelling the caller needs.
 #
 # `Cargo.toml` holds the number and nothing else should. Three artefacts want it
-# in three shapes and two of them cannot be the plain string, so before this
-# existed `build-deb.sh` and `build-app.sh` each carried their own copy of the
-# same `sed` — and `Info.plist.in` used one placeholder for two Apple fields
-# that must not hold the same value. One parser, one place to correct it.
+# in three shapes and two of them cannot be the plain string, so the build
+# scripts read it here rather than each carrying a copy of the same `sed`, and
+# `Info.plist.in` takes the two Apple fields that must not hold the same value
+# from two different spellings. One parser, one place to correct it.
 #
 #   ./packaging/version.sh              0.1.0     Cargo's own, and Debian's
 #   ./packaging/version.sh --appx       0.1.0.0   four parts, the Store requires
