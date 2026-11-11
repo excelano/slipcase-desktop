@@ -21,13 +21,11 @@ A Rust toolchain is all it needs. Nothing in the dependency tree compiles C.
 `https://excelano.com/slipcase/` is the product page for every platform. What
 follows is the from-source route, which is what this repository is for.
 
-From crates.io, `cargo install slipcase-desktop` builds and installs the
-binary alone, on any platform with a Rust toolchain. It opens a container from
-the command line and does everything the packaged application does, but a
-crate carries no desktop entry and no media type, so a double-click in a file
-manager does not reach it until the two steps below have run as well.
-
-On Linux, the media type and then the desktop integration:
+From a clone, `cargo build --release` builds the binary on any platform with a
+Rust toolchain. It opens a container from the command line and does everything
+the packaged application does, but a double-click in a file manager does not
+reach it until the media type and the desktop integration are installed. On
+Linux:
 
 ```
 ../slipcase-common/install.sh

@@ -1,10 +1,9 @@
 [package]
 name = "slipcase-desktop"
 description = "Open a Slipcase container, read its flyleaf, and hand the content file to the application the system has registered for it"
+publish = false
 homepage = "https://excelano.com/slipcase/"
 readme = "README.md"
-keywords = ["slipcase", "container", "flyleaf", "gui", "egui"]
-categories = ["gui", "filesystem"]
 version = "0.3.0"
 edition = "2021"
 authors = ["David M. Anderson"]
