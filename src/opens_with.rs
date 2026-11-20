@@ -255,8 +255,8 @@ mod linux {
             let keys = victim.path().join("authorized_keys");
             std::fs::write(&keys, b"ssh-rsa AAAA a-key-that-matters").expect("writes");
 
-            let at = std::env::temp_dir()
-                .join(format!("slipcase-desktop-probe-{}", std::process::id()));
+            let at =
+                std::env::temp_dir().join(format!("slipcase-desktop-probe-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&at);
             let planted = Planted(at.clone());
             std::fs::create_dir_all(&at).expect("plants the old path");
@@ -287,14 +287,16 @@ mod linux {
         #[test]
         fn the_probe_directory_is_private() {
             let dir = probe_dir().expect("a probe directory");
-            let mode = std::fs::metadata(dir.path()).expect("stats").permissions().mode();
+            let mode = std::fs::metadata(dir.path())
+                .expect("stats")
+                .permissions()
+                .mode();
             assert_eq!(mode & 0o777, 0o700, "mode was {:o}", mode & 0o777);
 
             // And the probe inside it is where it was put, not somewhere else.
             let probe = write_probe(dir.path(), "text", "report.pdf", b" ").expect("writes");
             assert!(probe.starts_with(dir.path()), "{}", probe.display());
         }
-
 
         /// `Name[de]` is somebody else's language, and a `Name` under an action
         /// group is the action's rather than the application's.

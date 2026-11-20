@@ -111,8 +111,12 @@ fn a_content_file_handed_over_is_readable_by_another_process() {
     let source = container(dir.path(), b"%PDF-1.7 the content file\n");
     let scratch = scratch();
 
-    let landed = match slipcase_desktop::extract(source.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
-        .expect("extracts")
+    let landed = match slipcase_desktop::extract(
+        source.as_path(),
+        scratch.path(),
+        &slipcase_desktop::Watch::new(),
+    )
+    .expect("extracts")
     {
         slipcase_desktop::Extracted::Done(p) => p,
         slipcase_desktop::Extracted::Cancelled => unreachable!("an unwatched copy"),
@@ -177,17 +181,29 @@ fn the_content_file_waits_somewhere_private() {
     let dir = tempfile::tempdir().expect("a temporary directory");
     let source = container(dir.path(), b"private\n");
     let scratch = scratch();
-    slipcase_desktop::extract(source.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
-        .expect("extracts");
+    slipcase_desktop::extract(
+        source.as_path(),
+        scratch.path(),
+        &slipcase_desktop::Watch::new(),
+    )
+    .expect("extracts");
 
     let mode = std::fs::metadata(scratch.path())
         .expect("stats")
         .permissions()
         .mode();
-    assert_eq!(mode & 0o777, 0o700, "this file's own builder: {:o}", mode & 0o777);
+    assert_eq!(
+        mode & 0o777,
+        0o700,
+        "this file's own builder: {:o}",
+        mode & 0o777
+    );
 
     let landed = scratch.path().join("report.pdf");
-    assert!(landed.is_file(), "the content file is not in the directory it was given");
+    assert!(
+        landed.is_file(),
+        "the content file is not in the directory it was given"
+    );
     assert_eq!(std::fs::read(&landed).expect("reads"), b"private\n");
 }
 
@@ -215,8 +231,12 @@ fn a_second_container_can_be_handed_over_into_the_same_directory() {
 
     slipcase_desktop::extract(a.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
         .expect("the first extracts");
-    let landed = match slipcase_desktop::extract(b.as_path(), scratch.path(), &slipcase_desktop::Watch::new())
-        .expect("the second extracts into the same directory")
+    let landed = match slipcase_desktop::extract(
+        b.as_path(),
+        scratch.path(),
+        &slipcase_desktop::Watch::new(),
+    )
+    .expect("the second extracts into the same directory")
     {
         slipcase_desktop::Extracted::Done(p) => p,
         slipcase_desktop::Extracted::Cancelled => unreachable!("an unwatched copy"),
@@ -334,12 +354,12 @@ fn packing_a_download_does_not_launder_it() {
 
     // And what the operating system would be handed.
     let out = scratch();
-    let extracted = match slipcase_desktop::extract(&into, out.path(), &slipcase_desktop::Watch::new())
-    {
-        Ok(slipcase_desktop::Extracted::Done(path)) => path,
-        Ok(slipcase_desktop::Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
-        Err(e) => panic!("extraction failed: {e}"),
-    };
+    let extracted =
+        match slipcase_desktop::extract(&into, out.path(), &slipcase_desktop::Watch::new()) {
+            Ok(slipcase_desktop::Extracted::Done(path)) => path,
+            Ok(slipcase_desktop::Extracted::Cancelled) => panic!("an unwatched copy was cancelled"),
+            Err(e) => panic!("extraction failed: {e}"),
+        };
     assert!(
         slpc::provenance::arrived_from_elsewhere(&extracted),
         "the content file came back out of the container unmarked"

@@ -622,8 +622,8 @@ impl App {
     /// nothing, so there is still something to write, and showing only the
     /// edited mark hides the reason behind the very state the failure caused.
     fn notes(&self) -> (bool, Option<&Said>) {
-        let edited = self.opened.as_ref().is_some_and(Opened::flyleaf_edited)
-            || self.replacing.is_some();
+        let edited =
+            self.opened.as_ref().is_some_and(Opened::flyleaf_edited) || self.replacing.is_some();
         (edited, self.said.as_ref())
     }
 
@@ -643,8 +643,7 @@ impl App {
     fn bar(&self, ui: &mut egui::Ui) -> Option<Pressed> {
         let (edited, said) = self.notes();
         let history = self.opened.as_ref().and_then(|o| o.flyleaf.as_ref());
-        let (can_undo, can_redo) =
-            history.map_or((false, false), |d| (d.can_undo(), d.can_redo()));
+        let (can_undo, can_redo) = history.map_or((false, false), |d| (d.can_undo(), d.can_redo()));
         let busy = self.busy();
         let mut pressed = None;
         // Not through `press` below, which holds `pressed` for the whole panel.
@@ -734,7 +733,10 @@ impl App {
     fn take_replacement(&mut self, file: PathBuf) {
         if let Some(why) = why_not_a_content_file(&file) {
             self.replacing = None;
-            self.said = Some(Said { text: why, wrong: true });
+            self.said = Some(Said {
+                text: why,
+                wrong: true,
+            });
             return;
         }
         self.replacing = Some(file);
@@ -809,7 +811,12 @@ impl App {
                     wrong: false,
                 });
             }
-            Made::Failed(why) => self.said = Some(Said { text: why, wrong: true }),
+            Made::Failed(why) => {
+                self.said = Some(Said {
+                    text: why,
+                    wrong: true,
+                });
+            }
         }
     }
 
@@ -841,10 +848,9 @@ impl App {
                     t("Not made. What was written did not read back conformant: {verdict}"),
                     &[("verdict", &v.to_string())],
                 )),
-                Err(e) => Made::Failed(fill(
-                    t("Not made: {reason}"),
-                    &[("reason", &e.to_string())],
-                )),
+                Err(e) => {
+                    Made::Failed(fill(t("Not made: {reason}"), &[("reason", &e.to_string())]))
+                }
             };
             let _ = sender.send(made);
             // A pack that finishes while nothing is touching the window leaves
@@ -1062,7 +1068,8 @@ impl App {
             For::Replacement => self.take_replacement(path),
             For::NewContentFile => self.take_new_content_file(path, ctx),
             For::NewContainer => {
-                let Creating::Naming(content) = std::mem::replace(&mut self.creating, Creating::Idle)
+                let Creating::Naming(content) =
+                    std::mem::replace(&mut self.creating, Creating::Idle)
                 else {
                     return;
                 };
@@ -1081,7 +1088,10 @@ impl App {
     fn take_new_content_file(&mut self, content: PathBuf, ctx: &egui::Context) {
         if let Some(why) = why_not_a_content_file(&content) {
             self.creating = Creating::Idle;
-            self.said = Some(Said { text: why, wrong: true });
+            self.said = Some(Said {
+                text: why,
+                wrong: true,
+            });
             return;
         }
         self.said = None;
@@ -1109,8 +1119,10 @@ enum Pressed {
 /// undo's.
 fn chords(ui: &egui::Ui) -> (bool, bool) {
     let redo = ui.input_mut(|i| {
-        i.consume_key(egui::Modifiers::COMMAND | egui::Modifiers::SHIFT, egui::Key::Z)
-            || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
+        i.consume_key(
+            egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            egui::Key::Z,
+        ) || i.consume_key(egui::Modifiers::COMMAND, egui::Key::Y)
     });
     let undo = ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::Z));
     (undo, redo)
@@ -1149,7 +1161,11 @@ fn row_width(ui: &egui::Ui, buttons: &[(&str, Pressed)]) -> f32 {
         .iter()
         .map(|(label, _)| {
             ui.painter()
-                .layout_no_wrap((*label).to_owned(), font.clone(), egui::Color32::PLACEHOLDER)
+                .layout_no_wrap(
+                    (*label).to_owned(),
+                    font.clone(),
+                    egui::Color32::PLACEHOLDER,
+                )
                 .size()
                 .x
                 + padding
@@ -1170,7 +1186,9 @@ fn nothing_open(
     ui.vertical_centered(|ui| {
         ui.add_space(72.0);
         ui.heading("Slipcase");
-        ui.label(t("Open a container to see what is in it, or make one out of a file."));
+        ui.label(t(
+            "Open a container to see what is in it, or make one out of a file.",
+        ));
         ui.add_space(12.0);
         // The width is measured and handed over rather than left to the
         // layout, and looking at the window is what settled that.
@@ -1181,13 +1199,17 @@ fn nothing_open(
         // how this drew until somebody looked. Every assertion in this file
         // passed against it.
         let row = egui::vec2(row_width(ui, &ways_in()), 0.0);
-        ui.allocate_ui_with_layout(row, egui::Layout::left_to_right(egui::Align::Center), |ui| {
-            for (label, what) in ways_in() {
-                if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
-                    pressed = Some(what);
+        ui.allocate_ui_with_layout(
+            row,
+            egui::Layout::left_to_right(egui::Align::Center),
+            |ui| {
+                for (label, what) in ways_in() {
+                    if ui.add_enabled(!busy, egui::Button::new(label)).clicked() {
+                        pressed = Some(what);
+                    }
                 }
-            }
-        });
+            },
+        );
         if making(ui, creating) {
             pressed = Some(Pressed::StopMaking);
         }
@@ -1440,14 +1462,12 @@ impl App {
                 use std::os::unix::fs::PermissionsExt as _;
                 builder.permissions(std::fs::Permissions::from_mode(0o700));
             }
-            let made = builder
-                .tempdir()
-                .map_err(|e| {
-                    fill(
-                        t("no temporary directory to extract into: {reason}"),
-                        &[("reason", &e.to_string())],
-                    )
-                })?;
+            let made = builder.tempdir().map_err(|e| {
+                fill(
+                    t("no temporary directory to extract into: {reason}"),
+                    &[("reason", &e.to_string())],
+                )
+            })?;
             self.scratch = Some(made);
         }
         // Not `unwrap_or_default`: an empty path here would be a relative one,
@@ -1665,7 +1685,10 @@ mod tests {
         let content = content(Some("the member is encrypted (SPEC 2.5)"));
 
         assert!(!Ask::Open.offered(&content, false), "nothing to hand over");
-        assert!(!Ask::Extract.offered(&content, false), "nothing to write out");
+        assert!(
+            !Ask::Extract.offered(&content, false),
+            "nothing to write out"
+        );
         assert!(
             Ask::Replace.offered(&content, false),
             "writing over a member does not read it"
@@ -1739,7 +1762,10 @@ mod tests {
     /// from the code is a failure rather than a sentence nobody re-runs.
     #[test]
     fn the_cards_coloured_lines_can_be_read_in_either_theme() {
-        for visuals in [eframe::egui::Visuals::light(), eframe::egui::Visuals::dark()] {
+        for visuals in [
+            eframe::egui::Visuals::light(),
+            eframe::egui::Visuals::dark(),
+        ] {
             // `Frame::group`, which the card is drawn in, sets no fill, so the
             // pixel behind these lines is the panel's. Measuring against
             // anything else is how the dark figures came out low the first
@@ -2030,7 +2056,9 @@ mod tests {
         let mut app = app(None);
 
         let (sender, outcome) = std::sync::mpsc::channel();
-        sender.send(super::Made::Done(path.clone(), None)).expect("sends");
+        sender
+            .send(super::Made::Done(path.clone(), None))
+            .expect("sends");
         app.creating = Creating::Running(super::Job {
             watch: slipcase_desktop::Watch::new(),
             total: 0,
@@ -2142,8 +2170,12 @@ mod tests {
             "a container the test built is not from elsewhere",
         );
 
-        xattr::set(&path, "user.xdg.origin.url", b"https://example.invalid/a.slpc")
-            .expect("marking the container as downloaded");
+        xattr::set(
+            &path,
+            "user.xdg.origin.url",
+            b"https://example.invalid/a.slpc",
+        )
+        .expect("marking the container as downloaded");
         let downloaded = Opened::open(&path);
         assert!(
             downloaded.from_elsewhere,
@@ -2303,7 +2335,9 @@ mod save_failure_tests {
             .as_mut()
             .expect("a document");
         set_value(
-            document.tree_mut()["title"].as_value_mut().expect("a value"),
+            document.tree_mut()["title"]
+                .as_value_mut()
+                .expect("a value"),
             Value::from("after"),
         );
 

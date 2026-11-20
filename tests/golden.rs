@@ -60,7 +60,11 @@ fn fixtures() -> Vec<(String, String)> {
     names
         .into_iter()
         .map(|p| {
-            let name = p.file_stem().expect("a stem").to_string_lossy().into_owned();
+            let name = p
+                .file_stem()
+                .expect("a stem")
+                .to_string_lossy()
+                .into_owned();
             let text = fs::read_to_string(&p).expect("a readable fixture");
             (name, text)
         })
@@ -226,7 +230,10 @@ fn edit_structure(t: &mut Table) {
         assert!(add_key(t, &added_name(kind), kind), "add {kind:?}");
     }
     if let Some(first) = names.first() {
-        assert!(rename_key(t, first, &format!("{first}_renamed")), "rename {first}");
+        assert!(
+            rename_key(t, first, &format!("{first}_renamed")),
+            "rename {first}"
+        );
     }
     if let Some(second) = names.get(1) {
         assert!(remove_key(t, second), "remove {second}");
@@ -306,6 +313,11 @@ fn every_edit_saves_what_it_saved() {
         hold("edit", &name, "toml", &saved);
 
         let mut edited: DocumentMut = saved.parse().expect("parsed a line above");
-        hold("render", &format!("{name}.edited"), "txt", &shapes_at(&mut edited, 1.0));
+        hold(
+            "render",
+            &format!("{name}.edited"),
+            "txt",
+            &shapes_at(&mut edited, 1.0),
+        );
     }
 }

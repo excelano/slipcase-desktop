@@ -314,10 +314,18 @@ mod macos {
     /// them.
     fn because_of(error: &objc2_foundation::NSError) -> String {
         use std::fmt::Write;
-        error.underlyingErrors().iter().fold(String::new(), |mut so_far, under| {
-            let _ = write!(so_far, " ({} {})", under.domain(), under.localizedDescription());
-            so_far
-        })
+        error
+            .underlyingErrors()
+            .iter()
+            .fold(String::new(), |mut so_far, under| {
+                let _ = write!(
+                    so_far,
+                    " ({} {})",
+                    under.domain(),
+                    under.localizedDescription()
+                );
+                so_far
+            })
     }
 
     fn url_for(path: &Path) -> objc2::rc::Retained<NSURL> {
@@ -491,11 +499,23 @@ mod tests {
         let dir = tempfile::TempDir::new().expect("a directory for the image");
         let image = dir.path().join("second-volume.dmg");
         let made = std::process::Command::new("hdiutil")
-            .args(["create", "-size", "20m", "-fs", "APFS", "-volname", "SlipcaseTest", "-quiet"])
+            .args([
+                "create",
+                "-size",
+                "20m",
+                "-fs",
+                "APFS",
+                "-volname",
+                "SlipcaseTest",
+                "-quiet",
+            ])
             .arg(&image)
             .status()
             .expect("hdiutil create runs");
-        assert!(made.success(), "could not make a disk image to test against");
+        assert!(
+            made.success(),
+            "could not make a disk image to test against"
+        );
 
         let attached = std::process::Command::new("hdiutil")
             .args(["attach", "-nobrowse", "-noverify"])
@@ -542,7 +562,11 @@ mod tests {
             // through a temporary file and only takes that name at commit, so
             // there is nothing to stat there yet.
             !same_file_system(
-                staged.landing.staged().parent().expect("the rewrite waits in a directory"),
+                staged
+                    .landing
+                    .staged()
+                    .parent()
+                    .expect("the rewrite waits in a directory"),
                 &std::env::temp_dir(),
             ),
             "the rewrite is waiting in the boot volume's temporary directory, \
@@ -550,7 +574,9 @@ mod tests {
         );
 
         staged.writer().write_all(b"rewritten").expect("writes");
-        staged.commit().expect("the replacement lands on the other volume");
+        staged
+            .commit()
+            .expect("the replacement lands on the other volume");
 
         assert_eq!(
             std::fs::read(&container).expect("reads the container back"),

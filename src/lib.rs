@@ -226,7 +226,10 @@ fn copy_out(
     // instead of truncating it and then deleting it.
     let mut landing = slpc::Destination::new(out, true)?;
 
-    if matches!(copy(&mut content, landing.writer(), watch)?, Extracted::Cancelled) {
+    if matches!(
+        copy(&mut content, landing.writer(), watch)?,
+        Extracted::Cancelled
+    ) {
         // `landing` drops here and takes its temporary file with it. Nothing at
         // `out` was ever opened, which is what lets the window say that nothing
         // was left behind and be right.
@@ -258,7 +261,11 @@ fn copy_out(
 }
 
 /// The copy itself, in chunks, stopping when asked.
-fn copy(content: &mut impl Read, into: &mut std::fs::File, watch: &Watch) -> slpc::Result<Extracted> {
+fn copy(
+    content: &mut impl Read,
+    into: &mut std::fs::File,
+    watch: &Watch,
+) -> slpc::Result<Extracted> {
     let mut buffer = vec![0u8; CHUNK];
 
     loop {
@@ -617,7 +624,10 @@ impl Content {
         let opens_with = opens_with::opens_with(&name);
         // Borrows shared and decompresses nothing, so this costs the card the
         // central directory entry it already has.
-        let unreadable = container.check_content_readable().err().map(|u| u.to_string());
+        let unreadable = container
+            .check_content_readable()
+            .err()
+            .map(|u| u.to_string());
         let executable = executable(&container);
         Some(Self {
             name,
@@ -903,7 +913,10 @@ mod tests {
         assert_eq!(opened.verdict_word(), "unreadable");
         // The last component, whatever this checkout is called. Naming the
         // repository here would fail in a clone under any other name.
-        let want = here.file_name().expect("a named directory").to_string_lossy();
+        let want = here
+            .file_name()
+            .expect("a named directory")
+            .to_string_lossy();
         assert_eq!(opened.name(), want);
     }
 
@@ -964,8 +977,7 @@ mod content_tests {
             .windows(4)
             .rposition(|w| w == 0x0605_4B50u32.to_le_bytes())
             .expect("an end of central directory record");
-        let mut at =
-            u32::from_le_bytes(bytes[eocd + 16..eocd + 20].try_into().unwrap()) as usize;
+        let mut at = u32::from_le_bytes(bytes[eocd + 16..eocd + 20].try_into().unwrap()) as usize;
         loop {
             assert_eq!(
                 bytes[at..at + 4],
@@ -1009,7 +1021,8 @@ mod content_tests {
         let path = dir.path().join("dense.slpc");
 
         // The densest conformant shape: shortest legal keys and values.
-        let mut flyleaf = String::from("slipcase_version = \"1.1\"\n\n[content]\nfile = \"report.pdf\"\n\n[b]\n");
+        let mut flyleaf =
+            String::from("slipcase_version = \"1.1\"\n\n[content]\nfile = \"report.pdf\"\n\n[b]\n");
         for i in 0..80_000u32 {
             let _ = writeln!(flyleaf, "k{i}=1");
         }
@@ -1218,7 +1231,9 @@ mod extraction_tests {
         let dir = tempfile::tempdir().expect("a temporary directory");
         let container = dir.path().join("built-by-the-test.slpc");
 
-        let content: Vec<u8> = (0..100_000u32).map(|i| u8::try_from(i % 251).unwrap()).collect();
+        let content: Vec<u8> = (0..100_000u32)
+            .map(|i| u8::try_from(i % 251).unwrap())
+            .collect();
         let flyleaf: DocumentMut = "title = \"built by the test\"\n"
             .parse()
             .expect("valid TOML");
@@ -1230,7 +1245,10 @@ mod extraction_tests {
         let opened = Opened::open(&container);
         assert_eq!(opened.verdict_word(), "accept");
 
-        let card = opened.content.as_ref().expect("a conformant container has a card");
+        let card = opened
+            .content
+            .as_ref()
+            .expect("a conformant container has a card");
         assert_eq!(card.name, "report.pdf");
         assert_eq!(card.size, u64::try_from(content.len()).unwrap());
 
@@ -1268,12 +1286,18 @@ mod extraction_tests {
         let mut bytes = Vec::new();
         slpc::pack_reader("report.pdf", &b"content"[..], flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes the container");
-        xattr::set(&container, "user.xdg.origin.url", b"https://example.invalid/a.slpc")
-            .expect("marking the container as downloaded");
+        xattr::set(
+            &container,
+            "user.xdg.origin.url",
+            b"https://example.invalid/a.slpc",
+        )
+        .expect("marking the container as downloaded");
 
         let into = dir.path().join("out");
         std::fs::create_dir(&into).expect("a directory to extract into");
-        let out = Opened::open(&container).extract_to(&into).expect("extracts");
+        let out = Opened::open(&container)
+            .extract_to(&into)
+            .expect("extracts");
 
         assert_eq!(
             xattr::get(&out, "user.xdg.origin.url").expect("reading the content file"),
@@ -1419,7 +1443,10 @@ aaa = \"written second\"
 
         let opened = Opened::open(&path);
         assert!(!opened.flyleaf_edited());
-        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
+        assert!(matches!(
+            opened.save(None).expect("saves"),
+            Saved::Unchanged
+        ));
 
         assert_eq!(std::fs::read(&path).expect("reads"), before);
     }
@@ -1451,7 +1478,10 @@ aaa = \"written second\"
         let opened = Opened::open(&marked);
         assert_eq!(opened.verdict_word(), "accept");
         assert!(!opened.flyleaf_edited(), "a mark is not an edit");
-        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
+        assert!(matches!(
+            opened.save(None).expect("saves"),
+            Saved::Unchanged
+        ));
 
         assert_eq!(std::fs::read(&marked).expect("reads"), before);
     }
@@ -1467,7 +1497,9 @@ aaa = \"written second\"
         let mut opened = Opened::open(&path);
         let document = opened.flyleaf.as_mut().expect("a document");
         set_value(
-            document.tree_mut()["title"].as_value_mut().expect("a value"),
+            document.tree_mut()["title"]
+                .as_value_mut()
+                .expect("a value"),
             Value::from("after"),
         );
 
@@ -1517,10 +1549,7 @@ mod policy_tests {
 
         assert!(!RequiredKeys.protected(&path(&["title"])));
         assert!(!RequiredKeys.protected(&path(&["content", "size"])));
-        assert!(!RequiredKeys.protected(&path(&[
-            "elsewhere",
-            "slipcase_version"
-        ])));
+        assert!(!RequiredKeys.protected(&path(&["elsewhere", "slipcase_version"])));
     }
 
     /// A content file name whose bidirectional override the tree swallowed.
@@ -1583,7 +1612,12 @@ mod replacement_tests {
     #[test]
     fn a_cancelled_extraction_leaves_nothing_where_it_was_told() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let container = packed(dir.path(), "title = \"stopped\"\n", "report.pdf", &vec![9u8; 200_000]);
+        let container = packed(
+            dir.path(),
+            "title = \"stopped\"\n",
+            "report.pdf",
+            &vec![9u8; 200_000],
+        );
 
         let out = dir.path().join("half-a-content-file.bin");
         let watch = super::Watch::new();
@@ -1593,7 +1627,10 @@ mod replacement_tests {
             extract_at(&container, &out, &watch).expect("stops"),
             Extracted::Cancelled
         ));
-        assert!(!out.exists(), "a part-written file is one somebody finds later");
+        assert!(
+            !out.exists(),
+            "a part-written file is one somebody finds later"
+        );
     }
 
     /// Replacing the content file under a new name moves `content.file` with
@@ -1621,7 +1658,10 @@ mod replacement_tests {
         let again = Opened::open(&container);
         assert_eq!(again.verdict_word(), "accept");
 
-        let card = again.content.as_ref().expect("a conformant container has a card");
+        let card = again
+            .content
+            .as_ref()
+            .expect("a conformant container has a card");
         assert_eq!(card.name, "report-v2.pdf");
         assert_eq!(card.size, 15);
 
@@ -1651,7 +1691,12 @@ mod replacement_tests {
     #[test]
     fn replacing_only_the_content_file_leaves_the_flyleaf_byte_for_byte() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let container = packed(dir.path(), "title = \"placeholder\"\n", "report.pdf", b"old");
+        let container = packed(
+            dir.path(),
+            "title = \"placeholder\"\n",
+            "report.pdf",
+            b"old",
+        );
 
         let crlf: &[u8] =
             b"slipcase_version = \"1.1\"\r\ntitle = \"before\"\r\n\r\n[content]\r\nfile = \"report.pdf\"\r\n";
@@ -1662,7 +1707,9 @@ mod replacement_tests {
             .expect("writes");
         std::fs::write(&container, out.into_inner()).expect("writes the container");
         assert_eq!(
-            slpc::Container::open(&container).expect("opens").flyleaf_bytes(),
+            slpc::Container::open(&container)
+                .expect("opens")
+                .flyleaf_bytes(),
             crlf,
             "the fixture starts with the bytes this is about"
         );
@@ -1679,7 +1726,9 @@ mod replacement_tests {
         ));
 
         assert_eq!(
-            slpc::Container::open(&container).expect("opens").flyleaf_bytes(),
+            slpc::Container::open(&container)
+                .expect("opens")
+                .flyleaf_bytes(),
             crlf,
             "nobody edited the flyleaf, so nothing rewrote it"
         );
@@ -1738,11 +1787,19 @@ mod replacement_tests {
     #[test]
     fn no_edit_and_no_replacement_writes_nothing() {
         let dir = tempfile::tempdir().expect("a temporary directory");
-        let container = packed(dir.path(), "title = \"untouched\"\n", "report.pdf", b"content");
+        let container = packed(
+            dir.path(),
+            "title = \"untouched\"\n",
+            "report.pdf",
+            b"content",
+        );
         let before = std::fs::read(&container).expect("reads");
 
         let opened = Opened::open(&container);
-        assert!(matches!(opened.save(None).expect("saves"), Saved::Unchanged));
+        assert!(matches!(
+            opened.save(None).expect("saves"),
+            Saved::Unchanged
+        ));
 
         assert_eq!(std::fs::read(&container).expect("reads"), before);
     }
@@ -1751,7 +1808,10 @@ mod replacement_tests {
     /// Save was pressed.
     #[test]
     fn a_file_that_cannot_be_a_content_file_says_so() {
-        assert_eq!(why_not_a_content_file(Path::new("/anywhere/report.pdf")), None);
+        assert_eq!(
+            why_not_a_content_file(Path::new("/anywhere/report.pdf")),
+            None
+        );
 
         let reserved = why_not_a_content_file(Path::new("/anywhere/slipcase.flyleaf.toml"))
             .expect("the flyleaf member's own name is reserved");
@@ -1802,9 +1862,15 @@ mod windows_extraction_tests {
     /// bytes, which is the worst of the three answers.
     const DEVICE_NAMES: [&str; 6] = ["CON", "CON.txt", "con", "COM1", "AUX", "NUL"];
 
-    fn container_named(dir: &std::path::Path, content_name: &str, content: &[u8]) -> std::path::PathBuf {
+    fn container_named(
+        dir: &std::path::Path,
+        content_name: &str,
+        content: &[u8],
+    ) -> std::path::PathBuf {
         let container = dir.join(format!("holds-{}.slpc", content_name.replace('.', "-")));
-        let flyleaf: DocumentMut = "title = \"built by the test\"\n".parse().expect("valid TOML");
+        let flyleaf: DocumentMut = "title = \"built by the test\"\n"
+            .parse()
+            .expect("valid TOML");
         let mut bytes = Vec::new();
         slpc::pack_reader(content_name, content, flyleaf, &mut bytes).expect("packs");
         std::fs::write(&container, &bytes).expect("writes the container");
@@ -1877,7 +1943,6 @@ mod windows_extraction_tests {
             "a person's own path came back in the verbatim form"
         );
     }
-
 }
 
 #[cfg(test)]

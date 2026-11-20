@@ -133,7 +133,10 @@ struct Report {
 
 impl Report {
     fn disagree(&mut self, what: String, c: &Case, said: &str) {
-        self.disagreements.entry(what).or_default().push(detail(c, said));
+        self.disagreements
+            .entry(what)
+            .or_default()
+            .push(detail(c, said));
     }
 
     /// Say what happened, and fail where anything did not agree.
@@ -365,7 +368,11 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
             return false;
         }
         Err(e) => {
-            report.disagree("packing: the content file would not pack".to_owned(), c, &e.to_string());
+            report.disagree(
+                "packing: the content file would not pack".to_owned(),
+                c,
+                &e.to_string(),
+            );
             return false;
         }
     };
@@ -385,7 +392,8 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
     let expected = content.file_name().unwrap_or_default().to_string_lossy();
     if card.name != expected {
         report.disagree(
-            "packing: the container names a content file other than the file that went in".to_owned(),
+            "packing: the container names a content file other than the file that went in"
+                .to_owned(),
             c,
             &format!("{:?} went in, content.file says {:?}", expected, card.name),
         );
@@ -403,6 +411,30 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
 
     report.packed += 1;
     true
+}
+
+fn copied(c: &Case, scratch: &Path, stem: &str, report: &mut Report) -> Option<(PathBuf, String)> {
+    let copy = scratch.join(format!("replace-{stem}.slpc"));
+    if let Err(e) = std::fs::copy(&c.file, &copy) {
+        report.disagree(
+            "the replacement: the case could not be copied to write to".to_owned(),
+            c,
+            &e.to_string(),
+        );
+        return None;
+    }
+
+    let opened = Opened::open(&copy);
+    let Some(content) = &opened.content else {
+        report.disagree(
+            "the replacement: a conformant container arrived without a card".to_owned(),
+            c,
+            &opened.verdict_line(),
+        );
+        return None;
+    };
+    let own_name = content.name.clone();
+    Some((copy, own_name))
 }
 
 /// Whether the content file can be replaced, DESIGN.md §5's second explicit
@@ -423,26 +455,9 @@ fn packs(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> bool
 /// On a copy. The corpus is the arbiter and nothing here may change it.
 fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
     let stem = c.id.replace('/', "-");
-    let copy = scratch.join(format!("replace-{stem}.slpc"));
-    if let Err(e) = std::fs::copy(&c.file, &copy) {
-        report.disagree(
-            "the replacement: the case could not be copied to write to".to_owned(),
-            c,
-            &e.to_string(),
-        );
-        return false;
-    }
-
-    let opened = Opened::open(&copy);
-    let Some(content) = &opened.content else {
-        report.disagree(
-            "the replacement: a conformant container arrived without a card".to_owned(),
-            c,
-            &opened.verdict_line(),
-        );
+    let Some((copy, own_name)) = copied(c, scratch, &stem, report) else {
         return false;
     };
-    let own_name = content.name.clone();
 
     // Content file names repeat across the corpus, so each case gets a
     // directory to hold a file under the name its own container uses.
@@ -502,7 +517,8 @@ fn replaces(c: &Case, scratch: &Path, report: &mut Report) -> bool {
         Ok(container) if container.flyleaf_bytes() == before => {}
         Ok(_) => {
             report.disagree(
-                "the replacement: replacing the content file rewrote a flyleaf nobody edited".to_owned(),
+                "the replacement: replacing the content file rewrote a flyleaf nobody edited"
+                    .to_owned(),
                 c,
                 "the flyleaf member came back with different bytes",
             );
@@ -571,7 +587,11 @@ fn swapped(
             return false;
         }
         Err(e) => {
-            report.disagree("the replacement: the write failed".to_owned(), c, &e.to_string());
+            report.disagree(
+                "the replacement: the write failed".to_owned(),
+                c,
+                &e.to_string(),
+            );
             return false;
         }
     }
@@ -598,7 +618,12 @@ fn swapped(
         report.disagree(
             "the replacement: the card describes something other than what went in".to_owned(),
             c,
-            &format!("{} at {} bytes, expecting {name} at {}", card.name, card.size, bytes.len()),
+            &format!(
+                "{} at {} bytes, expecting {name} at {}",
+                card.name,
+                card.size,
+                bytes.len()
+            ),
         );
         return false;
     }
@@ -621,7 +646,8 @@ fn swapped(
         Ok(got) if got == bytes => true,
         Ok(got) => {
             report.disagree(
-                "the replacement: the content file that came back is not the one that went in".to_owned(),
+                "the replacement: the content file that came back is not the one that went in"
+                    .to_owned(),
                 c,
                 &format!("{} bytes back, {} in", got.len(), bytes.len()),
             );
@@ -676,12 +702,7 @@ fn rewrites(c: &Case, scratch: &Path, report: &mut Report) -> bool {
 /// `rename_key` takes every entry out of the table and puts it back, which is
 /// what keeps a renamed key in its place. Doing that to 37 real documents is
 /// the check worth having: what could go wrong is the other keys moving.
-fn rename_round_trips(
-    c: &Case,
-    copy: &Path,
-    order_before: &[String],
-    report: &mut Report,
-) -> bool {
+fn rename_round_trips(c: &Case, copy: &Path, order_before: &[String], report: &mut Report) -> bool {
     let mut opened = Opened::open(copy);
     let Some(document) = opened.flyleaf.as_mut() else {
         return false;
@@ -787,12 +808,7 @@ fn unedited_writes_nothing(c: &Case, copy: &Path, untouched: &Opened, report: &m
 
 /// One unknown key added, saved, and read back: still conformant, the edit
 /// still there, and the keys still in the order they were written.
-fn edited_round_trips(
-    c: &Case,
-    copy: &Path,
-    order_before: &[String],
-    report: &mut Report,
-) -> bool {
+fn edited_round_trips(c: &Case, copy: &Path, order_before: &[String], report: &mut Report) -> bool {
     let mut edited = Opened::open(copy);
     let Some(document) = edited.flyleaf.as_mut() else {
         report.disagree(
@@ -889,7 +905,11 @@ const ADDED: &str = "x_slipcase_desktop_corpus";
 /// The top-level keys of a container's flyleaf, in document order.
 fn top_level_keys(opened: &Opened) -> Vec<String> {
     opened.flyleaf.as_ref().map_or_else(Vec::new, |d| {
-        d.tree().as_table().iter().map(|(k, _)| k.to_owned()).collect()
+        d.tree()
+            .as_table()
+            .iter()
+            .map(|(k, _)| k.to_owned())
+            .collect()
     })
 }
 
@@ -902,23 +922,23 @@ fn extracts(c: &Case, opened: &Opened, scratch: &Path, report: &mut Report) -> b
     // extracted has taken away something that worked, and one that offers it
     // on a content file that cannot be decoded has put the refusal back where
     // it was.
-    let foretold = opened
-        .content
-        .as_ref()
-        .and_then(|p| p.unreadable.clone());
+    let foretold = opened.content.as_ref().and_then(|p| p.unreadable.clone());
 
     match opened.extract_to(scratch) {
         Ok(path) => {
             if let Some(why) = &foretold {
                 report.disagree(
-                    "the pre-flight: the card refused a content file that then extracted".to_owned(),
+                    "the pre-flight: the card refused a content file that then extracted"
+                        .to_owned(),
                     c,
                     why,
                 );
                 return false;
             }
             let declared = opened.content.as_ref().map_or(0, |p| p.size);
-            let arrived = std::fs::metadata(&path).map(|m| m.len()).unwrap_or_default();
+            let arrived = std::fs::metadata(&path)
+                .map(|m| m.len())
+                .unwrap_or_default();
             if arrived == declared {
                 report.extracted += 1;
                 return true;

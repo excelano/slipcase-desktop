@@ -53,7 +53,10 @@ fn main() {
     //
     // Named rather than `-bins`, because the package builds two binaries and
     // `corpus` is a console runner that has no window to be aware about.
-    for arg in ["/MANIFEST:EMBED", &format!("/MANIFESTINPUT:{}", manifest.display())] {
+    for arg in [
+        "/MANIFEST:EMBED",
+        &format!("/MANIFESTINPUT:{}", manifest.display()),
+    ] {
         println!("cargo:rustc-link-arg-bin=slipcase-desktop={arg}");
     }
 }
