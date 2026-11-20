@@ -59,19 +59,32 @@ const KNOWN: [&str; 4] = ["accept", "reject", "undetermined", "out-of-scope"];
 
 /// Whether DESIGN.md §6 owes this container a tree past its verdict.
 ///
-/// A conformant container's flyleaf member parsed, and so did that of one
-/// declaring a version this build does not implement, so both show a tree.
+/// A conformant container's flyleaf member parsed, so it shows a tree.
 /// `undetermined` is the answer given when the flyleaf member could not be
 /// read, so there is nothing to show and showing something would contradict the
-/// verdict. `reject` covers rows on both sides of the table: a container with no
-/// flyleaf member has no tree, and one whose `content.file` names nothing has
-/// one. Nothing is owed there, and `None` says so.
-fn owed_tree(expect: &str) -> Option<bool> {
-    match expect {
-        "accept" | "out-of-scope" => Some(true),
+/// verdict. `reject` and `out-of-scope` each cover rows on both sides of the
+/// table: a container with no flyleaf member has no tree, and one whose
+/// `content.file` names nothing has one. A 1.1 flyleaf declaring another
+/// version has a tree, and a 1.0 container's flyleaf is not one this build
+/// reads, which the archive's member names tell apart. Nothing is owed for
+/// `reject`, and `None` says so.
+fn owed_tree(c: &Case) -> Option<bool> {
+    match c.expect.as_str() {
+        "accept" => Some(true),
+        "out-of-scope" => Some(has_flyleaf_member(&c.file)),
         "undetermined" => Some(false),
         _ => None,
     }
+}
+
+fn has_flyleaf_member(file: &Path) -> bool {
+    std::fs::File::open(file)
+        .ok()
+        .and_then(|f| zip::ZipArchive::new(f).ok())
+        .is_some_and(|z| {
+            z.file_names()
+                .any(|n| n.is_ok_and(|n| n == slpc::FLYLEAF_MEMBER))
+        })
 }
 
 /// Whether DESIGN.md §6 owes this container a content card.
@@ -229,20 +242,7 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
         ));
     }
 
-    // SPEC Appendix C names one case this build cannot reach the manifest's
-    // verdict for: `out-of-scope/version-1-0` is the only container whose
-    // flyleaf is named `slipcase.metadata.toml`, and reaching `out-of-scope`
-    // for it means reading a version key this build cannot find without
-    // already knowing that name. This build is 1.1-only (DESIGN.md "Why 1.1
-    // exists"), so it is unreadable rather than out of scope here, exactly as
-    // Appendix C says of "every reader written before" the rename. Checked
-    // against `reject` instead of the manifest's `out-of-scope` for this one
-    // case, so a real regression on any other case still fails the run.
-    let expect: &str = if c.id == "out-of-scope/version-1-0" {
-        "reject"
-    } else {
-        &c.expect
-    };
+    let expect = c.expect.as_str();
 
     let opened = Opened::open(&c.file);
     let mut ok = true;
@@ -261,7 +261,7 @@ fn check(c: &Case, scratch: &Path, report: &mut Report) -> Result<(), String> {
     if shown {
         report.trees += 1;
     }
-    if let Some(owed) = owed_tree(expect) {
+    if let Some(owed) = owed_tree(c) {
         if shown != owed {
             ok = false;
             let said = if shown {

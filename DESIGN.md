@@ -155,7 +155,8 @@ SPEC §2 and §3 define these conditions. The list is not exhaustive, and none o
 | `content.file` names no member, or more than one | non-conformant | the verdict, and the tree |
 | `content.file` is not a name a content file may have | non-conformant | the verdict, and the tree |
 | The flyleaf member cannot be read at all | undetermined | the verdict, and nothing further |
-| A `slipcase_version` this build does not implement | out of scope | the verdict, and the tree |
+| A 1.1 flyleaf declaring a `slipcase_version` this build does not implement | out of scope | the verdict, and the tree |
+| A 1.0 container, its flyleaf named `slipcase.metadata.toml` (SPEC Appendix C) | out of scope | the verdict |
 | Conformant, content file of zero length | conformant | everything, size stated plainly |
 | Conformant, content file very large | conformant | everything, extraction that can be waited on |
 | Conformant, content file encrypted or compressed by a method this build lacks | conformant | everything, and a refusal where the content file would have been |
