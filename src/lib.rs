@@ -907,6 +907,9 @@ mod tests {
         assert_eq!(opened.name(), want);
     }
 
+    /// Would catch a container declaring a version this build does not read
+    /// being shown as defective. SPEC §2.4 puts it out of scope, which says
+    /// nothing about whether it is sound.
     #[test]
     fn a_version_1_0_container_is_out_of_scope_and_not_broken() {
         use std::io::Write;
