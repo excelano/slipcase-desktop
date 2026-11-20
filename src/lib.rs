@@ -906,6 +906,24 @@ mod tests {
         let want = here.file_name().expect("a named directory").to_string_lossy();
         assert_eq!(opened.name(), want);
     }
+
+    #[test]
+    fn a_version_1_0_container_is_out_of_scope_and_not_broken() {
+        let opened = Opened::open(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/version-1-0.slpc"
+        ));
+
+        assert_eq!(opened.verdict_word(), "out-of-scope");
+        assert!(
+            opened
+                .verdict_line()
+                .starts_with("declares slipcase_version \"1.0\""),
+            "{}",
+            opened.verdict_line()
+        );
+        assert!(opened.flyleaf.is_none());
+    }
 }
 
 #[cfg(test)]
