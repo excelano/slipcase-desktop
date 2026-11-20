@@ -88,6 +88,7 @@ opener = "0.8"
 # how the wrong half went unnoticed — the two are different code paths and only
 # one of them was ever measured.
 tempfile = "3.27"
+zip = { version = "9.1", default-features = false }
 
 # Launch Services answers `opens_with` on macOS, and it is a C API this crate
 # cannot call: `#![forbid(unsafe_code)]` is a property of this source. These

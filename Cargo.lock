@@ -2978,6 +2978,7 @@ dependencies = [
  "tempfile",
  "windows-registry",
  "xattr",
+ "zip",
 ]
 
 [[package]]

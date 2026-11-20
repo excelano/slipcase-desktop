@@ -909,10 +909,19 @@ mod tests {
 
     #[test]
     fn a_version_1_0_container_is_out_of_scope_and_not_broken() {
-        let opened = Opened::open(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/tests/fixtures/version-1-0.slpc"
-        ));
+        use std::io::Write;
+        let dir = tempfile::tempdir().expect("a temporary directory");
+        let path = dir.path().join("old.slpc");
+        let mut w = zip::ZipWriter::new(std::fs::File::create(&path).unwrap());
+        let opts = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        w.start_file("slipcase.metadata.toml", opts).unwrap();
+        w.write_all(b"slipcase_version = \"1.0\"\n\n[payload]\nfile = \"a.txt\"\n")
+            .unwrap();
+        w.start_file("a.txt", opts).unwrap();
+        w.write_all(b"x").unwrap();
+        w.finish().unwrap();
+        let opened = Opened::open(&path);
 
         assert_eq!(opened.verdict_word(), "out-of-scope");
         assert!(
