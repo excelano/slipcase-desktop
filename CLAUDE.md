@@ -14,6 +14,7 @@ amends it. `DESIGN.md` here is the authority on the application.
 
     cargo build --release
     cargo test                        # each platform's arm carries its own tests
+    cargo fmt --check                 # must be silent
     cargo clippy --all-targets        # must be silent
     cargo check --target x86_64-pc-windows-msvc        # cross-check from Linux or macOS
     cargo run --example corpus -- /path/to/slipcase/conformance   # a command, never a test
@@ -45,7 +46,5 @@ public framework header declares. A `cargo update` or an `eframe` bump that move
 the version `[patch.crates-io]` pins stops the patch applying, which is the moment to check whether the release it
 lands on carries the `private-apple-apis` gate. No table maps filenames to types: what the
 card says about a content file is what the platform said, and where it will not answer the card
-says nothing (`DESIGN.md` §3). This tree is not rustfmt-clean and has no fmt check: never run `cargo fmt` here, or a
-six-file change arrives swamped by eight hundred lines nobody asked for. Every test's doc
-comment says what defect it would catch,
+says nothing (`DESIGN.md` §3). Every test's doc comment says what defect it would catch,
 and a new test is broken deliberately once to watch it fail.
