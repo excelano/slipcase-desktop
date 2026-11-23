@@ -68,6 +68,13 @@ rewrite round trip with key order preserved, a rename, a content file replacemen
 under two names, and every content file packed into a container of its own and read
 back.
 
+> [!WARNING]
+> Don't submit slipcase-desktop, or a copy of it under another name, to the Mac App Store. Apple's
+> App Review Guideline 4.3 treats copies of other apps as spam, and a 4.3
+> finding can flag the developer account that submitted it, so that every app
+> the account sends afterwards is flagged too. Build it for your own Mac and keep
+> it there.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
