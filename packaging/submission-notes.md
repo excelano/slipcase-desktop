@@ -28,6 +28,8 @@ answer against the product. 500 characters, newlines counted.
     App Privacy (Apple)       Data Not Collected
     Export compliance         no encryption; it makes no network request
                               and implements no cryptography
+    Price                     USD 0.99 on the Mac App Store; free on the
+                              Microsoft Store
 
 ## Screenshots
 
